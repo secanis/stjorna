@@ -2,7 +2,7 @@
 
 STJÓRNA was created to have an easy product management with the possibility to access the categories and products over an simple just readable REST API.
 
-![stjorna logo](https://stjorna.secanis.ch/docs/images/stjorna_klein_compressor.png "STJÓRNA Logo")
+![stjorna logo](https://stjorna.secanis.ch/docs/images/stjorna_middle_compressor.png "STJÓRNA Logo")
 
 ## Features
 

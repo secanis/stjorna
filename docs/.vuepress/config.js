@@ -9,8 +9,7 @@ module.exports = {
   },
   head: [
     ['link', { rel: 'icon', href: `/favicon.ico` }],
-    ['link', { rel: 'manifest', href: '/manifest.json' }],
-    ['meta', { name: 'theme-color', content: '#115BA6' }]
+    ['link', { rel: 'manifest', href: '/manifest.json' }]
   ],
   serviceWorker: true,
   themeConfig: {
@@ -28,19 +27,19 @@ module.exports = {
         nav: [
           {
             text: 'Features',
-            link: '#features',
+            link: 'index.html#features',
           },
           {
             text: 'Get Started',
-            link: '#get-started'
+            link: 'index.html#get-started'
           },
           {
             text: 'Configuration',
-            link: '#configuration'
+            link: 'index.html#configuration'
           },
           {
             text: 'Screenshots',
-            link: '#screenshots'
+            link: 'index.html#screenshots'
           }
         ]
       }
