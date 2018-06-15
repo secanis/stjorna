@@ -1,5 +1,5 @@
 module.exports = {
-  base: "/stjorna",
+  base: "/",
   locales: {
     '/': {
       lang: 'en-US',
