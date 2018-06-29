@@ -354,7 +354,7 @@
   },
   {
     "type": "get",
-    "url": "/api/v1/products/:category",
+    "url": "/api/v1/category/:category/products",
     "title": "Get Products by Category",
     "name": "GetProductsByCategory",
     "group": "Product",
@@ -372,7 +372,7 @@
             "type": "String",
             "optional": false,
             "field": "category",
-            "description": "<p>Category name.</p>"
+            "description": "<p>Category ID.</p>"
           }
         ]
       }
@@ -390,7 +390,7 @@
         ]
       }
     },
-    "filename": "api/routes_products.js",
+    "filename": "api/routes_categories.js",
     "groupTitle": "Product"
   },
   {
