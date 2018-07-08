@@ -1,0 +1,12 @@
+<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
+    <stjorna-productform *ngIf="product && currentRoute.includes('product')" [product]="product" [isEditForm]="true"></stjorna-productform>
+    <stjorna-categoryform *ngIf="category && currentRoute.includes('category')" [category]="category" [isEditForm]="true"></stjorna-categoryform>
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">Danger Zone</h3>
+            <p class="card-text text-danger">Are you sure that you wanna delete this element?</p>
+            <button *ngIf="currentRoute.includes('product')" class="btn btn-danger" (click)="removeProduct(product)">Remove Product</button>
+            <button *ngIf="currentRoute.includes('category')" class="btn btn-danger" (click)="removeCategory(category)">Remove Category</button>
+        </div>
+    </div>
+</main>

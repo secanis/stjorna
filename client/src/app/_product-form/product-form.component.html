@@ -1,0 +1,79 @@
+<form #productForm="ngForm" (ngSubmit)="saveProduct(productForm)">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 *ngIf="!isEditForm">Create new Product</h3>
+            <h3 *ngIf="isEditForm">Edit Product</h3>
+        </div>
+    </div>
+    <div class="card-deck">
+        <div class="card">
+            <div class="card-body">
+                <!-- hidden _id field  -->
+                <input class="form-control" type="hidden" name="_id" [(ngModel)]="product._id" #_id="ngModel">
+                <input class="form-control" type="text" name="name" [(ngModel)]="product.name" #name="ngModel" required>
+                <small class="form-text text-muted" for="name">Productname</small><br>
+                <input class="form-control" type="number" name="price" [(ngModel)]="product.price" #price="ngModel" required>
+                <small class="form-text text-muted" for="price">Price</small><br>
+                <input class="form-control" type="text" name="description" [(ngModel)]="product.description" #description="ngModel" required>
+                <small class="form-text text-muted" for="description">Description</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <select class="form-control" name="category" [(ngModel)]="product.category" #category="ngModel" required>
+                    <option *ngFor="let category of categoryList" value="{{category._id}}">{{category.name}}</option>
+                </select>
+                <small class="form-text text-muted" for="category">Product Category</small><br>
+                <select class="form-control" name="active" [(ngModel)]="product.active" #active="ngModel" required>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+                <small class="form-text text-muted" for="active">Product active</small>
+            </div>
+        </div>
+    </div>
+    <div class="card-deck card-margin">
+        <div class="card">
+            <div class="card-body">
+                <div *ngIf="!croppedOk && !product.imageUrl">
+                    <input type="file" accept="image/*" class="form-control" (change)="fileChangeEvent($event)" />
+                    <image-cropper
+                        [imageChangedEvent]="imageChangedEvent"
+                        [maintainAspectRatio]="true"
+                        [aspectRatio]="1/1"
+                        [resizeToWidth]="350"
+                        format="jpeg"
+                        (imageCropped)="imageCropped($event)"
+                        (imageLoaded)="imageLoaded()"
+                        (loadImageFailed)="loadImageFailed()"
+                    ></image-cropper>
+                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">Cut Image</button>
+                </div>
+                <div *ngIf="product.image && croppedOk">
+                    <input type="hidden" name="image" [(ngModel)]="product.image" #image="ngModel">
+                    <img class="element-form-image" [src]="product.image">
+                </div>
+                <div *ngIf="product.imageUrl">
+                    <input type="hidden" name="imageUrl" [(ngModel)]="product.imageUrl" #imageUrl="ngModel">
+                    <img class="element-form-image" [src]="buildImageResourceUrl(product.imageUrl)">
+                </div>
+                <small class="form-text text-muted">Product Image</small>
+                <button *ngIf="product.imageUrl || (product.image && croppedOk)" class="btn btn-danger btn-remove-image" (click)="removeImage()">
+                    <i class="fa fa-trash-o fa-1x"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+            </div>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/products">Cancel</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/products">Back</button>
+            <!-- <button class="btn btn-success pull-right" [disabled]="!productForm.dirty || !(product.image.length > 0)" type="submit">Save Product</button> -->
+            <button class="btn btn-success pull-right" type="submit">Save Product</button>
+        </div>
+    </div>
+</form> 

@@ -1,0 +1,14 @@
+<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
+    <ngb-tabset [activeId]="selectedTab" (tabChange)="tabChange($event)">
+        <ngb-tab id="products" title="Products">
+            <ng-template ngbTabContent>
+                <stjorna-productlist></stjorna-productlist>
+            </ng-template>
+        </ngb-tab>
+        <ngb-tab id="categories" title="Categories">
+            <ng-template ngbTabContent>
+                <stjorna-categorylist></stjorna-categorylist>
+            </ng-template>
+        </ngb-tab>
+    </ngb-tabset>
+</main>

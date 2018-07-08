@@ -1,0 +1,6 @@
+.vscode
+**/node_modules
+**/dist
+server/data/
+server/apidoc/
+todo.md

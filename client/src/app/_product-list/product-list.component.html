@@ -1,0 +1,28 @@
+<section class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th style="width: 20%">Name</th>
+                <th style="width: 10%">Category</th>
+                <th style="width: 30%">Description</th>
+                <th style="width: 20%">Last Update</th>
+                <th style="width: 5%">Active</th>
+                <th style="width: 10%" class="text-right">Price</th>
+                <th style="width: 5%"></th>
+            </tr>
+        </thead>
+        <tr *ngFor="let product of productList">
+            <td>{{product.name}}</td>
+            <td>{{getCategoryNameById(product.category)}}</td>
+            <td>{{product.description}}</td>
+            <td>{{product.updated | date: 'medium'}}</td>
+            <td><i [ngClass]="getStatusElementCss(product)"></i></td>
+            <td class="text-right">{{product.price | number: '1.2'}}</td>
+            <td class="text-right">
+                <a class="text-stjorna" routerLink="/product/view/{{product._id}}" routerLinkActive="active">
+                    <i class="edit-product fa fa-2x fa-cogs"></i>
+                </a>
+            </td>
+        </tr>
+    </table>
+</section>

@@ -1,0 +1,63 @@
+<form #CategoryForm="ngForm" (ngSubmit)="saveNewCategory(CategoryForm)">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 *ngIf="!isEditForm">Create new Category</h3>
+            <h3 *ngIf="isEditForm">Edit Category</h3>
+        </div>
+    </div>
+    <div class="card-deck card-margin">
+        <div class="card">
+            <div class="card-body">
+                <input class="form-control" type="hidden" name="_id" [(ngModel)]="category._id" #_id="ngModel">
+                <input class="form-control" type="text" name="name" [(ngModel)]="category.name" #name="ngModel" required>
+                <small class="form-text text-muted">Categoryname</small><br>
+                <input class="form-control" type="text" name="description" [(ngModel)]="category.description" #description="ngModel" required>
+                <small class="form-text text-muted">Description</small><br>
+                <select class="form-control" name="active" [(ngModel)]="category.active" #active="ngModel" required>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+                <small class="form-text text-muted" for="active">Category active</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <div *ngIf="!croppedOk && !category.imageUrl">
+                    <input type="file" accept="image/*" class="form-control" (change)="fileChangeEvent($event)" />
+                    <div *ngIf="imageChangedEvent && !cropperImageLoaded" class="loader cropper-loader"></div>
+                    <image-cropper
+                        [imageChangedEvent]="imageChangedEvent"
+                        [maintainAspectRatio]="true"
+                        [aspectRatio]="1/1"
+                        [resizeToWidth]="350"
+                        format="jpeg"
+                        (imageCropped)="imageCropped($event)"
+                        (imageLoaded)="imageLoaded()"
+                        (loadImageFailed)="loadImageFailed()"
+                    ></image-cropper>
+                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">Cut Image</button>
+                </div>
+                <div *ngIf="category.image && croppedOk">
+                    <input type="hidden" name="image" [(ngModel)]="category.image" #image="ngModel">
+                    <img class="element-form-image" [src]="category.image">
+                </div>
+                <div *ngIf="category.imageUrl">
+                    <input type="hidden" name="imageUrl" [(ngModel)]="category.imageUrl" #imageUrl="ngModel">
+                    <img class="element-form-image" [src]="buildImageResourceUrl(category.imageUrl)" alt="image not found...">
+                </div>
+                <small class="form-text text-muted">Category Image</small>
+                <button *ngIf="category.imageUrl || (category.image && croppedOk)" class="btn btn-danger btn-remove-image" (click)="removeImage()" alt="image not found...">
+                    <i class="fa fa-trash-o fa-1x"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/categories">Cancel</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/categories">Back</button>
+            <!-- <button class="btn btn-success pull-right" [disabled]="!CategoryForm.dirty" type="submit">Save Category</button> -->
+            <button class="btn btn-success pull-right" type="submit">Save Category</button>
+        </div>
+    </div>
+</form>

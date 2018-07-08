@@ -1,0 +1,51 @@
+version: 2
+jobs:
+    build:
+        docker:
+            - image: circleci/node:10.6.0
+
+        working_directory: ~/repo
+
+        steps:
+            - checkout
+            - restore_cache:
+                keys:
+                    - v1-dependencies-{{ checksum "package.json" }}
+                    - v1-dependencies-{{ checksum "client/package.json" }}
+                    - v1-dependencies-
+
+            # install rest-api
+            - run: npm install
+            # install client
+            - run: cd client; npm install
+
+            - save_cache:
+                paths:
+                    - node_modules
+                    - client/node_modules
+                key: v1-dependencies-{{ checksum "package.json" }}
+                key: v1-dependencies-{{ checksum "client/package.json" }}
+
+            # build rest-api
+            - run: npm run apidoc
+            # build client
+            - run: cd client; npm run build
+            - run: cd client; npm run lint
+
+            # docker build
+            - setup_remote_docker:
+                docker_layer_caching: true
+
+            - run: |
+                VERSION=$(node -p -e "require('./package.json').version")
+                # pack application
+                mv ./client/dist ./public
+                cd server; tar -czf ../stjorna-1.0.0.tar.gz *
+                # docker build
+                if [ -n "$RELEASE" ]; then 
+                    docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
+                    docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION .
+                    docker push docker.io/secanis/stjorna:$VERSION
+                else
+                    echo "no docker build, because RELEASE was not set."
+                fi

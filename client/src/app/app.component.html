@@ -1,0 +1,73 @@
+<nav *ngIf="loggedIn" class="navbar navbar-dark sticky-top background-color-stjorna flex-md-nowrap p-0">
+    <!-- <a class="navbar-brand col-sm-3 col-md-2 mr-0" href="/">
+        <img src="../public/assets/stjorna_klein_compressor.png" height="30">
+    </a> -->
+    <!-- <input class="form-control form-control-dark w-100" type="text" placeholder="Search" aria-label="Search"> -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-3">
+            <li class="nav-item">
+                <span *ngIf="currentUser" class="nav-link">{{currentUser.username}}</span>
+            </li>
+            <li class="nav-item">
+                <stjorna-logout class="nav-link"></stjorna-logout>
+            </li>
+        </ul>
+    </div>
+</nav>
+
+<div>
+    <nav class="col-md-2 d-none d-md-block bg-light sidebar" *ngIf="!getActiveUrlRoute('setup') && !getActiveUrlRoute('login') || loggedIn">
+        <div class="sidebar-sticky">
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('dashboard')}" routerLink="/dashboard">
+                        <span data-feather="dashboard"></span>
+                        <i class="fa fa-home"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('settings')}" routerLink="/settings">
+                        <span data-feather="settings"></span>
+                        <i class="fa fa-cogs"></i> Settings
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a *ngIf="currentUser" class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('profile')}" routerLink="/profile/{{currentUser._id}}">
+                        <span data-feather="profile"></span>
+                        <i class="fa fa-user"></i> Profile <small>({{currentUser.username}})</small>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('about')}" routerLink="/about">
+                        <span data-feather="about"></span>
+                        <i class="fa fa-info-circle"></i> About
+                    </a>
+                </li>
+            </ul>
+            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                <span>Other Options</span>
+            </h6>
+            <ul class="nav flex-column mb-2">
+                <li class="nav-item">
+                    <a class="nav-link" routerLink="/new/product">
+                        <span data-feather="file-text"></span>
+                        <i class="fa fa-plus"></i> Add Product
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" routerLink="/new/category">
+                        <span data-feather="file-text"></span>
+                        <i class="fa fa-plus"></i> Add Category
+                    </a>
+                </li>
+            </ul>
+            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                <span>Logout</span>
+            </h6>
+            <ul class="nav flex-column mb-2">
+                <stjorna-logout></stjorna-logout>
+            </ul>
+        </div>
+    </nav>
+    <router-outlet></router-outlet>
+</div>

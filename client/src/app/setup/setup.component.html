@@ -1,0 +1,73 @@
+<form #setupForm="ngForm" class="container" *ngIf="!completedSetup">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">Welcome to STJÓRNA</h3>
+            <p>You are just one step away from the usage of STJÓRNA.<br>
+            We preconfigured some recommended values or you set with own ENV variables.<br>
+            In the default settings, the remote api is for security reasons deactivated.</p>
+        </div>
+    </div>
+    <div class="card-columns">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Add User</h5>
+                <input class="form-control" type="text" name="username" [(ngModel)]="user.username" required #username="ngModel">
+                <small class="form-text text-muted" for="username">Username</small><br>
+                <input class="form-control" type="email" name="email" [(ngModel)]="user.email" required #email="ngModel">
+                <small class="form-text text-muted" for="email">Email</small><br>
+                <input class="form-control" type="password" minlength="6" name="password" [(ngModel)]="user.password" required #pw="ngModel">
+                <small class="form-text text-muted" for="password">Password</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Remote API</h5>
+                <select class="form-control" name="allowRemoteAccess" [(ngModel)]="config.allow_remote_access" #allowRemoteAccess="ngModel" required>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+                <small class="form-text text-muted" for="allowRemoteAccess">Remote API access to use your data in third-pary applications.</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Image Settings <small>(Server)</small></h5>
+                <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension" [(ngModel)]="config.image_dimension" #imageDimension="ngModel" required>
+                <small class="form-text text-muted" for="imageDimension">Describes the size of the image, we will save on the server (value between 0 and 1000 in pixels).</small><br>
+                <input class="form-control" type="number" min="0" max="100" step="1" name="imageQuality" [(ngModel)]="config.image_quality" #imageQuality="ngModel" required>
+                <small class="form-text text-muted" for="imageQuality">Describes the quality of the image (jpeg - value from 0 to 100).</small>
+            </div>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <button type="submit" class="btn btn-success pull-right" (click)="completeSetup(user, config)">Save Settings</button>
+        </div>
+    </div>
+</form>
+<form class="container" *ngIf="completedSetup">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">Welcome to STJÓRNA</h3>
+            <p>Your settings are saved successfully, you can now login with your created user.</p>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <h5 class="card-title">Installation Log</h5>
+            <p>
+                <i class="fa fa-2x" [ngClass]="getIconClass(completedSetup, 'config_status')"></i>
+                <b>Configuration</b>
+            </p>
+            <p>
+                <i class="fa fa-2x" [ngClass]="getIconClass(completedSetup, 'user_status')"></i>
+                <b>User</b>
+            </p>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <button type="submit" class="btn btn-success pull-right" routerLink="/login">Complete Setup</button>
+        </div>
+    </div>
+</form>
