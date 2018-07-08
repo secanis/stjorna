@@ -14,9 +14,9 @@ jobs:
                     - v1-dependencies-{{ checksum "client/package.json" }}
                     - v1-dependencies-
 
-            # install rest-api
-            - run: npm install
-            # install client
+            # install dependencies for server
+            - run: cd server; npm install
+            # install dependencies for client
             - run: cd client; npm install
 
             - save_cache:
@@ -26,9 +26,9 @@ jobs:
                 key: v1-dependencies-{{ checksum "package.json" }}
                 key: v1-dependencies-{{ checksum "client/package.json" }}
 
-            # build rest-api
-            - run: npm run apidoc
-            # build client
+            # build server (just apidoc)
+            - run: cd server; npm run apidoc:public
+            # build client (angular build)
             - run: cd client; npm run build
             - run: cd client; npm run lint
 
@@ -41,10 +41,10 @@ jobs:
                 # pack application
                 mv ./client/dist ./public
                 cd server; tar -czf ../stjorna-1.0.0.tar.gz *
-                # docker build
+                docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
+                docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION .
+                # docker build: if RELEASE then push it
                 if [ -n "$RELEASE" ]; then 
-                    docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
-                    docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION .
                     docker push docker.io/secanis/stjorna:$VERSION
                 else
                     echo "no docker build, because RELEASE was not set."
