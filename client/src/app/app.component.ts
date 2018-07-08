@@ -14,7 +14,7 @@ import { StjornaUserModel } from './models/user.model';
 })
 export class AppComponent implements OnInit {
     public toYear: Number;
-    public loggedIn: boolean = false;
+    public loggedIn: Boolean = false;
     public currentUser: StjornaUserModel;
 
     constructor(private router: Router, private loginStatusHandler: LoginStatusHandler) { }

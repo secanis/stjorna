@@ -38,9 +38,9 @@ export class ProductListComponent implements OnInit {
         }
     }
 
-    public getCategoryNameById(id: StjornaCategoryModel["_id"]): string {
+    public getCategoryNameById(id: StjornaCategoryModel['_id']): string {
         let result = this.categoryList.filter((category) => {
-            return category._id == id;
+            return category._id === id;
         });
         if (result) {
             return result[0].name;

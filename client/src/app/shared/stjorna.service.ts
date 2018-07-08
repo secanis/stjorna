@@ -110,7 +110,7 @@ export class StjornaService {
             .get(`${this.host}/api/v1/settings`, this.getHeaders(this.token))
             .pipe(catchError(this.handleError<any>('load settings')));
     }
-    
+
     public saveSettings(config: StjornaConfigModel) {
         return this.http
             .post(`${this.host}/api/v1/settings`, config, this.getHeaders(this.token))
@@ -128,19 +128,19 @@ export class StjornaService {
             .get(`${this.host}/api/v1/users/apikey/${id}`, this.getHeaders(this.token))
             .pipe(catchError(this.handleError<any>('load current apikey')));
     }
-    
+
     public generateNewUserApiKey(id: string) {
         return this.http
             .post(`${this.host}/api/v1/users/apikey/${id}`, {}, this.getHeaders(this.token))
             .pipe(catchError(this.handleError<any>('gernerate new apikey')));
     }
-    
+
     public getSetupDefaults() {
         return this.http
             .get(`${this.host}/api/v1/setup`)
             .pipe(catchError(this.handleError<any>('load setup defaults')));
     }
-    
+
     public saveSetupConfiguration(setupConf) {
         return this.http
             .post(`${this.host}/api/v1/setup`, setupConf)

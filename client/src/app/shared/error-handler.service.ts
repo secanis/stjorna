@@ -12,10 +12,10 @@ export type HandleError = <T> (operation?: string, result?: T) => (error: HttpEr
 export class HttpErrorHandler {
     constructor(private router: Router, private toastr: ToastrService, private loginStatusHandler: LoginStatusHandler) { }
 
-    public createHandleError = (serviceName = '') => 
-        <T> (operation = 'operation', result = {} as T) => 
+    public createHandleError = (serviceName = '') =>
+        <T> (operation = 'operation', result = {} as T) =>
         this.handleError(serviceName, operation, result);
-    
+
     public handleError<T>(serviceName = '', operation = 'operation', result = {} as T) {
         return (error: HttpErrorResponse): Observable<T> => {
             if (error.status == 401) {
@@ -34,7 +34,7 @@ export class HttpErrorHandler {
     }
 
     public handleRequestError(result) {
-        if (result.message === "failed to authenticate token.") {
+        if (result.message === 'failed to authenticate token.') {
             this.loginStatusHandler.setLoginStatus(false);
             this.router.navigateByUrl(`/login`);
         }

@@ -53,7 +53,7 @@ export class ProfileComponent implements OnInit {
 
     public generateApiKey() {
         this.stjornaService.generateNewUserApiKey(this.currentUser._id).subscribe(result => {
-            if (result && result.message === "successfully updated") {
+            if (result && result.message === 'successfully updated') {
                 this.currentUserApiKey = result.apikey;
                 this.toastr.success('Successfully generated API Key');
                 this.loadCurrentUserApiKey();
@@ -66,7 +66,7 @@ export class ProfileComponent implements OnInit {
     }
 
     private saveDoneAction(result) {
-        if (result.status === "ok") {
+        if (result.status === 'ok') {
             this.loginStatusHandler.setCurrentUser(result);
             this.currentUser = this.loginStatusHandler.getCurrentUser();
             this.toastr.success('Successfully saved!');

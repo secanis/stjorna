@@ -40,7 +40,7 @@ export class SetupComponent implements OnInit {
     }
 
     public getIconClass(statusObj, attribute) {
-        if (statusObj && statusObj.message && statusObj.message[attribute] 
+        if (statusObj && statusObj.message && statusObj.message[attribute]
                 && statusObj.message[attribute].status === 'ok') {
             return {'fa-check': true, 'text-success': true};
         } else {

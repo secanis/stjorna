@@ -9,7 +9,7 @@ import { StjornaService } from '../shared/stjorna.service';
 })
 
 export class DashboardComponent implements OnInit {
-    public selectedTab: string = '';
+    public selectedTab: String = '';
 
     constructor(private route: ActivatedRoute, private router: Router, private stjornaService: StjornaService) {
         this.route.params.subscribe(params => {
