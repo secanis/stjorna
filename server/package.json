@@ -1,7 +1,7 @@
 {
   "name": "stjorna",
   "version": "1.0.0",
-  "description": "",
+  "description": "STJÓRNA product management",
   "main": "server.js",
   "scripts": {
     "start": "nodemon --ignore data/ server.js",

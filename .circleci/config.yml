@@ -37,7 +37,7 @@ jobs:
                 docker_layer_caching: true
 
             - run: |
-                VERSION=$(node -p -e "require('./package.json').version")
+                VERSION=$(node -p -e "require('server/package.json').version")
                 # pack application
                 mv ./client/dist ./public
                 cd server; tar -czf ../stjorna-1.0.0.tar.gz *
