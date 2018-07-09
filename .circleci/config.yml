@@ -38,7 +38,7 @@ jobs:
             - run: |
                 VERSION=$(node -p -e "require('./server/package.json').version")
                 # pack application
-                mv ./client/dist ./public
+                rm -rf server/public; mv ./client/dist ./server/public
                 cd server && tar -czf ../stjorna-$VERSION.tar.gz *
                 docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
                 cd ../ && docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION -t docker.io/secanis/stjorna:latest .
