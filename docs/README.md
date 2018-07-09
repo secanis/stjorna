@@ -11,7 +11,9 @@ The two main goal of STJÓRNA are to be very simple in the setup and configurati
 
 ## Get Started
 
-You have two possibilities how you can start/deploy STJÓRNA:
+You have two possibilities how you can start/deploy STJÓRNA.
+
+> You have to call https://*stjornaurl*/setup to configure your system initially.
 
 ### Docker
 
@@ -36,6 +38,13 @@ node server.js
 
 ## Configuration
 
+### Setup
+
+After the first start, you have to configure your STJÓRNA instance. You can reach the setup url over https://*stjornaurl*/setup.
+In the setup process you can set the username, email and a password. After an initial setu
+
+![stjorna setup page](https://stjorna.secanis.ch/docs/images/stjorna_setup.png "STJÓRNA Setup Page")
+
 ### ENV Variables
 
 | Variable                       | Default       | Description                                               |
@@ -49,6 +58,8 @@ node server.js
 ### Remote REST API
 
 For your third party application, in which one you want to use the public REST API, you can use the following documentation. You can load the active categories and products over this REST API including your API Key/Token.
+
+You can enable/disable the complete API or you enable/disable categories or products.
 
 [Remote REST API Documentation](https://stjorna.secanis.ch/apidoc/index.html)
 
