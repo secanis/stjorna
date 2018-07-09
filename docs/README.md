@@ -22,6 +22,10 @@ docker pull secanis/stjorna
 docker run -p 80:3000 secanis/stjorna
 ```
 
+[![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com") [![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own version badge on microbadger.com")
+
+[https://hub.docker.com/r/secanis/stjorna](https://hub.docker.com/r/secanis/stjorna)
+
 ### NodeJS
 
 Download the compressed package and unpack it in a NodeJS environment. Default Port is 3000.
