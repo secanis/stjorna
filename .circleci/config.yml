@@ -40,13 +40,12 @@ jobs:
                 # pack application
                 mv ./client/dist ./public
                 cd server && tar -czf ../stjorna-$VERSION.tar.gz *
-            - run: |
-                VERSION=$(node -p -e "require('./server/package.json').version")
                 docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
-                docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION .
+                docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION -t docker.io/secanis/stjorna:latest .
                 # docker build: if RELEASE then push it
                 if [ -n "$RELEASE" ]; then 
                     docker push docker.io/secanis/stjorna:$VERSION
+                    docker push docker.io/secanis/stjorna:latest
                 else
                     echo "no docker build, because RELEASE was not set."
                 fi
