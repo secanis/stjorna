@@ -29,7 +29,7 @@ export class StjornaService {
         if (window.location.hostname === 'localhost') {
             this.host = 'http://localhost:3000';
         } else {
-            this.host = '/';
+            this.host = window.location.origin;
         }
     }
 

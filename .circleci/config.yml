@@ -26,8 +26,10 @@ jobs:
                 key: v1-dependencies-{{ checksum "server/package.json" }}
                 key: v1-dependencies-{{ checksum "client/package.json" }}
 
-            # build server (just apidoc)
+            # build server (just apidoc) & reinstall modules (just production)
             - run: cd server; npm run apidoc:public
+            - run: cd server; rm -rf node_modules
+            - run: cd server; npm install --production
             # build client (angular build)
             - run: cd client; npm run build
             - run: cd client; npm run lint

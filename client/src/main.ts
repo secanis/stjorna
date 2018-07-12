@@ -2,12 +2,8 @@ import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
 import { AppModule } from './app/app.module';
 
-// depending on the env mode, enable prod mode or add debugging modules
-const config = {
-    prod: false
-};
-
-if (config.prod) {
+// if not on localhost url, activate prod mode
+if (window.location.hostname !== 'localhost') {
     enableProdMode();
 }
 
