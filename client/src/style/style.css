@@ -56,6 +56,10 @@ button, .btn, input, select, .card, .nav-tabs .nav-link {
     min-width: 30px;
 }
 
+.btn-list-margin-left:not(:first-child) {
+    margin-left: 10px;
+}
+
 .card-margin {
     margin-top: 20px;
     margin-bottom: 20px;

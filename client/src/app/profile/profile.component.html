@@ -6,10 +6,8 @@
     </div>
     <div class="card-columns">
         <div class="card">
-            <div class="card-header">
-                <b>Basic Profile Information</b>
-            </div>
             <div class="card-body">
+                <h5 class="card-title">Basic Profile Information</h5>
                 <form #passForm="ngForm" (ngSubmit)="saveProfile(passForm)">
                     <div class="input-group mb-3">
                         <input id="userid" class="form-control" type="text" name="id" #id for="active" [(ngModel)]="currentUser._id" required readonly>
@@ -43,10 +41,8 @@
             </div>
         </div>
         <div class="card">
-            <div class="card-header">
-                <b>API Key</b>
-            </div>
             <div class="card-body">
+                <h5 class="card-title">API Key</h5>
                 <div class="input-group mb-3">
                     <input id="apikey" class="form-control" type="text" [(ngModel)]="currentUserApiKey" readonly>
                     <div class="input-group-append">
