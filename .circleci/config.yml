@@ -14,10 +14,12 @@ jobs:
                     - v1-dependencies-{{ checksum "client/package.json" }}
                     - v1-dependencies-
 
-            # install dependencies for server
-            - run: cd server; npm install
-            # install dependencies for client
-            - run: cd client; npm install
+            - run:
+                name: Install Server Dependencies
+                command: cd server; npm install
+            - run:
+                name: Install Client Dependencies
+                command: cd client; npm install
 
             - save_cache:
                 paths:
@@ -26,23 +28,39 @@ jobs:
                 key: v1-dependencies-{{ checksum "server/package.json" }}
                 key: v1-dependencies-{{ checksum "client/package.json" }}
 
-            # build server (just apidoc) & reinstall modules (just production)
-            - run: cd server; npm run apidoc:public
-            # run server api tests
-            - run: cd server; npm run test
+            # BUILD: SERVER
+            - run:
+                name: Generate Public APIDOC
+                command: cd server; npm run apidoc:public
+
+            - run:
+                name: Test Server API
+                command: cd server; npm run test
             - store_test_results:
                 path: server/reports
+            - store_artifacts:
+                path: server/reports
 
-            - run: cd server; rm -rf node_modules
-            - run: cd server; npm install --production
-            # build client (angular build)
-            - run: cd client; npm run build
-            - run: cd client; npm run lint
+            - run:
+                name: Install Server Dependencies Prod
+                command: |
+                    rm -rf server/node_modules
+                    cd server; npm install --production
 
-            # docker build
+            # BUILD: CLIENT
+            - run:
+                name: Build Angular Application
+                command: cd client; npm run build
+            - run:
+                name: Run Client Lint
+                command: cd client; npm run lint
+
+            # BUILD: DOCKER
             - setup_remote_docker:
                 docker_layer_caching: true
-            - run: |
+            - run:
+                name: Run Docker Build
+                command: |
                 VERSION=$(node -p -e "require('./server/package.json').version")
                 # pack application
                 rm -rf server/public; mv ./client/dist ./server/public
