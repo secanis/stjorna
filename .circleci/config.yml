@@ -61,16 +61,16 @@ jobs:
             - run:
                 name: Run Docker Build
                 command: |
-                VERSION=$(node -p -e "require('./server/package.json').version")
-                # pack application
-                rm -rf server/public; mv ./client/dist ./server/public
-                cd server && tar -czf ../stjorna-$VERSION.tar.gz *
-                docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
-                cd ../ && docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION -t docker.io/secanis/stjorna:latest .
-                # docker build: if RELEASE then push it
-                if [ -n "$RELEASE" ]; then 
-                    docker push docker.io/secanis/stjorna:$VERSION
-                    docker push docker.io/secanis/stjorna:latest
-                else
-                    echo "no docker build, because RELEASE was not set."
-                fi
+                    VERSION=$(node -p -e "require('./server/package.json').version")
+                    # pack application
+                    rm -rf server/public; mv ./client/dist ./server/public
+                    cd server && tar -czf ../stjorna-$VERSION.tar.gz *
+                    docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
+                    cd ../ && docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION -t docker.io/secanis/stjorna:latest .
+                    # docker build: if RELEASE then push it
+                    if [ -n "$RELEASE" ]; then 
+                        docker push docker.io/secanis/stjorna:$VERSION
+                        docker push docker.io/secanis/stjorna:latest
+                    else
+                        echo "no docker build, because RELEASE was not set."
+                    fi
