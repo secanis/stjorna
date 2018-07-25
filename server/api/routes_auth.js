@@ -112,6 +112,9 @@ module.exports = (router, log) => {
         let apikey = req.query.apikey || req.headers['x-stjorna-apikey'];
         let userid = req.query.userid || req.headers['x-stjorna-userid'];
 
+        // log request url in debug mode
+        log.dbg(req.url);
+
         if (token && userid) {
             fileHelper.loadConfigFile((err, config) => {
                 if (!err) {
@@ -173,6 +176,9 @@ module.exports = (router, log) => {
                     res.status(400).send({ 'message': err, 'status': 'error' });
                 }
             });
+        // special handling for test mode, or if you want to run it without security
+        } else if (process.env.NODE_ENV === 'test' && process.env.STJORNA_SECURITY === 'none') {
+            next();
         } else {
             // if it is the setup path and the config installed flag is not on false, route the stuff
             if (req.path.includes('setup')) {

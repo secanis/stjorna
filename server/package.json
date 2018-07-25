@@ -6,7 +6,8 @@
   "scripts": {
     "start": "nodemon --ignore data/ server.js",
     "apidoc:private": "apidoc --private true -i ./api -o ./apidoc-private/",
-    "apidoc:public": "apidoc --private false -i ./api -o ./apidoc/"
+    "apidoc:public": "apidoc --private false -i ./api -o ./apidoc/",
+    "test": "rimraf reports & mocha --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 1000 --full-trace --exit"
   },
   "author": "matthias.baldi@secanis.ch",
   "license": "MIT",
@@ -22,7 +23,13 @@
   },
   "devDependencies": {
     "apidoc": "^0.17.6",
+    "chai": "^4.1.2",
+    "chai-http": "^4.0.0",
+    "mocha": "^5.2.0",
+    "mocha-junit-reporter": "^1.17.0",
+    "mocha-multi-reporters": "^1.1.7",
+    "nodemon": "1.17.5",
     "request": "^2.87.0",
-    "nodemon": "1.17.5"
+    "rimraf": "^2.6.2"
   }
 }

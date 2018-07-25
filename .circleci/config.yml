@@ -28,6 +28,11 @@ jobs:
 
             # build server (just apidoc) & reinstall modules (just production)
             - run: cd server; npm run apidoc:public
+            # run server api tests
+            - run: cd server; npm run test
+            - store_test_results:
+                path: server/reports
+
             - run: cd server; rm -rf node_modules
             - run: cd server; npm install --production
             # build client (angular build)

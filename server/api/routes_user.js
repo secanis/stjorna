@@ -5,6 +5,21 @@ const fileHelper = require('../lib/file_helper.js');
 
 module.exports = (router, log) => {
     router.route('/v1/users')
+        .get((req, res) => {
+            // check env variables, to work just in test or "no security" mode for security reasons
+            if (process.env.NODE_ENV === 'test' && process.env.STJORNA_SECURITY === 'none') {
+                db_users.find({}, (err, docs) => {
+                    if (!err) {
+                        res.send(docs);
+                    } else {
+                        log.err(`error occured: ${err.message}`);
+                        res.status(400).send({ 'error': err, 'status': 'error' });
+                    }
+                });
+            } else {
+                res.status(405).send({ 'error': 'method not allowed', 'status': 'error' });
+            }
+        })
         /**
          * @api {put} /api/v1/users/ Add User
          * @apiPrivate
@@ -75,12 +90,12 @@ module.exports = (router, log) => {
                                     db_users.update({ _id: req.params.id }, { $set: doc }, { returnUpdatedDocs: true }, (err, numReplaced, affectedDocument) => {
                                         if (!err && numReplaced === 1) {
                                             res.send({
-                                                "status": "ok",
-                                                "message": "successfully updated",
-                                                "_id": affectedDocument._id,
-                                                "username": affectedDocument.username,
-                                                "email": affectedDocument.email,
-                                                "token": req.query.token || req.headers['x-stjorna-access-token']
+                                                status: 'ok',
+                                                message: 'successfully updated',
+                                                _id: affectedDocument._id,
+                                                username: affectedDocument.username,
+                                                email: affectedDocument.email,
+                                                token: req.query.token || req.headers['x-stjorna-access-token']
                                             });
                                         } else {
                                             log.err(`error occured: ${err.message}`);

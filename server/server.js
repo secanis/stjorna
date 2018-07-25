@@ -46,7 +46,7 @@ app.get('*', (req, res) => {
 });
 
 // start application
-app.listen(process.env.STJORNA_SERVER_PORT);
+module.exports = app.listen(process.env.STJORNA_SERVER_PORT);
 log.inf(`>> app   -  ${appInfo.name}:${appInfo.version}`);
 log.inf(`>> port  -  ${process.env.STJORNA_SERVER_PORT}`);
 // print configuration

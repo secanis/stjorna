@@ -18,7 +18,7 @@ module.exports = (router, log) => {
                     res.send(docs);
                 } else {
                     log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ "error": err, "status": "error" });
+                    res.status(400).send({ 'error': err, 'status': 'error' });
                 }
             });
         })
@@ -58,7 +58,7 @@ module.exports = (router, log) => {
                     res.send(doc);
                 } else {
                     log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ "error": err, "status": "error" });
+                    res.status(400).send({ 'error': err, 'status': 'error' });
                 }
             });
         });
@@ -91,7 +91,7 @@ module.exports = (router, log) => {
                 if (!err) {
                     res.send(doc);
                 } else {
-                    res.status(400).send({ "message": err.message, "status": "error" });
+                    res.status(400).send({ 'message': err.message, 'status': 'error' });
                 }
             });
         })
@@ -128,10 +128,10 @@ module.exports = (router, log) => {
                 updatedUser: req.body.updatedUser
             } }, { returnUpdatedDocs: true }, (err, numReplaced, affectedDocument) => {
                 if (!err && numReplaced === 1) {
-                    res.send({ "message": 'successfully updated', "status": "ok" });
+                    res.send({ 'message': 'successfully updated', 'status': 'ok' });
                 } else {
                     log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ "message": err, "status": "error" });
+                    res.status(400).send({ 'message': err, 'status': 'error' });
                 }
             });
         })
@@ -151,9 +151,9 @@ module.exports = (router, log) => {
             db_products.findOne({ _id: req.params.id }, (err, doc) => {
                 db_products.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
                     if (!err && numRemoved === 1) {
-                        res.send({ "message": 'sucessfully removed', "status": "ok" });
+                        res.send({ 'message': 'successfully removed', 'status': 'ok' });
                     } else {
-                        res.status(400).send({ "message": err.message, "status": "error", "message": "could not delete task" });
+                        res.status(400).send({ 'message': err.message, 'status': 'error', 'message': 'could not delete product' });
                     }
                 });
             });
