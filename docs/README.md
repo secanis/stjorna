@@ -22,6 +22,9 @@ You can directly pull the official Docker image from Docker Hub.
 ``` bash
 docker pull secanis/stjorna
 docker run -p 80:3000 secanis/stjorna
+
+# for persisting your data
+docker run -p 80:3000 -v path/to/storage:/app/data secanis/stjorna
 ```
 
 [![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com") [![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own version badge on microbadger.com")
@@ -34,6 +37,8 @@ Download the compressed package and unpack it in a NodeJS environment. Default P
 
 ``` bash
 node server.js
+
+# in this case your persist data will be under ./data
 ```
 
 ## Configuration
@@ -53,7 +58,7 @@ In the setup process you can set the username, email and a password. After an in
 | STJORNA_SERVER_MAX_UPLOAD      | 5mb           | Max image upload size, defined for Express                |
 | STJORNA_LOGLEVEL               | error         | Loglevel                                                  |
 | STJORNA_CRON_CLEANUP_INTERVAL  | */30 * * * *  | Cronjob interval to cleanup the storage                   |
-| STJORNA_SERVER_STORAGE         | process.cwd() | Default path is in the path of the server.js data folder  |
+| STJORNA_SERVER_STORAGE         | /app/data     | Default path is in the path of the server.js data folder  |
 
 ### Remote REST API
 
