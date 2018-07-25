@@ -15,7 +15,7 @@ RUN adduser -D myuser \
     && chown myuser:myuser -R ./
 USER myuser
 
-# HEALTHCHECK --interval=15s --timeout=15s --start-period=5s --retries=3 CMD node healthcheck.js
+HEALTHCHECK --interval=15s --timeout=15s --start-period=5s --retries=3 CMD node /app/healthcheck.js
 
 EXPOSE 3000
 
