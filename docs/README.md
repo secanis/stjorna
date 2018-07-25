@@ -27,7 +27,9 @@ docker run -p 80:3000 secanis/stjorna
 docker run -p 80:3000 -v path/to/storage:/app/data secanis/stjorna
 ```
 
-[![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com") [![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own version badge on microbadger.com")
+[![CircleCI](https://circleci.com/gh/secanis/stjorna/tree/master.svg?style=svg)](https://circleci.com/gh/secanis/stjorna/tree/master "Latest Build Result @CircleCI")
+[![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Stjorna Docker Image")
+[![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Stjorna Latest Version")
 
 [https://hub.docker.com/r/secanis/stjorna](https://hub.docker.com/r/secanis/stjorna)
 
@@ -36,9 +38,11 @@ docker run -p 80:3000 -v path/to/storage:/app/data secanis/stjorna
 Download the compressed package and unpack it in a NodeJS environment. Default Port is 3000.
 
 ``` bash
-node server.js
-
 # in this case your persist data will be under ./data
+node server/server.js
+
+# execute server api tests
+cd server; npm run test
 ```
 
 ## Configuration
