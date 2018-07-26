@@ -98,7 +98,7 @@ describe('Products/Categories', () => {
                     .end((err, res) => {
                         res.should.have.status(200);
                         res.body.should.be.a('object');
-                        res.body.should.have.property('message').eql('successfully updated');
+                        res.body.should.have.property('_id').eql(productId);
                         chai.request(server)
                             .get(`${apiUrl}/products/${productId}`)
                             .end((err, res) => {
@@ -158,7 +158,7 @@ describe('Products/Categories', () => {
                     .end((err, res) => {
                         res.should.have.status(200);
                         res.body.should.be.a('object');
-                        res.body.should.have.property('message').eql('successfully updated');
+                        res.body.should.have.property('_id').eql(categoryId);
                         chai.request(server)
                             .get(`${apiUrl}/categories/${categoryId}`)
                             .end((err, res) => {

@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const db_users = require('../lib/database_helper.js').db_users;
+const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
 module.exports = (router, log) => {
@@ -8,16 +8,15 @@ module.exports = (router, log) => {
         .get((req, res) => {
             // check env variables, to work just in test or "no security" mode for security reasons
             if (process.env.NODE_ENV === 'test' && process.env.STJORNA_SECURITY === 'none') {
-                db_users.find({}, (err, docs) => {
-                    if (!err) {
-                        res.send(docs);
-                    } else {
-                        log.err(`error occured: ${err.message}`);
-                        res.status(400).send({ 'error': err, 'status': 'error' });
-                    }
-                });
+                let users = dbHelper.db.get('users').value();
+                if (users) {
+                    res.send(users);
+                } else {
+                    log.err(`error occured: couldn't load your users`);
+                    res.status(400).send({ 'message': `Couldn't load your users`, 'status': 'error' });
+                }
             } else {
-                res.status(405).send({ 'error': 'method not allowed', 'status': 'error' });
+                res.status(405).send({ 'message': 'method not allowed', 'status': 'error' });
             }
         })
         /**
@@ -36,14 +35,29 @@ module.exports = (router, log) => {
                     if(!err) {
                         let hash = crypto.createHash('sha512');
                         hash.update(req.body.password + JSON.parse(config).password_secret);
-                        db_users.insert({ username: req.body.username, email: req.body.email, password: hash.digest('hex') }, (err, doc) => {
-                            if (!err) {
-                                res.send(doc);
-                            } else {
-                                log.err(`error occured: ${err.message}`);
-                                res.status(400).send({ 'message': err.message, 'status': 'error' });
-                            }
-                        });
+
+                        let newItem = {
+                            _id: dbHelper.generateId(),
+                            username: req.body.username,
+                            password: hash.digest('hex'),
+                            email: req.body.email,
+                            apikey: '',
+                            created: new Date().getTime(),
+                            updated: new Date().getTime()
+                        };
+
+                        dbHelper.db.get('users')
+                            .push(newItem)
+                            .write()
+                            .then(() => {
+                                let item = dbHelper.db.get('users').find({ _id: newItem._id }).value();
+                                if (item) {
+                                    res.send(item);
+                                } else {
+                                    log.err(`error occured: couldn't add user`);
+                                    res.status(400).send({ 'message': `Couldn't add user`, 'status': 'error' });
+                                }
+                            });
                     } else {
                         log.err(`error occured: ${err.message}`);
                         res.status(400).send({ 'message': err.message, 'status': 'error' });
@@ -75,51 +89,41 @@ module.exports = (router, log) => {
                         hash.update(req.body.password + stjornaConfig.password_secret);
                         let passwordHash = hash.digest('hex');
                         // search if an user exists with this data in the db
-                        db_users.findOne({ _id: req.params.id, password: passwordHash }, (err, doc) => {
-                            if (!err && doc) {
-                                // refresh hash if password are the same
-                                if (passwordHash === doc.password) {
-                                    if (req.body.passwordNew && req.body.passwordNewRepeat && req.body.passwordNew === req.body.passwordNewRepeat) {
-                                        let hashNew = crypto.createHash('sha512');
-                                        hashNew.update(req.body.passwordNew + stjornaConfig.password_secret);
-                                        doc.password = hashNew.digest('hex');
-                                    } else {
-                                        doc.email = req.body.email;
-                                    }
-                                    doc.updated = new Date().getTime();
-                                    db_users.update({ _id: req.params.id }, { $set: doc }, { returnUpdatedDocs: true }, (err, numReplaced, affectedDocument) => {
-                                        if (!err && numReplaced === 1) {
-                                            res.send({
-                                                status: 'ok',
-                                                message: 'successfully updated',
-                                                _id: affectedDocument._id,
-                                                username: affectedDocument.username,
-                                                email: affectedDocument.email,
-                                                token: req.query.token || req.headers['x-stjorna-access-token']
-                                            });
-                                        } else {
-                                            log.err(`error occured: ${err.message}`);
-                                            res.status(400).send({ 'message': err, 'status': 'error' });
-                                        }
-                                    });
-                                } else {
-                                    res.status(400).send({ 'message': 'your password was not correct, or the new one\'s were not the same.', 'status': 'error' });
-                                }
-                            } else {
-                                // send response without error message when no error occurs because of an empty db response
-                                if (err && err.message) {
-                                    log.err(`error occured: ${err.message}`);
-                                    res.status(400).send({ 'message': err.message, 'status': 'error' });
-                                } else {
-                                    let message = 'values are not correct, check your password';
-                                    log.err(`error occured: ${message}`);
-                                    res.status(400).send({ 'message': `${message}`, 'status': 'error' });
-                                }
+                        let newItem = dbHelper.db.get('users').find({ _id: req.params.id, password: passwordHash }).value();
+                        if (newItem) {
+                            // refresh hash if password are the same
+                            if (req.body.passwordNew && req.body.passwordNewRepeat && req.body.passwordNew === req.body.passwordNewRepeat) {
+                                let hashNew = crypto.createHash('sha512');
+                                hashNew.update(req.body.passwordNew + stjornaConfig.password_secret);
+                                newItem.password = hashNew.digest('hex');
                             }
-                        });
+                            newItem.email = req.body.email;
+                            newItem.updated = new Date().getTime();
+
+                            dbHelper.db.get('users')
+                                .find({ _id: req.params.id })
+                                .assign(newItem)
+                                .write()
+                                .then(() => {
+                                    let item = dbHelper.db.get('users').filter({ _id: req.params.id }).value()[0];
+                                    if (item && item.updated === newItem.updated) {
+                                        res.send({
+                                            "_id": item._id,
+                                            "username": item.username,
+                                            "email": item.email
+                                        });
+                                    } else {
+                                        log.err(`error occured: couldn't update user '${req.params.id}'`);
+                                        res.status(400).send({ 'message': `Couldn't update user '${req.params.id}'`, 'status': 'error' });
+                                    }
+                                });
+                        } else {
+                            log.err(`error occured: couldn't successful authenticate user '${req.params.id}'`);
+                            res.status(400).send({ 'message': `Couldn't successful authenticate user '${req.params.id}'`, 'status': 'error' });
+                        }
                     } else {
                         log.err(`error occured: ${err.message}`);
-                        res.status(400).send({ 'message': err, 'status': 'error' });
+                        res.status(400).send({ 'message': err.message, 'status': 'error' });
                     }
                 });
             } else {
@@ -141,22 +145,21 @@ module.exports = (router, log) => {
          * @apiSuccess {Object} Apikey Returns apikey object.
          */
         .get((req, res) =>  {
+            // doubled verification for more security
             if (req.decoded._id === req.params.id) {
-                db_users.findOne({ _id: req.params.id }, (err, doc) => {
-                    if (!err) {
-                        res.send({
-                            '_id': doc._id,
-                            'apikey': doc.apikey
-                        });
-                    } else {
-                        log.err(`error occured: ${err.message}`);
-                        res.status(400).send({ 'message': err.message, 'status': 'error' });
-                    }
-                });
+                let item = dbHelper.db.get('users').find({ _id: req.params.id }).value();
+                if (item) {
+                    res.send({
+                        '_id': item._id,
+                        'apikey': item.apikey
+                    });
+                } else {
+                    log.err(`error occured: couldn't load apikey for user '${req.params.id}'`);
+                    res.status(400).send({ 'message': `Couldn't load apikey for user '${req.params.id}'`, 'status': 'error' });
+                }
             } else {
-                let errmessage = 'Operation not allowed, verification failed.';
-                log.err(`error occured: ${errmessage}`);
-                res.status(400).send({ 'message': errmessage, 'status': 'error' });
+                log.err(`error occured: operation not allowed, verification failed`);
+                res.status(400).send({ 'message': 'Operation not allowed, verification failed.', 'status': 'error' });
             }
         })
         /**
@@ -173,25 +176,26 @@ module.exports = (router, log) => {
          */
         .post((req, res) => {
             if (req.decoded._id === req.params.id) {
-                db_users.findOne({ _id: req.params.id }, (err, doc) => {
-                    if (!err && doc) {
-                        // generate a new apikey
-                        // replace unwanted chars (problems in urls)
-                        let apikeyNew = crypto.randomBytes(48).toString('base64').replace(/\//g, '_').replace(/\+/g, '-');
-                        // reset the apikey
-                        db_users.update({ _id: req.params.id }, { $set: { apikey: apikeyNew, updated: new Date().getTime() } }, { returnUpdatedDocs: true }, (err, numReplaced, affectedDocument) => {
-                            if (!err && numReplaced === 1) {
-                                res.send({ 'message': 'successfully updated', 'status': 'ok' });
-                            } else {
-                                log.err(`error occured: ${err.message}`);
-                                res.status(400).send({ 'message': err, 'status': 'error' });
-                            }
-                        });
-                    } else {
-                        log.err(`error occured: could not replace apikey`);
-                        res.status(400).send({ 'message': 'could not replace apikey', 'status': 'error' });
-                    }
-                });
+                // generate a new apikey
+                // replace unwanted chars (problems in urls)
+                let newItem = {
+                    apikey: crypto.randomBytes(48).toString('base64').replace(/\//g, '_').replace(/\+/g, '-'),
+                    updated: new Date().getTime()
+                };
+                // reset the apikey
+                dbHelper.db.get('users')
+                    .find({ _id: req.params.id })
+                    .assign(newItem)
+                    .write()
+                    .then(() => {
+                        let item = dbHelper.db.get('users').filter({ _id: req.params.id }).value()[0];
+                        if (item && item.updated === newItem.updated) {
+                            res.send(item);
+                        } else {
+                            log.err(`error occured: couldn't replace apikey for user ${req.params.id}`);
+                            res.status(400).send({ 'message': `Couldn't replace apikey for user ${req.params.id}`, 'status': 'error' });
+                        }
+                    });
             } else {
                 res.status(400).send({ 'message': 'not valid parameters, checkout the api documentation.', 'status': 'error' });
             }

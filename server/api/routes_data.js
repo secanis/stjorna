@@ -28,11 +28,11 @@ module.exports = (router, log) => {
                         res.send(data);
                     } else {
                         log.err(`error occured: ${err.message}`);
-                        res.status(500).send({ 'error': err.message, 'status': 'error' });
+                        res.status(500).send({ 'message': err.message, 'status': 'error' });
                     }
                 });
             } else {
-                res.status(401).send({ 'error': 'no permissions for this ressource.', 'status': 'error' });
+                res.status(401).send({ 'message': 'no permissions for this ressource.', 'status': 'error' });
             }
         });
 
@@ -61,10 +61,10 @@ module.exports = (router, log) => {
                     res.sendFile(`${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}/${req.params.image}`);
                 } catch(err) {
                     log.err(`error occured: ${err.message}`);
-                    res.status(500).send({ 'error': err.message, 'status': 'error' });
+                    res.status(500).send({ 'message': err.message, 'status': 'error' });
                 }
             } else {
-                res.status(401).send({ 'error': 'no permissions for this ressource.', 'status': 'error' });
+                res.status(401).send({ 'message': 'no permissions for this ressource.', 'status': 'error' });
             }
         });
 }

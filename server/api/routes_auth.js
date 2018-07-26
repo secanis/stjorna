@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
-const db_users = require('../lib/database_helper.js').db_users;
+const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
 module.exports = (router, log) => {
@@ -41,35 +41,34 @@ module.exports = (router, log) => {
                     let hash = crypto.createHash('sha512');
                     hash.update(req.body.password + stjornaConfig.password_secret);
                     hash = hash.digest('hex');
-                    db_users.findOne({ username: req.body.username, password: hash }, (err, user) => {
-                        if (!err && user) {
-                            var token = jwt.sign(user, stjornaConfig.password_secret, {
-                                expiresIn: '12h'
-                            });
-                            log.inf(`succesful login for ${req.body.username} - ${req.ip}`);
-                            res.send({
-                                "status": "successful",
-                                "message": "have fun and enjoy life...",
-                                "_id": user._id,
+                    let user = dbHelper.db.get('users').find({ username: req.body.username, password: hash }).value();
+                    if (user) {
+                        var token = jwt.sign(user, stjornaConfig.password_secret, {
+                            expiresIn: '12h'
+                        });
+                        log.inf(`succesful login for ${req.body.username} - ${req.ip}`);
+                        res.send({
+                            "status": "successful",
+                            "message": "have fun and enjoy life...",
+                            "_id": user._id,
+                            "username": req.body.username,
+                            "email": user.email,
+                            "token": token
+                        });
+                    } else {
+                        if (!user) {
+                            log.err(`E101: invalid login credential - ${req.body.username} - ${req.ip}`);
+                            res.status(401).send({
+                                "status": "failed",
+                                "message": "E101: invalid login credentials",
                                 "username": req.body.username,
-                                "email": user.email,
-                                "token": token
+                                "token": null
                             });
                         } else {
-                            if (!user) {
-                                log.err(`E101: invalid login credential - ${req.body.username} - ${req.ip}`);
-                                res.status(401).send({
-                                    "status": "failed",
-                                    "message": "E101: invalid login credentials",
-                                    "username": req.body.username,
-                                    "token": null
-                                });
-                            } else {
-                                log.err(`error occured: ${err.message}`);
-                                res.status(400).send({ "message": err.message, "status": "error" });
-                            }
+                            log.err(`error occured: ${err.message}`);
+                            res.status(400).send({ "message": err.message, "status": "error" });
                         }
-                    });
+                    }
                 } else {
                     errorHandlingNoApiKey(req, res, log);
                 }
@@ -113,7 +112,7 @@ module.exports = (router, log) => {
         let userid = req.query.userid || req.headers['x-stjorna-userid'];
 
         // log request url in debug mode
-        log.dbg(req.url);
+        log.inf(`${req.method}:${req.url}`);
 
         if (token && userid) {
             fileHelper.loadConfigFile((err, config) => {
@@ -138,35 +137,34 @@ module.exports = (router, log) => {
                 if (!err) {
                     let stjornaConfig = JSON.parse(config);
                     if (stjornaConfig.allow_remote_access) {
-                        db_users.findOne({ _id: userid, apikey: apikey }, (err, user) => {
-                            if (!err && user) {
-                                log.inf(`apikey access for ${userid} - ${req.ip} - ${req.path}`);
-                                // ruleset for whitelisted paths (setup is configured in else part)
-                                if (req.method === 'GET' && (
-                                        req.path.includes('products') || 
-                                        req.path.includes('categories') ||
-                                        req.path.includes('uploads')
-                                )) {
-                                    next();
-                                } else {
-                                    log.err(`E106: not valid HTTP method or could not access route.`);
-                                    res.status(401).send({ message: 'E106: not valid HTTP method or could not access route.', status: 'error' });
-                                }
+                        let user = dbHelper.db.get('users').find({ _id: userid, apikey: apikey }).value();
+                        if (user) {
+                            log.inf(`apikey access for ${userid} - ${req.ip} - ${req.path}`);
+                            // ruleset for whitelisted paths (setup is configured in else part)
+                            if (req.method === 'GET' && (
+                                    req.path.includes('products') || 
+                                    req.path.includes('categories') ||
+                                    req.path.includes('uploads')
+                            )) {
+                                next();
                             } else {
-                                if (!user) {
-                                    log.err(`E107: invalid apikey credentials - ${userid}`);
-                                    res.status(401).send({
-                                        "status": "failed",
-                                        "message": "E107: invalid apikey credentials",
-                                        "userid": userid,
-                                        "apikey": apikey
-                                    });
-                                } else {
-                                    log.err(`error occured: ${err.message}`);
-                                    res.status(400).send({ "message": err.message, "status": "error" });
-                                }
+                                log.err(`E106: not valid HTTP method or could not access route.`);
+                                res.status(401).send({ message: 'E106: not valid HTTP method or could not access route.', status: 'error' });
                             }
-                        });
+                        } else {
+                            if (!user) {
+                                log.err(`E107: invalid apikey credentials - ${userid}`);
+                                res.status(401).send({
+                                    "status": "failed",
+                                    "message": "E107: invalid apikey credentials",
+                                    "userid": userid,
+                                    "apikey": apikey
+                                });
+                            } else {
+                                log.err(`error occured: ${err.message}`);
+                                res.status(400).send({ "message": err.message, "status": "error" });
+                            }
+                        }
                     } else {
                         log.err(`E108: config "allow_remote_access" is "false"`);
                         res.status(403).send({ "message": "E108: please contact the administrator, not allowed.", "status": "error" });
