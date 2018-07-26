@@ -7,7 +7,7 @@
     "start": "nodemon --ignore data/ server.js",
     "apidoc:private": "apidoc --private true -i ./api -o ./apidoc-private/",
     "apidoc:public": "apidoc --private false -i ./api -o ./apidoc/",
-    "test": "rimraf reports & mocha --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit"
+    "test": "rimraf reports & rimraf data & mocha --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit"
   },
   "author": "matthias.baldi@secanis.ch",
   "license": "MIT",

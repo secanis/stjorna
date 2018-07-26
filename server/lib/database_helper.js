@@ -3,8 +3,8 @@ const low = require('lowdb');
 const FileAsync = require('lowdb/adapters/FileAsync');
 const uniqid = require('uniqid');
 
-if (!fs.existsSync(process.env.STJORNA_SERVER_STORAGE)) {
-    fs.mkdirSync(process.env.STJORNA_SERVER_STORAGE);
+if (!fs.existsSync(`${process.env.STJORNA_SERVER_STORAGE}`)) {
+    fs.mkdirSync(`${process.env.STJORNA_SERVER_STORAGE}`);
 }
 const adapter = new FileAsync(`${process.env.STJORNA_SERVER_STORAGE}/database.json`);
 
