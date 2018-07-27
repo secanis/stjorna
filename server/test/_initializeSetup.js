@@ -14,7 +14,6 @@ process.env.STJORNA_LOGLEVEL = 'error';
 process.env.STJORNACONFIG_IMAGE_DIMENSION = 255;
 process.env.STJORNACONFIG_IMAGE_QUALITY = 50;
 process.env.STJORNACONFIG_PASSWORD_SECRECT = 'testpwsecret';
-process.env.STJORNA_SERVER_STORAGE = `${process.cwd()}/data`;
 
 const user = {
     username: 'admin',
