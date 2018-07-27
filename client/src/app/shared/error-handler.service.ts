@@ -24,10 +24,7 @@ export class HttpErrorHandler {
             } else if (error.status == 403) {
                 this.loginStatusHandler.setLoginStatus(false);
             } else {
-                const message = (error.error instanceof ErrorEvent) ?
-                    error.error.message :
-                    `server returned code ${error.status} with body "${error.error}"`;
-                this.toastr.error(`${serviceName}:${operation}`, message);
+                this.toastr.error(error.error.message, `${serviceName}:${operation}`);
                 return of(result);
             }
         }

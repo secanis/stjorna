@@ -1,4 +1,4 @@
-const db_products = require('../lib/database_helper.js').db_products;
+const dbHelper = require('../lib/database_helper.js');
 const prepareAndSaveImage = require('../lib/image_helper.js').prepareAndSaveImage;
 
 module.exports = (router, log) => {
@@ -13,14 +13,19 @@ module.exports = (router, log) => {
          * @apiSuccess {Object[Product]} Product Returns a list of products.
          */
         .get((req, res) => {
-            db_products.find({}, (err, docs) => {
-                if (!err) {
-                    res.send(docs);
-                } else {
-                    log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ 'error': err, 'status': 'error' });
-                }
-            });
+            let products;
+            if (req.query.apikey || req.headers['x-stjorna-apikey']) {
+                products = dbHelper.db.get('products').find({ active: true }).value();
+            } else {
+                products = dbHelper.db.get('products').value();
+            }
+
+            if (products) {
+                res.send(products);
+            } else {
+                log.err(`error occured: couldn't load your products`);
+                res.status(400).send({ 'message': `Couldn't load your products`, 'status': 'error' });
+            }
         })
         /**
          * @api {put} /api/v1/products Add Product
@@ -41,26 +46,34 @@ module.exports = (router, log) => {
             if (req.body.image && req.body.image.includes('data:image')) {
                 imagePath = prepareAndSaveImage(req.body.image, '/products', req.headers['x-stjorna-userid']);
             }
-            db_products.insert({
+
+            let newItem = {
+                _id: dbHelper.generateId(),
                 name: req.body.name,
                 category: req.body.category,
                 price: req.body.price,
                 description: req.body.description,
                 active: req.body.active,
                 image: '',
-                imageUrl: imagePath,
+                imageUrl: imagePath || '',
                 created: new Date().getTime(),
                 createdUser: req.body.createdUser,
                 updated: new Date().getTime(),
                 updatedUser: null
-            }, (err, doc) => {
-                if (!err) {
-                    res.send(doc);
-                } else {
-                    log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ 'error': err, 'status': 'error' });
-                }
-            });
+            };
+
+            dbHelper.db.get('products')
+                .push(newItem)
+                .write()
+                .then(() => {
+                    let item = dbHelper.db.get('products').find({ _id: newItem._id }).value();
+                    if (item) {
+                        res.send(item);
+                    } else {
+                        log.err(`error occured: couldn't add product`);
+                        res.status(400).send({ 'message': `Couldn't add product`, 'status': 'error' });
+                    }
+                });
         });
 
     router.route('/v1/products/:id')
@@ -87,13 +100,13 @@ module.exports = (router, log) => {
          * @apiSuccess {String} updatedUser UserID which user has updatged the item.
          */
         .get((req, res) => {
-            db_products.findOne({ _id: req.params.id }, (err, doc) => {
-                if (!err) {
-                    res.send(doc);
-                } else {
-                    res.status(400).send({ 'message': err.message, 'status': 'error' });
-                }
-            });
+            let product = dbHelper.db.get('products').find({ _id: req.params.id }).value();
+            if (product) {
+                res.send(product);
+            } else {
+                log.err(`error occured: couldn't load product ${req.params.id}`);
+                res.status(400).send({ 'message': `Couldn't load product ${req.params.id}`, 'status': 'error' });
+            }
         })
         /**
          * @api {post} /api/v1/products/:id Update Product
@@ -116,7 +129,8 @@ module.exports = (router, log) => {
             if (req.body.image && req.body.image.includes('data:image')) {
                 imagePath = prepareAndSaveImage(req.body.image, '/products', req.headers['x-stjorna-userid']);
             }
-            db_products.update({ _id: req.params.id }, { $set: {
+
+            let newItem = {
                 name: req.body.name,
                 category: req.body.category,
                 price: req.body.price,
@@ -126,14 +140,21 @@ module.exports = (router, log) => {
                 imageUrl: imagePath,
                 updated: new Date().getTime(),
                 updatedUser: req.body.updatedUser
-            } }, { returnUpdatedDocs: true }, (err, numReplaced, affectedDocument) => {
-                if (!err && numReplaced === 1) {
-                    res.send({ 'message': 'successfully updated', 'status': 'ok' });
-                } else {
-                    log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ 'message': err, 'status': 'error' });
-                }
-            });
+            };
+
+            dbHelper.db.get('products')
+                .find({ _id: req.params.id })
+                .assign(newItem)
+                .write()
+                .then(() => {
+                    let item = dbHelper.db.get('products').find({ _id: req.params.id }).value();
+                    if (item && item.updated === newItem.updated) {
+                        res.send(item);
+                    } else {
+                        log.err(`error occured: couldn't update product '${req.params.id}'`);
+                        res.status(400).send({ 'message': `Couldn't update product '${req.params.id}'`, 'status': 'error' });
+                    }
+                });
         })
         /**
          * @api {delete} /api/v1/products/:id Delete Product
@@ -148,14 +169,17 @@ module.exports = (router, log) => {
          * @apiSuccess {Object} Message Returns the status of the deleted Product.
          */
         .delete( (req, res) => {
-            db_products.findOne({ _id: req.params.id }, (err, doc) => {
-                db_products.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
-                    if (!err && numRemoved === 1) {
+            dbHelper.db.get('products')
+                .remove({ _id: req.params.id })
+                .write()
+                .then(() => {
+                    let item = dbHelper.db.get('products').find({ _id: req.params.id }).value();
+                    if (!item) {
                         res.send({ 'message': 'successfully removed', 'status': 'ok' });
                     } else {
-                        res.status(400).send({ 'message': err.message, 'status': 'error', 'message': 'could not delete product' });
+                        log.err(`error occured: couldn't remove products '${req.params.id}'`);
+                        res.status(400).send({ 'message': `Couldn't remove products '${req.params.id}'`, 'status': 'error' });
                     }
                 });
-            });
         });
 }

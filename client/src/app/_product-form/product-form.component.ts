@@ -23,6 +23,7 @@ export class ProductFormComponent implements OnInit {
     public imageChangedEvent: any = '';
     public croppedImage: any = '';
     public croppedOk = false;
+    public cropperImageLoaded = false;
 
     constructor(
         private router: Router,
@@ -99,7 +100,7 @@ export class ProductFormComponent implements OnInit {
     }
 
     public imageLoaded() {
-        // show cropper
+        this.cropperImageLoaded = true;
     }
 
     public loadImageFailed() {

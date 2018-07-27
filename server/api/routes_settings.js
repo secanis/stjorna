@@ -1,8 +1,6 @@
-const fs = require('fs');
 const crypto = require('crypto');
 
-const database_helper = require('../lib/database_helper.js');
-const db_users = database_helper.db_users;
+const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
 module.exports = (router, log) => {
@@ -118,14 +116,24 @@ module.exports = (router, log) => {
                 let hash = crypto.createHash('sha512');
                 hash.update(req.body.user.password + process.env.STJORNACONFIG_PASSWORD_SECRECT);
                 hash = hash.digest('hex');
-                db_users.insert({ username: req.body.user.username, password: hash, email: req.body.user.email }, (err, doc) => {
-                    if (err) {
-                        log.err(`error occured: ${err.message}`);
-                        responseMessage.user_status.errors.push(err.message);
-                    } else {
-                        log.inf(`user added`);
-                    }
-                });
+
+                let newItem = {
+                    _id: dbHelper.generateId(),
+                    username: req.body.user.username,
+                    password: hash,
+                    email: req.body.user.email,
+                    apikey: '',
+                    created: new Date().getTime(),
+                    updated: new Date().getTime()
+                };
+
+                dbHelper.db.get('users')
+                    .push(newItem)
+                    .write()
+                    .then(() => {
+                        log.inf(`user '${req.body.user.username}' added`);
+                    });
+
                 // send response to frontend
                 if (responseMessage.config_status.errors.length > 0 || responseMessage.user_status.errors.length > 0) {
                     res.status(400).send({ "message": responseMessage, "status": "error" });

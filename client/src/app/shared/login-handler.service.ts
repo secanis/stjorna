@@ -29,7 +29,14 @@ export class LoginStatusHandler {
 
     public setCurrentUser(user: StjornaUserModel) {
         if (user) {
-            localStorage.setItem('currentUser', JSON.stringify(user));
+            let obj = {
+                _id: user._id,
+                email: user.email,
+                username: user.username,
+                password: '',
+                token: user.token || this.getCurrentUser().token || ''
+            };
+            localStorage.setItem('currentUser', JSON.stringify(obj));
         }
         // no user will be set, because of an empty param
     }
@@ -41,7 +48,7 @@ export class LoginStatusHandler {
                 _id: user._id,
                 email: user.email,
                 username: user.username,
-                password: '******',
+                password: '',
                 token: user.token
             }
         } else {

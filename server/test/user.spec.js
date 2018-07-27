@@ -35,7 +35,7 @@ describe('User/Auth', () => {
                     .end((err, res) => {
                         res.should.have.status(200);
                         res.body.should.be.a('object');
-                        res.body.should.have.property('message').eql('successfully updated');
+                        res.body.should.have.property('_id').eql(userId);
                         res.body.should.have.property('username').eql(user_2.username);
                         done();
                     });

@@ -1,23 +1,23 @@
-var http = require("http");
+require('./lib/env_default.js');
+const http = require("http");
 
-var options = {
+const options = {
     host: "localhost",
     port: process.env.STJORNA_SERVER_PORT,
     timeout: 2000
 };
 
-var request = http.request(options, (res) => {
-    console.log(`STATUS: ${res.statusCode}`);
+let request = http.request(options, (res) => {
+    console.info(`STATUS: ${res.statusCode}`);
     if (res.statusCode == 200) {
         process.exit(0);
-    }
-    else {
+    } else {
         process.exit(1);
     }
 });
 
-request.on('error', function (err) {
-    console.log('ERROR');
+request.on('error', (err) => {
+    console.error('ERROR');
     process.exit(1);
 });
 

@@ -1,20 +1,31 @@
-const Datastore = require('nedb');
+const fs = require('fs');
+const low = require('lowdb');
+const FileAsync = require('lowdb/adapters/FileAsync');
+const uniqid = require('uniqid');
+
+if (!fs.existsSync(`${process.env.STJORNA_SERVER_STORAGE}`)) {
+    fs.mkdirSync(`${process.env.STJORNA_SERVER_STORAGE}`);
+}
+const adapter = new FileAsync(`${process.env.STJORNA_SERVER_STORAGE}/database.json`);
 
 module.exports = {
-    db_categories: new Datastore({ filename: `${process.env.STJORNA_SERVER_STORAGE}/categories.db`, autoload: true, inMemoryOnly: false }),
-    db_products: new Datastore({ filename: `${process.env.STJORNA_SERVER_STORAGE}/products.db`, autoload: true, inMemoryOnly: false }),
-    db_users: new Datastore({ filename: `${process.env.STJORNA_SERVER_STORAGE}/users.db`, autoload: true, inMemoryOnly: false }),
-    db_session: new Datastore({ inMemoryOnly: true }),
+    db: null,
     initialize: (log) => {
-        // initialize constellation
-        module.exports.db_categories.count({}, (err, count) => {
-            log.inf(`>> constellation.categories    ${count}      records stored.`);
+        low(adapter).then((database) => {
+            // initialize constellation
+            module.exports.db = database;
+            module.exports.db.defaults({
+                categories: [],
+                products: [],
+                users: []
+            }).write().then(() => {
+                log.inf(`>> constellation.categories records  |  ${module.exports.db.get('categories').size().value()}`);
+                log.inf(`>> constellation.products records    |  ${module.exports.db.get('products').size().value()}`);
+                log.inf(`>> constellation.users records       |  ${module.exports.db.get('users').size().value()}`);
+            });
         });
-        module.exports.db_products.count({}, (err, count) => {
-            log.inf(`>> constellation.products      ${count}      records stored.`);
-        });
-        module.exports.db_users.count({}, (err, count) => {
-            log.inf(`>> constellation.users         ${count}      records stored.`);
-        });
+    },
+    generateId: () => {
+        return uniqid();
     }
 };

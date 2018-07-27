@@ -1,5 +1,4 @@
-const db_products = require('../lib/database_helper.js').db_products;
-const db_categories = require('../lib/database_helper.js').db_categories;
+const dbHelper = require('../lib/database_helper.js');
 const prepareAndSaveImage = require('../lib/image_helper.js').prepareAndSaveImage;
 
 module.exports = (router, log) => {
@@ -14,19 +13,19 @@ module.exports = (router, log) => {
          * @apiSuccess {Object[Category]} Category Returns a list of categories.
          */
         .get((req, res) => {
-            let options = {};
+            let categories;
             if (req.query.apikey || req.headers['x-stjorna-apikey']) {
-                options = {active: true};
+                categories = dbHelper.db.get('categories').filter({ active: true }).value();
+            } else {
+                categories = dbHelper.db.get('categories').value();
             }
 
-            db_categories.find(options, (err, docs) => {
-                if (!err) {
-                    res.send(docs);
-                } else {
-                    log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ 'error': err, 'status': 'error' });
-                }
-            });
+            if (categories) {
+                res.send(categories);
+            } else {
+                log.err(`error occured: couldn't load your categories`);
+                res.status(400).send({ 'message': `Couldn't load your categories`, 'status': 'error' });
+            }
         })
         /**
          * @api {put} /api/v1/categories Add Category
@@ -47,7 +46,9 @@ module.exports = (router, log) => {
             if (req.body.image && req.body.image.includes('data:image')) {
                 imagePath = prepareAndSaveImage(req.body.image, '/categories', req.headers['x-stjorna-userid']);
             }
-            db_categories.insert({ 
+
+            let newItem = {
+                _id: dbHelper.generateId(),
                 name: req.body.name,
                 description: req.body.description || '',
                 active: req.body.active,
@@ -57,14 +58,20 @@ module.exports = (router, log) => {
                 createdUser: req.body.createdUser,
                 updated: new Date().getTime(),
                 updatedUser: null
-            }, (err, doc) => {
-                if (!err) {
-                    res.send(doc);
-                } else {
-                    log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ 'error': err, 'status': 'error' });
-                }
-            });
+            };
+
+            dbHelper.db.get('categories')
+                .push(newItem)
+                .write()
+                .then(() => {
+                    let item = dbHelper.db.get('categories').find({ _id: newItem._id }).value();
+                    if (item) {
+                        res.send(item);
+                    } else {
+                        log.err(`error occured: couldn't add category`);
+                        res.status(400).send({ 'message': `Couldn't add category`, 'status': 'error' });
+                    }
+                });
         });
 
     router.route('/v1/categories/:id')
@@ -89,13 +96,13 @@ module.exports = (router, log) => {
          * @apiSuccess {String} updatedUser UserID which user has updatged the item.
          */
         .get((req, res) => {
-            db_categories.findOne({ _id: req.params.id }, (err, doc) => {
-                if (!err) {
-                    res.send(doc);
-                } else {
-                    res.status(400).send({ 'message': err.message, 'status': 'error' });
-                }
-            });
+            let item = dbHelper.db.get('categories').filter({ _id: req.params.id }).value()[0];
+            if (item) {
+                res.send(item);
+            } else {
+                log.err(`error occured: couldn't load category '${req.params.id}'`);
+                res.status(400).send({ 'message': `Couldn't load category '${req.params.id}'`, 'status': 'error' });
+            }
         })
         /**
          * @api {post} /api/v1/categories/:id Update Category
@@ -118,22 +125,30 @@ module.exports = (router, log) => {
             if (req.body.image && req.body.image.includes('data:image')) {
                 imagePath = prepareAndSaveImage(req.body.image, '/categories', req.headers['x-stjorna-userid']);
             }
-            db_categories.update({ _id: req.params.id }, { $set: {
+
+            let newItem = {
                 name: req.body.name,
                 description: req.body.description,
                 active: req.body.active,
                 image: '',
-                imageUrl: imagePath,
+                imageUrl: imagePath || '',
                 updated: new Date().getTime(),
                 updatedUser: req.body.updatedUser
-            } }, { returnUpdatedDocs: true }, (err, numReplaced, affectedDocument) => {
-                if (!err && numReplaced === 1) {
-                    res.send({ 'message': 'successfully updated', 'status': 'ok' });
-                } else {
-                    log.err(`error occured: ${err}`);
-                    res.status(400).send({ 'message': err, 'status': 'error' });
-                }
-            });
+            };
+
+            dbHelper.db.get('categories')
+                .find({ _id: req.params.id })
+                .assign(newItem)
+                .write()
+                .then(() => {
+                    let item = dbHelper.db.get('categories').filter({ _id: req.params.id }).value()[0];
+                    if (item && item.updated === newItem.updated) {
+                        res.send(item);
+                    } else {
+                        log.err(`error occured: couldn't update category '${req.params.id}'`);
+                        res.status(400).send({ 'message': `Couldn't update category '${req.params.id}'`, 'status': 'error' });
+                    }
+                });
         })
         /**
          * @api {delete} /api/v1/categories/:id Delete Category
@@ -148,15 +163,27 @@ module.exports = (router, log) => {
          * @apiSuccess {Object} Message Returns the status of the deleted category.
          */
         .delete((req, res) => {
-            db_categories.findOne({ _id: req.params.id }, (err, doc) => {
-                db_categories.remove({ _id: req.params.id }, {}, (err, numRemoved) => {
-                    if (!err && numRemoved === 1) {
-                        res.send({ 'message': 'successfully removed', 'status': 'ok' });
-                    } else {
-                        res.status(400).send({ 'message': err.message, 'status': 'error', 'message': 'could not delete category' });
-                    }
-                });
-            });
+            let productsWithCategory = dbHelper.db.get('products')
+                .filter({ category: req.params.id })
+                .value();
+
+            if (productsWithCategory && productsWithCategory.length > 0) {
+                log.err(`error occured: couldn't remove category '${req.params.id}', because of existing products with this category`);
+                res.status(400).send({ 'message': `Couldn't remove category '${req.params.id}', because of existing products with this category`, 'status': 'warning' });
+            } else {
+                dbHelper.db.get('categories')
+                    .remove({ _id: req.params.id })
+                    .write()
+                    .then(() => {
+                        let item = dbHelper.db.get('categories').filter({ _id: req.params.id }).value()[0];
+                        if (!item) {
+                            res.send({ 'message': 'successfully removed', 'status': 'ok' });
+                        } else {
+                            log.err(`error occured: couldn't remove category '${req.params.id}'`);
+                            res.status(400).send({ 'message': `Couldn't remove category '${req.params.id}'`, 'status': 'error' });
+                        }
+                    });
+            }
         });
 
     router.route('/v1/categories/:id/products')
@@ -172,13 +199,15 @@ module.exports = (router, log) => {
          * @apiSuccess {Object[Product]} Product Returns a list of products.
          */
         .get((req, res) => {
-            db_products.find({ category: req.params.id, active: true }, (err, docs) => {
-                if (!err) {
-                    res.send(docs);
-                } else {
-                    log.err(`error occured: ${err.message}`);
-                    res.status(400).send({ 'error': err.message, 'status': 'error' });
-                }
-            });
+            let products = dbHelper.db.get('products')
+                .filter({ category: req.params.id, active: true })
+                .value();
+
+            if (products) {
+                res.send(products);
+            } else {
+                log.err(`error occured: couldn't load your products by category '${req.params.id}'`);
+                res.status(400).send({ 'message': `Couldn't load your products by category '${req.params.id}'`, 'status': 'error' });
+            }
         })
 }

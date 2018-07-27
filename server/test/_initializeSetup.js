@@ -4,6 +4,8 @@ let server;
 let should = chai.should();
 let rimraf = require('rimraf');
 
+const dbHelper = require('../lib/database_helper.js');
+
 let apiUrl = '/api/v1';
 
 process.env.NODE_ENV = 'test';
@@ -29,22 +31,33 @@ chai.use(chaiHttp);
 
 before((done) => {
     server = require('../server.js');
-    chai.request(server)
-        .post(`${apiUrl}/setup`)
-        .send({
-            config: config,
-            user: user
-        })
-        .end((err, res) => {
-            if (err) {
-                throw err;
+
+    // wait for database
+    let dbState;
+    let iv = setInterval(() => {
+        try {
+            dbState = dbHelper.db.getState();
+            if (dbState) {
+                clearInterval(iv);
+                chai.request(server)
+                    .post(`${apiUrl}/setup`)
+                    .send({
+                        config: config,
+                        user: user
+                    })
+                    .end((err, res) => {
+                        if (err) {
+                            throw err;
+                        }
+                        res.should.have.status(200);
+                        res.body.should.be.a('object');
+                        res.body.message.config_status.errors.length.should.be.eql(0);
+                        res.body.message.user_status.errors.length.should.be.eql(0);
+                        done();
+                    });
             }
-            res.should.have.status(200);
-            res.body.should.be.a('object');
-            res.body.message.config_status.errors.length.should.be.eql(0);
-            res.body.message.user_status.errors.length.should.be.eql(0);
-            done();
-        });
+        } catch {}
+    }, 100);
 });
 
 after((done) => {
