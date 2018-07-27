@@ -93,6 +93,12 @@ export class StjornaService {
             .pipe(catchError(this.handleError<any>('remove category')));
     }
 
+    public getProductsByCategoryId(id) {
+        return this.http
+            .get(`${this.host}/api/v1/categories/${id}/products`, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<any>('load products by category id')));
+    }
+
     public getServerInfo() {
         return this.http
             .get(`${this.host}/api/v1/info/server`, this.getHeaders(this.token))

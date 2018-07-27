@@ -4,6 +4,7 @@ import { NgForm } from '@angular/forms';
 import { ToastrService } from 'ngx-toastr';
 
 import { StjornaCategoryModel } from '../models/category.model';
+import { StjornaProductModel } from '../models/product.model';
 import { StjornaService } from '../shared/stjorna.service';
 import { LoginStatusHandler } from '../shared/login-handler.service';
 
@@ -14,6 +15,7 @@ import { LoginStatusHandler } from '../shared/login-handler.service';
 
 export class CategoryFormComponent implements OnInit {
     @Input() category: StjornaCategoryModel;
+    @Input() productList: Array<StjornaProductModel> = [];
     @Input() isEditForm: boolean;
 
     public editHiddenFields = true;
@@ -21,6 +23,7 @@ export class CategoryFormComponent implements OnInit {
     public croppedImage: any = '';
     public croppedOk = false;
     public cropperImageLoaded = false;
+    public submitted = false;
 
     constructor(
         private router: Router,
@@ -87,6 +90,7 @@ export class CategoryFormComponent implements OnInit {
     public saveNewCategory(categoryForm: NgForm) {
         if (categoryForm.valid) {
             // we have to add validators for the form: min = "0" max= "1440"
+            this.submitted = true;
             if (this.isEditForm) {
                 this.stjornaService.saveCategory(categoryForm.value).subscribe(result => this.saveDoneAction(result));
             } else {
@@ -101,6 +105,7 @@ export class CategoryFormComponent implements OnInit {
     }
 
     private saveDoneAction(result) {
+        this.submitted = false;
         if (result.status === 'ok' || result._id) {
             this.toastr.success('Successfully saved!');
         } else {

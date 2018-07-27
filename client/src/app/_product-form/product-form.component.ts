@@ -24,6 +24,7 @@ export class ProductFormComponent implements OnInit {
     public croppedImage: any = '';
     public croppedOk = false;
     public cropperImageLoaded = false;
+    public submitted = false;
 
     constructor(
         private router: Router,
@@ -62,6 +63,7 @@ export class ProductFormComponent implements OnInit {
     public saveProduct(productForm: NgForm) {
         if (productForm.valid) {
             // we have to add validators for the form: min = "0" max= "1440"
+            this.submitted = true;
             if (this.isEditForm) {
                 this.stjornaService.saveProduct(productForm.value).subscribe(result => this.saveDoneAction(result));
             } else {
@@ -108,6 +110,7 @@ export class ProductFormComponent implements OnInit {
     }
 
     private saveDoneAction(result) {
+        this.submitted = false;
         if (result && result._id) {
             this.toastr.success('Successfully saved!');
         } else {

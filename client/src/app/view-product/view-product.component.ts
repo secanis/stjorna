@@ -15,8 +15,8 @@ import { StjornaService } from '../shared/stjorna.service';
 export class ViewProductComponent implements OnInit {
     public currentRoute: string;
     public product: StjornaProductModel;
+    public productList: Array<StjornaProductModel> = [];
     public category: StjornaCategoryModel;
-    private params;
 
     constructor(private router: Router, private activatedRoute: ActivatedRoute, private stjornaService: StjornaService, private toastr: ToastrService) { }
 
@@ -28,6 +28,7 @@ export class ViewProductComponent implements OnInit {
         }
         if (this.currentRoute.includes('category')) {
             this.loadExistingCategory(currentId);
+            this.loadProductsByCategory(currentId);
         }
     }
 
@@ -64,6 +65,11 @@ export class ViewProductComponent implements OnInit {
 
     private loadExistingCategory(id) {
         this.stjornaService.getCategoryById(id).subscribe(result => this.category = result);
+    }
+
+    private loadProductsByCategory(id) {
+        console.log(id);
+        this.stjornaService.getProductsByCategoryId(id).subscribe(result => this.productList = result);
     }
 
     // helper methods

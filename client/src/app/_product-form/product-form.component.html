@@ -71,10 +71,10 @@
     </div>
     <div class="card card-margin">
         <div class="card-body">
-            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/products">Cancel</button>
-            <button *ngIf="isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/products">Back</button>
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/products">Cancel</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/products">Back</button>
             <!-- <button class="btn btn-success pull-right" [disabled]="!productForm.dirty || !(product.image.length > 0)" type="submit">Save Product</button> -->
-            <button class="btn btn-success pull-right" type="submit">Save Product</button>
+            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">Save Product</button>
         </div>
     </div>
 </form> 

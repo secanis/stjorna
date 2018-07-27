@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { Router } from '@angular/router';
 
 import { StjornaProductModel } from '../models/product.model';
@@ -12,8 +12,9 @@ import { HttpErrorHandler } from '../shared/error-handler.service';
 })
 
 export class ProductListComponent implements OnInit {
-    public productList: Array<StjornaProductModel> = [];
+    @Input() productList: Array<StjornaProductModel> = [];
     public categoryList: Array<StjornaCategoryModel> = [];
+    @Input() categoryView: Boolean = false;
 
     constructor(
         private router: Router,
@@ -22,8 +23,10 @@ export class ProductListComponent implements OnInit {
     ) { }
 
     ngOnInit() {
-        this.loadAllCategories();
-        this.loadAllProducts();
+        if (!this.categoryView) {
+            this.loadAllCategories();
+            this.loadAllProducts();
+        }
     }
 
     private loadAllProducts() {
@@ -42,7 +45,7 @@ export class ProductListComponent implements OnInit {
         let result = this.categoryList.filter((category) => {
             return category._id === id;
         });
-        if (result) {
+        if (result && result[0]) {
             return result[0].name;
         }
         return '';

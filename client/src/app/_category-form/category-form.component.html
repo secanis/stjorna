@@ -52,12 +52,20 @@
             </div>
         </div>
     </div>
+    <div class="card-deck card-margin" *ngIf="isEditForm">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Product List</h5>
+                <stjorna-productlist [productList]="productList" [categoryView]="true"></stjorna-productlist>
+            </div>
+        </div>
+    </div>
     <div class="card card-margin">
         <div class="card-body">
-            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/categories">Cancel</button>
-            <button *ngIf="isEditForm" class="btn btn-warning pull-left" routerLink="/dashboard/categories">Back</button>
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">Cancel</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">Back</button>
             <!-- <button class="btn btn-success pull-right" [disabled]="!CategoryForm.dirty" type="submit">Save Category</button> -->
-            <button class="btn btn-success pull-right" type="submit">Save Category</button>
+            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">Save Category</button>
         </div>
     </div>
 </form>
