@@ -26,11 +26,9 @@ module.exports = {
                         });
                 }).catch((err) => {
                     console.error(`error occured while reading image buffer: ${err.message}`);
-                    res.status(500).send({ "error": err.message, "status": "error" });
                 });
             } else {
-                console.error(`error occured while writing image to filesystem: ${err.message}`);
-                res.status(500).send({ "error": err.message, "status": "error" });
+                console.error(`error occured while loading config file: ${err.message}`);
             }
         });
         return imagePath;
