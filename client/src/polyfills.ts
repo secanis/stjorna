@@ -4,3 +4,4 @@ require('zone.js/dist/zone');
 
 import 'ts-helpers';
 
+import 'blueimp-canvas-to-blob/js/canvas-to-blob.min.js';
