@@ -1,6 +1,5 @@
 const CronJob = require('cron').CronJob;
-const db_products = require('../lib/database_helper.js').db_products;
-const db_categories = require('../lib/database_helper.js').db_categories;
+const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
 module.exports = (log) => {
@@ -15,13 +14,12 @@ module.exports = (log) => {
                     let productsPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/products`;
                     fileHelper.getFolderContent(productsPath, (err, files) => {
                         if (!err) {
-                            db_products.find({}, (err, docs) => {
-                                if (!err) {
-                                    fileHelper.matchFileWithListOfObjects(productsPath, files, docs, 'imageUrl', true);
-                                } else {
-                                    log.err(`[CRON] cleanup_uploads - load products failed: ${err.message}`);
-                                }
-                            });
+                            let products = dbHelper.db.get('products').value();
+                            if (products) {
+                                fileHelper.matchFileWithListOfObjects(productsPath, files, products, 'imageUrl', true);
+                            } else {
+                                log.err(`[CRON] cleanup_uploads - load products failed: ${err.message}`);
+                            }
                         } else {
                             log.err(`[CRON] cleanup_uploads - walk uploads failed: ${err.message}`);
                         }
@@ -31,13 +29,12 @@ module.exports = (log) => {
                     let categoriesPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/categories`;
                     fileHelper.getFolderContent(categoriesPath, (err, files) => {
                         if (!err) {
-                            db_categories.find({}, (err, docs) => {
-                                if (!err) {
-                                    fileHelper.matchFileWithListOfObjects(categoriesPath, files, docs, 'imageUrl', true);
-                                } else {
-                                    log.err(`[CRON] cleanup_uploads - load categories failed: ${err.message}`);
-                                }
-                            });
+                            let categories = dbHelper.db.get('categories').value();
+                            if (categories) {
+                                fileHelper.matchFileWithListOfObjects(categoriesPath, files, categories, 'imageUrl', true);
+                            } else {
+                                log.err(`[CRON] cleanup_uploads - load products failed: ${err.message}`);
+                            }
                         } else {
                             log.err(`[CRON] cleanup_uploads - walk uploads failed: ${err.message}`);
                         }
