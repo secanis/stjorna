@@ -1,9 +1,10 @@
 FROM node:alpine
-LABEL maintainer=matthias.baldi@secanis.ch \
-      ch.secanis.tool=stjorna \
-      ch.secanis.version=
 
 ARG VERSION
+
+LABEL maintainer=support@secanis.ch \
+      ch.secanis.tool=stjorna \
+      ch.secanis.version=$VERSION
 
 WORKDIR app
 ENV NODE_ENV production
