@@ -31,6 +31,7 @@ docker run -p 80:3000 -v path/to/storage:/app/data secanis/stjorna
 [![Anchore Image Overview](https://anchore.io/service/badges/image/a17c6ce810bba93a02391e41c2d50ddf9609883be50776b4d162a497d66eba0e)](https://anchore.io/image/dockerhub/secanis%2Fstjorna%3Alatest)
 [![Anchore Image Policy](https://anchore.io/service/badges/policy/a17c6ce810bba93a02391e41c2d50ddf9609883be50776b4d162a497d66eba0e?registry=dockerhub&repository=secanis/stjorna&tag=latest)](https://anchore.io)
 [![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com")
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/01a7269404b548058afbc8afa52e7add)](https://www.codacy.com/project/matthias.baldi/stjorna/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=secanis/stjorna&amp;utm_campaign=Badge_Grade_Dashboard)
 
 [https://hub.docker.com/r/secanis/stjorna](https://hub.docker.com/r/secanis/stjorna)
 
