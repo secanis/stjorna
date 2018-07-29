@@ -192,7 +192,7 @@ module.exports = (router, log) => {
             }
         }
     });
-}
+};
 
 let errorHandlingNoApiKey = (req, res, log) => {
     log.err(`E105: no token or userid & apikey provided`);

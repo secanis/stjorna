@@ -50,7 +50,7 @@ export class ProductFormComponent implements OnInit {
                 createdUser: null,
                 updated: null,
                 updatedUser: null,
-            }
+            };
         }
 
         if (this.isEditForm) {
@@ -78,7 +78,7 @@ export class ProductFormComponent implements OnInit {
     }
 
     public buildImageResourceUrl(imageUrl: string): string {
-        return `${this.stjornaService.getHost()}/api${imageUrl}?token=${this.loginStatusHandler.getCurrentUser().token}&userid=${this.loginStatusHandler.getCurrentUser()._id}`
+        return `${this.stjornaService.getHost()}/api${imageUrl}?token=${this.loginStatusHandler.getCurrentUser().token}&userid=${this.loginStatusHandler.getCurrentUser()._id}`;
     }
 
     public removeImage() {
@@ -124,7 +124,7 @@ export class ProductFormComponent implements OnInit {
 
     private categoryListHandler(result) {
         if (result && result.length > 0) {
-            this.categoryList = result
+            this.categoryList = result;
         } else {
             this.httpErrorHandler.handleRequestError(result);
         }

@@ -23,13 +23,13 @@ module.exports = {
     },
     matchFileWithListOfObjects: (path, files, docs, docsAttr, deleteOnMatch) => {
         // search a file in a list of objects by the doc attributes
-        if (deleteOnMatch === null || undefined) {
+        if (deleteOnMatch === null || deleteOnMatch === undefined) {
             deleteOnMatch = false;
         }
         files.forEach(file => {
             let match = false;
             // iterate over all documents and match the filename
-            docs.forEach(doc => {
+            docs.forEach((doc) => {
                 if (doc[docsAttr] && doc[docsAttr].includes(file.name)) {
                     match = true;
                     return;

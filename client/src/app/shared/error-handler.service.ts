@@ -18,16 +18,16 @@ export class HttpErrorHandler {
 
     public handleError<T>(serviceName = '', operation = 'operation', result = {} as T) {
         return (error: HttpErrorResponse): Observable<T> => {
-            if (error.status == 401) {
+            if (error.status === 401) {
                 this.loginStatusHandler.setLoginStatus(false);
                 this.router.navigateByUrl(`/login`);
-            } else if (error.status == 403) {
+            } else if (error.status === 403) {
                 this.loginStatusHandler.setLoginStatus(false);
             } else {
                 this.toastr.error(error.error.message, `${serviceName}:${operation}`);
                 return of(result);
             }
-        }
+        };
     }
 
     public handleRequestError(result) {

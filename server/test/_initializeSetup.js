@@ -56,7 +56,9 @@ before((done) => {
                         done();
                     });
             }
-        } catch {}
+        } catch {
+            console.error(`couldn't start database/database connection.`)
+        }
     }, 100);
 });
 

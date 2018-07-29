@@ -6,7 +6,7 @@ LABEL maintainer=support@secanis.ch \
       ch.secanis.tool=stjorna \
       ch.secanis.version=$VERSION
 
-WORKDIR app
+WORKDIR /app
 ENV NODE_ENV production
 
 # add api and app stuff

@@ -53,7 +53,7 @@ module.exports = (router, log) => {
             let env = process.env;
             const serverEnv = [];
             Object.keys(env)
-                .filter(key => key.includes('STJORNA_'))
+                .filter((key) => key.includes('STJORNA_'))
                 .reduce((obj, key) => {
                     serverEnv.push({
                         name: key,
@@ -63,4 +63,4 @@ module.exports = (router, log) => {
 
             res.send(serverEnv);
         });
-}
+};

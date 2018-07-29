@@ -37,7 +37,7 @@ export class CategoryListComponent implements OnInit {
 
     private categoryListHandler(result) {
         if (result && result.length > 0) {
-            this.categoryList = result
+            this.categoryList = result;
         } else {
             this.httpErrorHandler.handleRequestError(result);
         }

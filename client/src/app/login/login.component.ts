@@ -19,7 +19,7 @@ export class LoginComponent implements OnInit {
         username: '',
         password: '',
         token: ''
-    }
+    };
 
     constructor(
         private router: Router,

@@ -145,4 +145,4 @@ module.exports = (router, log) => {
                 res.status(400).send({ "message": 'configuration successfully saved', "status": "ok" });
             }
         });
-}
+};

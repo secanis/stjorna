@@ -56,7 +56,7 @@ export class CategoryFormComponent implements OnInit {
     }
 
     public buildImageResourceUrl(imageUrl: string): string {
-        return `${this.stjornaService.getHost()}/api${imageUrl}?token=${this.loginStatusHandler.getCurrentUser().token}&userid=${this.loginStatusHandler.getCurrentUser()._id}`
+        return `${this.stjornaService.getHost()}/api${imageUrl}?token=${this.loginStatusHandler.getCurrentUser().token}&userid=${this.loginStatusHandler.getCurrentUser()._id}`;
     }
 
     public removeImage() {

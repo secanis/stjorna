@@ -210,4 +210,4 @@ module.exports = (router, log) => {
                 res.status(400).send({ 'message': `Couldn't load your products by category '${req.params.id}'`, 'status': 'error' });
             }
         })
-}
+};

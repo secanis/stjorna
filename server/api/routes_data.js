@@ -67,4 +67,4 @@ module.exports = (router, log) => {
                 res.status(401).send({ 'message': 'no permissions for this ressource.', 'status': 'error' });
             }
         });
-}
+};

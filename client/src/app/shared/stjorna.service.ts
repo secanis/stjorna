@@ -5,8 +5,8 @@ import { ToastrService } from 'ngx-toastr';
 import { Observable, throwError, BehaviorSubject, of } from 'rxjs';
 import { map, filter, catchError, mergeMap } from 'rxjs/operators';
 
-import { HttpErrorHandler, HandleError } from './error-handler.service'
-import { LoginStatusHandler } from './login-handler.service'
+import { HttpErrorHandler, HandleError } from './error-handler.service';
+import { LoginStatusHandler } from './login-handler.service';
 import { StjornaProductModel } from '../models/product.model';
 import { StjornaCategoryModel } from '../models/category.model';
 import { StjornaUserModel } from '../models/user.model';

@@ -19,8 +19,8 @@ export class MySearchPipe implements PipeTransform {
             return value.filter(item => {
                 let result = false;
                 if (item !== null) {
-                    if (item !== undefined && typeof item === 'string' && item.toLocaleLowerCase().includes(searchText)) {result = true};
-                    if (item.name !== undefined && item.name.toLocaleLowerCase().includes(searchText)) {result = true};
+                    if (item !== undefined && typeof item === 'string' && item.toLocaleLowerCase().includes(searchText)) {result = true;}
+                    if (item.name !== undefined && item.name.toLocaleLowerCase().includes(searchText)) {result = true;}
                 }
                 return result;
             });

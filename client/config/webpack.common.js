@@ -57,7 +57,7 @@ module.exports = {
         default: {
           minChunks: 3,
           priority: -20,
-			    reuseExistingChunk: true,
+          reuseExistingChunk: true,
         },
         vendor: {
           test: /[\\/]node_modules[\\/]/,

@@ -129,7 +129,7 @@ module.exports = (router, log) => {
             } else {
                 res.status(400).send({ 'message': 'not valid parameters, checkout the api documentation.', 'status': 'error' });
             }
-        })
+        });
 
     router.route('/v1/users/apikey/:id')
         /**
@@ -200,4 +200,4 @@ module.exports = (router, log) => {
                 res.status(400).send({ 'message': 'not valid parameters, checkout the api documentation.', 'status': 'error' });
             }
         })
-}
+};

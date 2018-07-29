@@ -43,4 +43,4 @@ module.exports = (log) => {
             }
         });
     }, null, true, 'Europe/Zurich');
-}
+};

@@ -53,7 +53,7 @@ export class ProductListComponent implements OnInit {
 
     private productListHandler(result) {
         if (result && result.length > 0) {
-            this.productList = result
+            this.productList = result;
         } else {
             this.httpErrorHandler.handleRequestError(result);
         }
@@ -65,7 +65,7 @@ export class ProductListComponent implements OnInit {
 
     private categoryListHandler(result) {
         if (result && result.length > 0) {
-            this.categoryList = result
+            this.categoryList = result;
         } else {
             this.httpErrorHandler.handleRequestError(result);
         }

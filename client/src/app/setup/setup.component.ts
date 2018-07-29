@@ -20,7 +20,7 @@ export class SetupComponent implements OnInit {
         password: '',
         email: '',
         token: ''
-    }
+    };
 
     constructor(
         private router: Router,

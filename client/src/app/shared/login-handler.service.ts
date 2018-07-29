@@ -50,7 +50,7 @@ export class LoginStatusHandler {
                 username: user.username,
                 password: '',
                 token: user.token
-            }
+            };
         } else {
             return null;
         }
