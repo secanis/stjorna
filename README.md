@@ -7,8 +7,9 @@ STJÓRNA was created to have an easy product management with the possibility to 
 ## Features
 
 [![CircleCI](https://circleci.com/gh/secanis/stjorna/tree/master.svg?style=svg)](https://circleci.com/gh/secanis/stjorna/tree/master "Latest Build Result @CircleCI")
-[![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Stjorna Docker Image")
-[![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Stjorna Latest Version")
+[![Anchore Image Overview](https://anchore.io/service/badges/image/a17c6ce810bba93a02391e41c2d50ddf9609883be50776b4d162a497d66eba0e)](https://anchore.io/image/dockerhub/secanis%2Fstjorna%3Alatest)
+[![Anchore Image Policy](https://anchore.io/service/badges/policy/a17c6ce810bba93a02391e41c2d50ddf9609883be50776b4d162a497d66eba0e?registry=dockerhub&repository=secanis/stjorna&tag=latest)](https://anchore.io)
+[![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com")
 
 STJÓRNA is islandic and means something like manage or store stuff.
 The two main goal of STJÓRNA are to be very simple in the setup and configuration effort. The second goal was to publish and share the stored data over an REST API with other applications, maybe your website.
