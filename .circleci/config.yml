@@ -35,7 +35,7 @@ jobs:
 
             - run:
                 name: Test Server API
-                command: cd server; npm run test & npm run test:sendcoverage
+                command: cd server; npm run test; npm run test:sendcoverage
             - store_test_results:
                 path: server/reports
             - store_artifacts:
