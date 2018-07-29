@@ -7,7 +7,10 @@
     "start": "nodemon --ignore data/ server.js",
     "apidoc:private": "apidoc --private true -i ./api -o ./apidoc-private/",
     "apidoc:public": "apidoc --private false -i ./api -o ./apidoc/",
-    "test": "rimraf reports & rimraf data & mocha --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit"
+    "test": "rimraf data & rimraf reports & npm run test:coverage",
+    "test:coverage": "nyc --reporter html --reporter lcovonly --report-dir reports/coverage --temp-directory reports/coverage/.nyc_output --reporter text npm run test:api",
+    "test:api": "mocha --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit",
+    "test:sendcoverage": "cat reports/coverage/lcov.info | codacy-coverage"
   },
   "author": "matthias.baldi@secanis.ch",
   "license": "MIT",
@@ -26,10 +29,12 @@
     "apidoc": "^0.17.6",
     "chai": "^4.1.2",
     "chai-http": "^4.0.0",
+    "codacy-coverage": "^3.0.0",
     "mocha": "^5.2.0",
     "mocha-junit-reporter": "^1.17.0",
     "mocha-multi-reporters": "^1.1.7",
     "nodemon": "1.18.3",
+    "nyc": "^12.0.2",
     "request": "^2.87.0",
     "rimraf": "^2.6.2"
   }
