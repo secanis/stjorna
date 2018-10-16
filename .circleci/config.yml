@@ -12,9 +12,18 @@ jobs:
             - run:
                 name: Install Dependencies
                 command: npm install
+            - save_cache:
+                paths:
+                    - node_modules
+                key: v1-dependencies-{{ checksum "package.json" }}
             - run:
                 name: Build Documentation
                 command: npm run docs:build
             - run:
                 name: Deploy Documentation
-                command: git add --all; git commit -m "Deployment Bot - Auto builded docs"; git push
+                command: |
+                    git config --global user.email "support@secanis.ch"
+                    git config --global user.name "CircleCI"
+                    git add --all
+                    git commit -m "Deployment Bot - Auto builded docs"
+                    git push
