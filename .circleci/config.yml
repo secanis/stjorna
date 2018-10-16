@@ -1,4 +1,23 @@
-general:
-  branches:
-    ignore:
-      - gh-pages
+version: 2
+jobs:
+    build:
+        docker:
+            - image: circleci/node:10.5.0
+        working_directory: ~/repo
+        steps:
+            - checkout
+            - run:
+                name: Verify Docs Branch
+                command: git checkout gh-pages; git pull
+            - restore_cache:
+                keys:
+                    - v1-dependencies-{{ checksum "package.json" }}
+            - run:
+                name: Install Dependencies
+                command: npm install
+            - run:
+                name: Build Documentation
+                command: npm run docs:build
+            - run:
+                name: Deploy Documentation
+                command: git add --all; git commit -m "Deployment Bot - Auto builded docs"; git push
