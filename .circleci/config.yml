@@ -24,6 +24,7 @@ jobs:
                 command: |
                     git config --global user.email "support@secanis.ch"
                     git config --global user.name "CircleCI"
+                    git config --global push.default matching
                     git add --all
                     git commit -m "Deployment Bot - Auto builded docs"
-                    git push
+                    git push --set-upstream origin gh-pages
