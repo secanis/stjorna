@@ -26,5 +26,5 @@ jobs:
                     git config --global user.name "CircleCI"
                     git config --global push.default matching
                     git add --all
-                    git commit -m "Deployment Bot - Auto builded docs"
+                    git commit -m "Deployment Bot - Auto builded docs [ci skip]"
                     git push --set-upstream origin gh-pages
