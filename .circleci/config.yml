@@ -6,9 +6,6 @@ jobs:
         working_directory: ~/repo
         steps:
             - checkout
-            - run:
-                name: Verify Docs Branch
-                command: git checkout gh-pages; git pull
             - restore_cache:
                 keys:
                     - v1-dependencies-{{ checksum "package.json" }}
