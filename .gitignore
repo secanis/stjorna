@@ -3,6 +3,6 @@
 **/dist
 server/data
 server/data_*
-server/apidoc/
+server/apidoc*
 todo.md
 reports/

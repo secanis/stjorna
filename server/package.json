@@ -1,41 +1,41 @@
 {
-  "name": "stjorna",
-  "version": "2.0.0",
-  "description": "STJÓRNA product management",
-  "main": "server.js",
-  "scripts": {
-    "start": "nodemon --ignore data/ server.js",
-    "apidoc:private": "apidoc --private true -i ./api -o ./apidoc-private/",
-    "apidoc:public": "apidoc --private false -i ./api -o ./apidoc/",
-    "test": "rimraf data & rimraf reports & npm run test:coverage",
-    "test:coverage": "nyc --reporter html --reporter lcovonly --report-dir reports/coverage --temp-directory reports/coverage/.nyc_output --reporter text npm run test:api",
-    "test:api": "mocha --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit",
-    "test:sendcoverage": "cat reports/coverage/lcov.info | codacy-coverage"
-  },
-  "author": "matthias.baldi@secanis.ch",
-  "license": "MIT",
-  "dependencies": {
-    "body-parser": "^1.18.3",
-    "cron": "^1.3.0",
-    "express": "^4.16.3",
-    "jimp": "^0.2.28",
-    "jsonwebtoken": "^8.3.0",
-    "lowdb": "^1.0.0",
-    "node-logging": "^0.1.6",
-    "uniqid": "^5.0.3",
-    "util": "^0.11.0"
-  },
-  "devDependencies": {
-    "apidoc": "^0.17.6",
-    "chai": "^4.1.2",
-    "chai-http": "^4.0.0",
-    "codacy-coverage": "^3.0.0",
-    "mocha": "^5.2.0",
-    "mocha-junit-reporter": "^1.17.0",
-    "mocha-multi-reporters": "^1.1.7",
-    "nodemon": "1.18.3",
-    "nyc": "^12.0.2",
-    "request": "^2.87.0",
-    "rimraf": "^2.6.2"
-  }
+    "name": "stjorna",
+    "version": "2.0.1",
+    "description": "STJÓRNA product management",
+    "main": "server.js",
+    "scripts": {
+        "start": "nodemon --ignore data/ server.js",
+        "apidoc:private": "apidoc --private true -i ./api -o ./apidoc-private/",
+        "apidoc:public": "apidoc --private false -i ./api -o ./apidoc/",
+        "test": "rimraf data & rimraf reports & npm run test:coverage",
+        "test:coverage": "nyc --reporter html --reporter lcovonly --report-dir reports/coverage --temp-directory reports/coverage/.nyc_output --reporter text npm run test:api",
+        "test:api": "mocha --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit",
+        "test:sendcoverage": "cat reports/coverage/lcov.info | codacy-coverage"
+    },
+    "author": "matthias.baldi@secanis.ch",
+    "license": "MIT",
+    "dependencies": {
+        "body-parser": "^1.18.3",
+        "cron": "^1.4.1",
+        "express": "^4.16.4",
+        "jimp": "^0.5.4",
+        "jsonwebtoken": "^8.3.0",
+        "lowdb": "^1.0.0",
+        "node-logging": "^0.1.6",
+        "uniqid": "^5.0.3",
+        "util": "^0.11.0"
+    },
+    "devDependencies": {
+        "apidoc": "^0.17.6",
+        "chai": "^4.2.0",
+        "chai-http": "^4.2.0",
+        "codacy-coverage": "^3.1.0",
+        "mocha": "^5.2.0",
+        "mocha-junit-reporter": "^1.18.0",
+        "mocha-multi-reporters": "^1.1.7",
+        "nodemon": "1.18.4",
+        "nyc": "^13.1.0",
+        "request": "^2.88.0",
+        "rimraf": "^2.6.2"
+    }
 }

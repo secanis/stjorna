@@ -17,8 +17,8 @@ require('./lib/database_helper').initialize(log);
 require('./cronjobs/cleanup_uploads')(log);
 
 // initialize bodyParser ans set limits
-app.use(bodyParser.json({limit: process.env.STJORNA_SERVER_MAX_UPLOAD}));
-app.use(bodyParser.urlencoded({limit: process.env.STJORNA_SERVER_MAX_UPLOAD, extended: true}));
+app.use(bodyParser.json({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD }));
+app.use(bodyParser.urlencoded({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD, extended: true }));
 
 // initialize request logging
 app.use(log.requestLogger);
@@ -33,7 +33,6 @@ require('./api/routes_categories')(router, log);
 require('./api/routes_products')(router, log);
 require('./api/routes_data')(router, log);
 require('./api/routes_info')(router, log);
-require('./api/routes_user')(router, log);
 require('./api/routes_settings')(router, log);
 
 // static routes
