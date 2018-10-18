@@ -41,8 +41,19 @@
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Password Secret</h5>
-                <input class="form-control" type="text" disabled name="passwordSecret" [(ngModel)]="config.password_secret" #passwordSecret="ngModel"
-                    required>
+                <input class="form-control" type="text" disabled name="passwordSecret" [(ngModel)]="config.password_secret" #passwordSecret="ngModel" required>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Export Data</h5>
+                <div class="export-buttons">
+                    <button class="btn btn-sm btn-info" (click)="triggerExport('excel')">Export Excel</button>
+                    <button class="btn btn-sm btn-info" (click)="triggerExport('json')">Export JSON</button>
+                </div>
+                <small class="form-text text-muted" for="allowRemoteAccess">
+                    Export your data of the database as an Excel file or as Json.
+                </small>
             </div>
         </div>
     </div>

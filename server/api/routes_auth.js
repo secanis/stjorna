@@ -23,11 +23,14 @@ module.exports = (router, log) => {
             if (req.get('host').includes('localhost')) {
                 res.setHeader('Access-Control-Allow-Origin', '*');
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-                res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,X-Requested-With,content-type');
+                res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,X-Requested-With,content-type,content-disposition');
+                res.setHeader('Access-Control-Expose-Headers', 'content-disposition');
                 res.setHeader('Access-Control-Allow-Credentials', true);
             } else {
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-                res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,x-stjorna-apikey,X-Requested-With,content-type');
+                res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,x-stjorna-apikey,X-Requested-With,content-type,content-disposition');
+                res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,x-stjorna-apikey,X-Requested-With,content-type,content-disposition');
+                res.setHeader('Access-Control-Expose-Headers', 'content-disposition');
             }
             next();
         }

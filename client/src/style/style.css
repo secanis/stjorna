@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
     border-radius: 0px !important;
     font-family: 'Raleway', sans-serif;
     margin: 0px;
@@ -7,7 +8,9 @@ html, body {
     font-weight: normal;
 }
 
-tr, td, p {
+tr,
+td,
+p {
     font-size: 14px;
 }
 
@@ -20,7 +23,8 @@ tr, td, p {
     color: rgba(17, 91, 166, 1) !important;
 }
 
-.background-color-stjorna, .btn-stjorna {
+.background-color-stjorna,
+.btn-stjorna {
     color: #fff;
     background-color: rgba(17, 91, 166, 1);
 }
@@ -29,7 +33,12 @@ tr, td, p {
     background-color: rgba(20, 98, 155, 1);
 }
 
-button, .btn, input, select, .card, .nav-tabs .nav-link {
+button,
+.btn,
+input,
+select,
+.card,
+.nav-tabs .nav-link {
     border-radius: 0px !important;
 }
 
@@ -65,12 +74,15 @@ button, .btn, input, select, .card, .nav-tabs .nav-link {
     margin-bottom: 20px;
 }
 
-.table td, .table th, .table thead th {
+.table td,
+.table th,
+.table thead th {
     vertical-align: middle;
     height: 60px;
 }
 
-.edit-task, .btn-copy-cb {
+.edit-task,
+.btn-copy-cb {
     cursor: pointer;
 }
 
@@ -83,7 +95,8 @@ button, .btn, input, select, .card, .nav-tabs .nav-link {
     width: 350px;
 }
 
-.text-stjorna, .nav-tabs .nav-link {
+.text-stjorna,
+.nav-tabs .nav-link {
     font-size: 15px;
 }
 
@@ -92,9 +105,19 @@ button, .btn, input, select, .card, .nav-tabs .nav-link {
 }
 
 .nav-tabs .nav-link.active {
-    border-color: rgba(10,10,10,0.1);
+    border-color: rgba(10, 10, 10, 0.1);
     color: rgba(17, 91, 166, 1);
     font-weight: bold;
+}
+
+.export-buttons {
+    display: flex;
+    justify-content: start;
+}
+
+.export-buttons button {
+    margin-left: 3px;
+    margin-right: 3px;
 }
 
 image-cropper {
@@ -108,16 +131,17 @@ image-cropper {
 }
 
 /* form validation color */
-.ng-valid[required], .ng-valid.required  {
-  border-left: 5px solid #42A948;
+.ng-valid[required],
+.ng-valid.required {
+    border-left: 5px solid #42A948;
 }
 
-.ng-invalid:not(form)  {
-  border-left: 5px solid #a94442;
+.ng-invalid:not(form) {
+    border-left: 5px solid #a94442;
 }
 
-.ng-pristine:not(form)  {
-  border-left: 5px solid #ddd;
+.ng-pristine:not(form) {
+    border-left: 5px solid #ddd;
 }
 
 /* For devices larger than 400px */

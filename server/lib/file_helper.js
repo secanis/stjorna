@@ -1,6 +1,9 @@
 const path = require('path');
 const fs = require('fs');
 
+const exportExcel = require('./export/excel.js');
+const exportJson = require('./export/json.js');
+
 module.exports = {
     getFolderContent: (route, cb) => {
         // build a complete file tree of all things within a route, base route is /data/uploads/<username>
@@ -17,7 +20,7 @@ module.exports = {
                 }
                 cb(err, fileList);
             } else {
-                cb({ message: 'got an empty file list'}, fileList);
+                cb({ message: 'got an empty file list' }, fileList);
             }
         });
     },
@@ -59,7 +62,7 @@ module.exports = {
         // save config file by a model and call the cb
         module.exports.loadConfigFile((err, obj) => {
             let existConf = {};
-            if(!err && obj) {
+            if (!err && obj) {
                 existConf = JSON.parse(obj);
             }
             newConf.allow_remote_access = JSON.parse(newConf.allow_remote_access);
@@ -97,5 +100,21 @@ module.exports = {
                 return false;
             }
         });
+    },
+    gernerateExport: (exportType, cb) => {
+        switch (exportType) {
+            case 'excel':
+                exportExcel.generateExport(cb);
+                break;
+            case 'json':
+                exportJson.generateExport(cb);
+                break;
+
+            default:
+                cb({
+                    message: 'not matching export type'
+                }, null);
+                break;
+        }
     }
 };
