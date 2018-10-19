@@ -8,23 +8,23 @@ module.exports = {
     generateExport: (cb) => {
         let dataSet = dbHelper.getAllDataSets();
 
-        if (dataSet) {
+        if (dataSet && dataSet.categories.length > 0 && dataSet.products.length > 0) {
             // build excel file
             let wb = new xl.Workbook({
                 dateFormat: 'dd.mm.yyyy hh:mm:ss',
                 author: 'Stjorna by secanis.ch'
             });
 
-            let ws_categories = wb.addWorksheet('categories');
-            let ws_products = wb.addWorksheet('products');
-            let ws_users = wb.addWorksheet('users');
+            let wsCategories = wb.addWorksheet('categories');
+            let wsProducts = wb.addWorksheet('products');
+            let wsUsers = wb.addWorksheet('users');
             try {
                 // fill categories into ws
                 // get all keys
                 let categoryKeys = Object.keys(dataSet.categories[0]);
                 // iterate over the keys and print the title line
                 categoryKeys.forEach((title, i) => {
-                    ws_categories.cell(1, i + 1).string(title);
+                    wsCategories.cell(1, i + 1).string(title);
                 });
                 // iterate over all data items
                 dataSet.categories.forEach((c, i) => {
@@ -32,9 +32,9 @@ module.exports = {
                     categoryKeys.forEach((title, j) => {
                         // check if we have some data, if not, set it to an empty string
                         if (c[title]) {
-                            ws_categories.cell(i + 2, j + 1).string(c[title].toString());
+                            wsCategories.cell(i + 2, j + 1).string(c[title].toString());
                         } else {
-                            ws_categories.cell(i + 2, j + 1).string('');
+                            wsCategories.cell(i + 2, j + 1).string('');
                         }
                     });
                 });
@@ -42,14 +42,14 @@ module.exports = {
                 // fill products into ws
                 let productKeys = Object.keys(dataSet.products[0]);
                 productKeys.forEach((title, i) => {
-                    ws_products.cell(1, i + 1).string(title);
+                    wsProducts.cell(1, i + 1).string(title);
                 });
-                dataSet.products.forEach((c, i) => {
+                dataSet.products.forEach((p, i) => {
                     productKeys.forEach((title, j) => {
-                        if (c[title]) {
-                            ws_products.cell(i + 2, j + 1).string(c[title].toString());
+                        if (p[title]) {
+                            wsProducts.cell(i + 2, j + 1).string(p[title].toString());
                         } else {
-                            ws_products.cell(i + 2, j + 1).string('');
+                            wsProducts.cell(i + 2, j + 1).string('');
                         }
                     });
                 });
@@ -57,31 +57,33 @@ module.exports = {
                 // fill users into ws
                 let userKeys = Object.keys(dataSet.users[0]);
                 userKeys.forEach((title, i) => {
-                    ws_users.cell(1, i + 1).string(title);
+                    wsUsers.cell(1, i + 1).string(title);
                 });
-                dataSet.users.forEach((c, i) => {
+                dataSet.users.forEach((u, i) => {
                     userKeys.forEach((title, j) => {
-                        if (c[title]) {
-                            ws_users.cell(i + 2, j + 1).string(c[title].toString());
+                        if (u[title]) {
+                            wsUsers.cell(i + 2, j + 1).string(u[title].toString());
                         } else {
-                            ws_users.cell(i + 2, j + 1).string('');
+                            wsUsers.cell(i + 2, j + 1).string('');
                         }
                     });
                 });
-            } catch (e) {
-                cb(e, null);
-            } finally {
-                wb.writeToBuffer().then(buffer => {
+
+                // write data to buffer and call cb
+                wb.writeToBuffer().then((buffer) => {
                     cb(null, {
                         contentType: 'application/vnd.ms-excel',
                         file: buffer,
                         fileSuffix: 'xlsx'
                     });
                 });
+            } catch (e) {
+                cb(e, null);
             }
         } else {
             cb({
-                message: 'got an empty data set'
+                message: 'got an empty data set',
+                status: 'error'
             }, null);
         }
     }

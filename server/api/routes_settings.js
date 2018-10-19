@@ -68,12 +68,18 @@ module.exports = (router, log) => {
         .get((req, res) => {
             if (req.params.filetype) {
                 fileHelper.gernerateExport(req.params.filetype, (err, fileObject) => {
-                    if (!err) {
-                        res.setHeader('Content-disposition', `attachment; filename= stjorna_export_${new Date().getTime()}.${fileObject.fileSuffix}`);
+                    // set headers for correct response to client
+                    if (fileObject) {
+                        // just set the headers if we have some file info
+                        res.setHeader('Content-disposition', `attachment; filename=stjorna_export_${new Date().getTime()}.${fileObject.fileSuffix}`);
                         res.setHeader('Content-type', fileObject.contentType);
+                    }
+                    res.setHeader('Access-Control-Expose-Headers', 'content-disposition');
+                    // return the correct response to the client, stringify because of blob
+                    if (!err) {
                         res.send(fileObject.file);
                     } else {
-                        res.status(400).send({ 'message': `error while creating file: ${err.message}`, 'status': 'error' });
+                        res.status(400).send(JSON.stringify({ 'message': `error while creating file: ${err.message}`, 'status': 'error' }));
                     }
                 });
             } else {

@@ -12,7 +12,8 @@ module.exports = {
             });
         } else {
             cb({
-                message: 'got an empty data set'
+                message: 'got an empty data set',
+                status: 'error'
             }, null);
         }
     }

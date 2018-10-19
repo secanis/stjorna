@@ -54,16 +54,18 @@ export class SettingsComponent implements OnInit {
     }
 
     private downloadFile(result) {
-        const matches = /filename=([^;]+)/ig.exec(result.headers.get('Content-disposition') || '');
-        const filename = (matches[1] || 'untitled').trim();
-        const data = window.URL.createObjectURL(result.body);
-        var link = document.createElement('a');
-        link.href = data;
-        link.download = filename;
-        link.click();
-        setTimeout(() => {
-            // For Firefox it is necessary to delay revoking the ObjectURL
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        if (result && result.headers) {
+            const matches = /filename=([^;]+)/ig.exec(result.headers.get('content-disposition') || '');
+            const filename = (matches[1] || 'untitled').trim();
+            const data = window.URL.createObjectURL(result.body);
+            var link = document.createElement('a');
+            link.href = data;
+            link.download = filename;
+            link.click();
+            setTimeout(() => {
+                // For Firefox it is necessary to delay revoking the ObjectURL
+                window.URL.revokeObjectURL(data);
+            }, 100);
+        }
     }
 }

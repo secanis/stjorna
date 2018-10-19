@@ -24,7 +24,17 @@ export class HttpErrorHandler {
             } else if (error.status === 403) {
                 this.loginStatusHandler.setLoginStatus(false);
             } else {
-                this.toastr.error(error.error.message, `${serviceName}:${operation}`);
+                if (error.error instanceof Blob){
+                    // render error log from blob
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        this.toastr.error(JSON.parse(reader.result.toString()).message, `${serviceName}:${operation}`);
+                    }
+                    reader.readAsText(error.error);
+                } else {
+                    // handle normal errors of JSON requests
+                    this.toastr.error(error.error.message, `${serviceName}:${operation}`);
+                }
                 return of(result);
             }
         };
