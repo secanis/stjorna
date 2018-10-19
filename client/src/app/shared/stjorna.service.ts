@@ -1,9 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { ToastrService } from 'ngx-toastr';
-import { Observable, throwError, BehaviorSubject, of } from 'rxjs';
-import { map, filter, catchError, mergeMap } from 'rxjs/operators';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { catchError } from 'rxjs/operators';
 
 import { HttpErrorHandler, HandleError } from './error-handler.service';
 import { LoginStatusHandler } from './login-handler.service';
@@ -20,8 +17,6 @@ export class StjornaService {
 
     constructor(
         private http: HttpClient,
-        private router: Router,
-        private toastr: ToastrService,
         private httpErrorHandler: HttpErrorHandler,
         private loginStatusHandler: LoginStatusHandler
     ) {
@@ -171,6 +166,12 @@ export class StjornaService {
 
     public getHost(): string {
         return this.host;
+    }
+
+    public downloadExport(fileType: string) {
+        return this.http
+            .get(`${this.host}/api/v1/export/${fileType}`, { responseType: 'blob', observe: 'response', headers: this.getHeaders(this.token).headers })
+            .pipe(catchError(this.handleError<any>(`download export ${fileType}`)));
     }
 
     private getHeaders(token: string) {

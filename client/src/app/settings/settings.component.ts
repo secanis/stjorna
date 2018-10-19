@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { ToastrService } from 'ngx-toastr';
 
 import { StjornaConfigModel } from '../models/config.model';
 import { StjornaService } from '../shared/stjorna.service';
+import { BrowserAnimationBuilder } from '@angular/platform-browser/animations/src/animation_builder';
 
 @Component({
     selector: 'stjorna-settings',
@@ -13,7 +15,7 @@ export class SettingsComponent implements OnInit {
     public config: StjornaConfigModel = new StjornaConfigModel();
     public configEnv: Array<any> = [];
 
-    constructor(private stjornaService: StjornaService, private toastr: ToastrService) { }
+    constructor(private stjornaService: StjornaService, private toastr: ToastrService, private sanitizer: DomSanitizer) { }
 
     ngOnInit() {
         this.loadSettings();
@@ -25,6 +27,10 @@ export class SettingsComponent implements OnInit {
 
     public buildExampleUrl(): string {
         return `${location.origin}/api/v1/products?apikey=<%APIKEY%>&userid=<%USERID%>`;
+    }
+
+    public triggerExport(fileType: string) {
+        this.stjornaService.downloadExport(fileType).subscribe(result => this.downloadFile(result));
     }
 
     private loadSettings() {
@@ -44,6 +50,22 @@ export class SettingsComponent implements OnInit {
             this.toastr.success('Successfully saved!');
         } else {
             this.toastr.error(result.message, 'Couldn\'t save successfully...');
+        }
+    }
+
+    private downloadFile(result) {
+        if (result && result.headers) {
+            const matches = /filename=([^;]+)/ig.exec(result.headers.get('content-disposition') || '');
+            const filename = (matches[1] || 'untitled').trim();
+            const data = window.URL.createObjectURL(result.body);
+            var link = document.createElement('a');
+            link.href = data;
+            link.download = filename;
+            link.click();
+            setTimeout(() => {
+                // For Firefox it is necessary to delay revoking the ObjectURL
+                window.URL.revokeObjectURL(data);
+            }, 100);
         }
     }
 }

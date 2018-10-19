@@ -27,5 +27,12 @@ module.exports = {
     },
     generateId: () => {
         return uniqid();
+    },
+    getAllDataSets: () => {
+        return {
+            categories: module.exports.db.get('categories').value(),
+            products: module.exports.db.get('products').value(),
+            users: module.exports.db.get('users').value()
+        };
     }
 };

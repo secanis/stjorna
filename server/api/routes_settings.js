@@ -25,7 +25,7 @@ module.exports = (router, log) => {
                     res.send(JSON.parse(config));
                 } else {
                     log.err(`couldn't get configuration`);
-                    res.status(400).send({ "message": 'configuration error', "status": "error" });
+                    res.status(400).send({ 'message': 'configuration error', 'status': 'error' });
                 }
             });
         })
@@ -44,12 +44,47 @@ module.exports = (router, log) => {
             fileHelper.saveConfigFile(req.body, (err, config) => {
                 if (err) {
                     log.err(`couldn't save configuration`);
-                    res.status(400).send({ "message": `save configuration error: ${err.message}`, "status": "error" });
+                    res.status(400).send({ 'message': `save configuration error: ${err.message}`, 'status': 'error' });
                 } else {
                     log.inf(`configuration saved`);
-                    res.status(200).send({ "message": 'configuration successfully saved', "status": "ok" });
+                    res.status(200).send({ 'message': 'configuration successfully saved', 'status': 'ok' });
                 }
             });
+        });
+
+    router.route('/v1/export/:filetype')
+        /**
+         * @api {get} /api/v1/export/:filetype Export Data
+         * @apiPrivate
+         * @apiName ExportData
+         * @apiGroup Settings
+         * @apiPermission loggedin
+         * @apiVersion 1.0.0
+         * 
+         * @apiParam {String} filetype Filetype of your export (json | excel)
+         * 
+         * @apiSuccess {string} file Returns the export as file download
+         */
+        .get((req, res) => {
+            if (req.params.filetype) {
+                fileHelper.gernerateExport(req.params.filetype, (err, fileObject) => {
+                    // set headers for correct response to client
+                    if (fileObject) {
+                        // just set the headers if we have some file info
+                        res.setHeader('Content-disposition', `attachment; filename=stjorna_export_${new Date().getTime()}.${fileObject.fileSuffix}`);
+                        res.setHeader('Content-type', fileObject.contentType);
+                    }
+                    res.setHeader('Access-Control-Expose-Headers', 'content-disposition');
+                    // return the correct response to the client, stringify because of blob
+                    if (!err) {
+                        res.send(fileObject.file);
+                    } else {
+                        res.status(400).send(JSON.stringify({ 'message': `error while creating file: ${err.message}`, 'status': 'error' }));
+                    }
+                });
+            } else {
+                res.status(400).send({ 'message': 'please give a correct filetype', 'status': 'error' });
+            }
         });
 
     router.route('/v1/setup')
@@ -66,11 +101,11 @@ module.exports = (router, log) => {
          */
         .get((req, res) => {
             res.send({
-                "message": "installation status stjorna",
-                "allow_remote_access": process.env.STJORNACONFIG_ALLOW_REMOTE_ACCESS == true,
-                "image_dimension": process.env.STJORNACONFIG_IMAGE_DIMENSION - 0,
-                "image_quality": process.env.STJORNACONFIG_IMAGE_QUALITY - 0,
-                "installed": process.env.STJORNACONFIG_INSTALLED == true
+                'message': 'installation status stjorna',
+                'allow_remote_access': process.env.STJORNACONFIG_ALLOW_REMOTE_ACCESS == true,
+                'image_dimension': process.env.STJORNACONFIG_IMAGE_DIMENSION - 0,
+                'image_quality': process.env.STJORNACONFIG_IMAGE_QUALITY - 0,
+                'installed': process.env.STJORNACONFIG_INSTALLED == true
             });
         })
         /**
@@ -89,13 +124,13 @@ module.exports = (router, log) => {
             if (!fileHelper.isConfigFileExisting()) {
 
                 let responseMessage = {
-                    "config_status": {
-                        "errors": [],
-                        "status": "ok"
+                    'config_status': {
+                        'errors': [],
+                        'status': 'ok'
                     },
-                    "user_status": {
-                        "errors": [],
-                        "status": "ok"
+                    'user_status': {
+                        'errors': [],
+                        'status': 'ok'
                     }
                 };
                 // generate security token
@@ -136,13 +171,13 @@ module.exports = (router, log) => {
 
                 // send response to frontend
                 if (responseMessage.config_status.errors.length > 0 || responseMessage.user_status.errors.length > 0) {
-                    res.status(400).send({ "message": responseMessage, "status": "error" });
+                    res.status(400).send({ 'message': responseMessage, 'status': 'error' });
                 } else {
-                    res.send({ "message": responseMessage, "status": "ok" });
+                    res.send({ 'message': responseMessage, 'status': 'ok' });
                 }
             } else {
                 // config file is existing, prevent possible overwriting
-                res.status(400).send({ "message": 'configuration successfully saved', "status": "ok" });
+                res.status(400).send({ 'message': 'configuration successfully saved', 'status': 'ok' });
             }
         });
 };
