@@ -1,10 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { DomSanitizer } from '@angular/platform-browser';
 import { ToastrService } from 'ngx-toastr';
 
 import { StjornaConfigModel } from '../models/config.model';
 import { StjornaService } from '../shared/stjorna.service';
-import { BrowserAnimationBuilder } from '@angular/platform-browser/animations/src/animation_builder';
 
 @Component({
     selector: 'stjorna-settings',
@@ -15,7 +13,7 @@ export class SettingsComponent implements OnInit {
     public config: StjornaConfigModel = new StjornaConfigModel();
     public configEnv: Array<any> = [];
 
-    constructor(private stjornaService: StjornaService, private toastr: ToastrService, private sanitizer: DomSanitizer) { }
+    constructor(private stjornaService: StjornaService, private toastr: ToastrService) { }
 
     ngOnInit() {
         this.loadSettings();
