@@ -28,7 +28,6 @@ module.exports = (router, log) => {
             } else {
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
                 res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,x-stjorna-apikey,X-Requested-With,content-type,content-disposition');
-                res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,x-stjorna-apikey,X-Requested-With,content-type,content-disposition');
             }
             next();
         }
