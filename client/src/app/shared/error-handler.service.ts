@@ -33,7 +33,19 @@ export class HttpErrorHandler {
                     reader.readAsText(error.error);
                 } else {
                     // handle normal errors of JSON requests
-                    this.toastr.error(error.error.message, `${serviceName}:${operation}`);
+                    let message = '';
+                    if (error.error) {
+                        message = error.error.message;
+                    } else {
+                        message = error.message;
+                    }
+                    try {
+                        this.toastr.error(message, `${serviceName}:${operation}`);
+                    } catch(e) {
+                        console.error(e);
+                        // mostly this case is because of a lost token
+                        // a logout/login helps
+                    }
                 }
                 return of(result);
             }

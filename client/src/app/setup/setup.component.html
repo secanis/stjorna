@@ -21,6 +21,16 @@
         </div>
         <div class="card">
             <div class="card-body">
+                <h5 class="card-title">User Language</h5>
+                <select class="form-control" name="userLanguage" [(ngModel)]="user.language" #userLanguage="ngModel" required>
+                    <option value="en">English</option>
+                    <option value="de">German</option>
+                </select>
+                <small class="form-text text-muted" for="userLanguage">Remote API access to use your data in third-pary applications.</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
                 <h5 class="card-title">Remote API</h5>
                 <select class="form-control" name="allowRemoteAccess" [(ngModel)]="config.allow_remote_access" #allowRemoteAccess="ngModel" required>
                     <option value="true">Active</option>

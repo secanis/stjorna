@@ -3,5 +3,6 @@ export interface StjornaUserModel {
     email: string,
     username: string,
     password: string,
-    token: string
+    token: string,
+    language: string
 }

@@ -6,6 +6,7 @@ import * as clipboard from 'clipboard';
 import { StjornaService } from '../shared/stjorna.service';
 import { StjornaUserModel } from '../models/user.model';
 import { LoginStatusHandler } from '../shared/login-handler.service';
+import { TranslateService } from '../shared/translate.service';
 
 @Component({
     selector: 'stjorna-profile',
@@ -21,6 +22,7 @@ export class ProfileComponent implements OnInit {
         private activatedRoute: ActivatedRoute,
         private toastr: ToastrService,
         private stjornaService: StjornaService,
+        private translateService: TranslateService,
         private loginStatusHandler: LoginStatusHandler
     ) { }
 
@@ -37,14 +39,17 @@ export class ProfileComponent implements OnInit {
 
     public saveProfile(profileForm) {
         if (profileForm.valid) {
-            if (profileForm.value.password && profileForm.value.email) {
+            if (profileForm.value.password && profileForm.value.email && profileForm.value.language) {
                 this.stjornaService.updateUser(profileForm.value).subscribe(result => this.saveDoneAction(result));
                 // reset user and prepare to save the date to localstorage
                 this.currentUser.password = null;
                 this.currentUser.passwordNew = null;
                 this.currentUser.passwordNewRepeat = null;
+                this.translateService.use(this.currentUser.language);
+            } else {
+                this.toastr.warning('Please type your password to save.', 'Validation Error');    
             }
-        } else if (!profileForm.value.password) {
+        } else if (profileForm.value.passwordNew && !profileForm.value.password) {
             this.toastr.warning('Please type your password to save.', 'Validation Error');
         } else {
             this.toastr.warning('Please check your input values.', 'Validation Error');

@@ -19,7 +19,8 @@ export class SetupComponent implements OnInit {
         username: '',
         password: '',
         email: '',
-        token: ''
+        token: '',
+        language: ''
     };
 
     constructor(

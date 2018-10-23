@@ -158,6 +158,7 @@ module.exports = (router, log) => {
                     password: hash,
                     email: req.body.user.email,
                     apikey: '',
+                    language: req.body.user.language,
                     created: new Date().getTime(),
                     updated: new Date().getTime()
                 };

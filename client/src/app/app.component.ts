@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 
 import { LoginStatusHandler } from './shared/login-handler.service';
-import { Router } from '@angular/router';
+import { TranslateService } from './shared/translate.service';
 
 import '../style/lux.min.css';
 import '../style/style.css';
@@ -17,12 +17,13 @@ export class AppComponent implements OnInit {
     public loggedIn: Boolean = false;
     public currentUser: StjornaUserModel;
 
-    constructor(private router: Router, private loginStatusHandler: LoginStatusHandler) { }
+    constructor(private loginStatusHandler: LoginStatusHandler, private translateService: TranslateService) { }
 
     ngOnInit() {
         this.loginStatusHandler.isLoggedIn().subscribe(result => {
             this.loggedIn = result;
             this.currentUser = this.loginStatusHandler.getCurrentUser();
+            this.translateService.use(this.currentUser.language);
         });
         this.loggedIn = this.loginStatusHandler.getLoginStatus();
     }

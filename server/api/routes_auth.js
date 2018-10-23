@@ -53,6 +53,7 @@ module.exports = (router, log) => {
                             "_id": user._id,
                             "username": req.body.username,
                             "email": user.email,
+                            "language": user.language,
                             "token": token
                         });
                     } else {

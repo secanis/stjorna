@@ -1,5 +1,6 @@
 var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
+var CopyWebpackPlugin = require('copy-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var helpers = require('./helpers');
 
@@ -35,7 +36,7 @@ module.exports = {
         loader: 'html-loader'
       },
       {
-        test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico)$/,
+        test: /\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot)$/,
         loader: 'file-loader?name=assets/[name].[hash].[ext]'
       },
       {
@@ -88,6 +89,10 @@ module.exports = {
     ),
     new HtmlWebpackPlugin({
       template: 'src/public/index.html'
-    })
+    }),
+    new CopyWebpackPlugin([
+      { from: 'src/public/assets/i18n/*.json', to: 'assets/i18n', flatten: true },
+      { from: 'src/public/assets/*.ico', to: 'assets', flatten: true }
+    ])
   ]
 };
