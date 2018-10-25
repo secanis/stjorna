@@ -1,8 +1,8 @@
 <form #productForm="ngForm" (ngSubmit)="saveProduct(productForm)">
     <div class="card card-margin">
         <div class="card-body">
-            <h3 *ngIf="!isEditForm">Create new Product</h3>
-            <h3 *ngIf="isEditForm">Edit Product</h3>
+            <h3 *ngIf="!isEditForm">{{'app.create.product.title' | translate}}</h3>
+            <h3 *ngIf="isEditForm">{{'app.edit.product.title' | translate}}</h3>
         </div>
     </div>
     <div class="card-deck">
@@ -11,11 +11,11 @@
                 <!-- hidden _id field  -->
                 <input class="form-control" type="hidden" name="_id" [(ngModel)]="product._id" #_id="ngModel">
                 <input class="form-control" type="text" name="name" [(ngModel)]="product.name" #name="ngModel" required>
-                <small class="form-text text-muted" for="name">Productname</small><br>
+                <small class="form-text text-muted" for="name">{{'app.table.title.name' | translate}}</small><br>
                 <input class="form-control" type="number" name="price" [(ngModel)]="product.price" #price="ngModel" required>
-                <small class="form-text text-muted" for="price">Price</small><br>
+                <small class="form-text text-muted" for="price">{{'app.table.title.price' | translate}}</small><br>
                 <input class="form-control" type="text" name="description" [(ngModel)]="product.description" #description="ngModel" required>
-                <small class="form-text text-muted" for="description">Description</small>
+                <small class="form-text text-muted" for="description">{{'app.table.title.description' | translate}}</small>
             </div>
         </div>
         <div class="card">
@@ -23,12 +23,12 @@
                 <select class="form-control" name="category" [(ngModel)]="product.category" #category="ngModel" required>
                     <option *ngFor="let category of categoryList" value="{{category._id}}">{{category.name}}</option>
                 </select>
-                <small class="form-text text-muted" for="category">Product Category</small><br>
+                <small class="form-text text-muted" for="category">{{'app.category' | translate}}</small><br>
                 <select class="form-control" name="active" [(ngModel)]="product.active" #active="ngModel" required>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
+                    <option value="true">{{'settings.api.active' | translate}}</option>
+                    <option value="false">{{'settings.api.inactive' | translate}}</option>
                 </select>
-                <small class="form-text text-muted" for="active">Product active</small>
+                <small class="form-text text-muted" for="active">{{'app.table.title.active' | translate}}</small>
             </div>
         </div>
     </div>
@@ -48,7 +48,7 @@
                         (imageLoaded)="imageLoaded()"
                         (loadImageFailed)="loadImageFailed()"
                     ></image-cropper>
-                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">Cut Image</button>
+                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">{{'app.button.cropimage' | translate}}</button>
                 </div>
                 <div *ngIf="product.image && croppedOk">
                     <input type="hidden" name="image" [(ngModel)]="product.image" #image="ngModel">
@@ -58,7 +58,7 @@
                     <input type="hidden" name="imageUrl" [(ngModel)]="product.imageUrl" #imageUrl="ngModel">
                     <img class="element-form-image" [src]="buildImageResourceUrl(product.imageUrl)">
                 </div>
-                <small class="form-text text-muted">Product Image</small>
+                <small class="form-text text-muted">{{'app.form.image' | translate}}</small>
                 <button *ngIf="product.imageUrl || (product.image && croppedOk)" class="btn btn-danger btn-remove-image" (click)="removeImage()">
                     <i class="fa fa-trash-o fa-1x"></i>
                 </button>
@@ -71,10 +71,10 @@
     </div>
     <div class="card card-margin">
         <div class="card-body">
-            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/products">Cancel</button>
-            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/products">Back</button>
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/products">{{'app.button.cancel' | translate}}</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/products">{{'app.button.back' | translate}}</button>
             <!-- <button class="btn btn-success pull-right" [disabled]="!productForm.dirty || !(product.image.length > 0)" type="submit">Save Product</button> -->
-            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">Save Product</button>
+            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">{{'app.button.save' | translate}}</button>
         </div>
     </div>
 </form> 
