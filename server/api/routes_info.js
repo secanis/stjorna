@@ -1,5 +1,8 @@
 const os = require('os');
 
+// configuration file
+const appInfo = require(`../package.json`);
+
 module.exports = (router, log) => {
     router.route('/v1/info/server')
         /**
@@ -30,7 +33,8 @@ module.exports = (router, log) => {
                     'mem_free': os.freemem(),
                     'cpu': `${os.cpus()[0].model}`,
                     // loadavg does not work on windows systems
-                    'loadavg': `${os.loadavg()}`
+                    'loadavg': `${os.loadavg()}`,
+                    'app_version': `${appInfo.name}:${appInfo.version}`
                 };
                 res.send(obj);
             } catch (err) {
