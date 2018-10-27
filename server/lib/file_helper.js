@@ -48,7 +48,7 @@ module.exports = {
         // delete a file by path and filename
         fs.unlink(`${path}/${filename}`, (err, result) => {
             if (!err) {
-                console.log(`[CRON] cleanup_uploads - deleted file: ${file.name}`);
+                console.log(`[CRON] cleanup_uploads - deleted file: ${filename.name}`);
             } else {
                 console.log(`[CRON] cleanup_uploads - delete file failed: ${err.message}`);
             }
