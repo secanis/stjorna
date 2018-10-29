@@ -1,7 +1,7 @@
 <main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
     <div class="card card-margin">
         <div class="card-body">
-            <h3 class="card-title">About STJ&Oacute;RNA</h3>
+            <h3 class="card-title">{{'about.title' | translate}}</h3>
             <p class="card-text">STJ&Oacute;RNA was created to have an easy product management with the possibility to access
                 the categories and products over an simple just readable REST API.<br>
                 STJ&Oacute;RNA means in the Islandic language something like manage or store something.<br>
@@ -9,13 +9,13 @@
             </p>
         </div>
         <div class="card-footer bg-transparent">
-            <a class="btn btn-primary" href="https://github.com/secanis/stjorna">Issues / Features</a>
-            <a class="btn btn-primary btn-list-margin-left" href="https://stjorna.secanis.ch">Documentation</a>
+            <a class="btn btn-primary" href="https://github.com/secanis/stjorna">{{'about.issues.title' | translate}}</a>
+            <a class="btn btn-primary btn-list-margin-left" href="https://stjorna.secanis.ch">{{'about.documentation.title' | translate}}</a>
         </div>
     </div>
     <div class="card card-margin">
         <div class="card-body">
-            <h3 class="card-title">Server Information</h3><br>
+            <h3 class="card-title">{{'about.server.info.title' | translate}}</h3><br>
             <table *ngIf="serverInfo" class="table table-striped">
                 <tr><td>Hostname</td><td>{{serverInfo.hostname}}</td></tr>
                 <tr><td>Api Port</td><td>{{serverInfo.api_port}}</td></tr>
@@ -31,7 +31,7 @@
     </div>
     <div class="card card-margin">
         <div class="card-body">
-            <h3 class="card-title">License</h3>
+            <h3 class="card-title">{{'about.license.title' | translate}}</h3>
             <div class="card-text">
                 <p>Copyright 2018 secanis.ch</p>
                 <p>
@@ -56,9 +56,9 @@
     </div>
     <div class="card card-margin">
         <div class="card-body">
-            <h3 class="card-title">Libraries / Modules</h3>
+            <h3 class="card-title">{{'about.libraries.title' | translate}}</h3>
             <div class="card-text">
-                <p>Thank to the following libraries it was possible to create this solution:</p>
+                <p>{{'about.libraries.thanks' | translate}}</p>
                 <ul>
                     <li><a href="https://angular.io">Angular</a></li>
                     <li><a href="https://github.com/typicode/lowdb">Lowdb - Database</a></li>
@@ -67,7 +67,7 @@
                     <li><a href="https://github.com/scttcper/ngx-toastr">ngx-toastr (tost messages)</a></li>
                     <li><a href="https://getbootstrap.com/">Bootstrap</a></li>
                     <li><a href="https://fontawesome.com/v4.7.0/">Font Awesome</a></li>
-                    <li>for more information, check the package.json file</li>
+                    <li>{{'about.libraries.thanks.more' | translate}}</li>
                 </ul>
             </div>
         </div>

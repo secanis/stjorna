@@ -2,10 +2,10 @@
     <table class="table table-striped">
         <thead>
             <tr>
-                <th style="width: 20%">Name</th>
-                <th style="width: 50%">Description</th>
-                <th style="width: 20%">Last Update</th>
-                <th style="width: 5%">Active</th>
+                <th style="width: 20%">{{'app.table.title.name' | translate}}</th>
+                <th style="width: 50%">{{'app.table.title.description' | translate}}</th>
+                <th style="width: 20%">{{'app.table.title.update' | translate}}</th>
+                <th style="width: 5%">{{'app.table.title.active' | translate}}</th>
                 <th style="width: 5%"></th>
             </tr>
         </thead>
@@ -21,7 +21,5 @@
             </td>
         </tr>
     </table>
-    <p *ngIf="categoryList.length === 0" class="text-center">
-        Unfortunately you can't see something at the moment. Just add products and categories on the left side.
-    </p>
+    <p *ngIf="categoryList.length === 0" class="text-center">{{'app.table.noelement' | translate}} </p>
 </section>

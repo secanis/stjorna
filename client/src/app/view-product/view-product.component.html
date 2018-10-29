@@ -3,10 +3,10 @@
     <stjorna-categoryform *ngIf="category && currentRoute.includes('category')" [category]="category" [isEditForm]="true" [productList]="productList"></stjorna-categoryform>
     <div class="card card-margin">
         <div class="card-body">
-            <h3 class="card-title">Danger Zone</h3>
-            <p class="card-text text-danger">Are you sure that you wanna delete this element?</p>
-            <button *ngIf="currentRoute.includes('product')" class="btn btn-danger" (click)="removeProduct(product)">Remove Product</button>
-            <button *ngIf="currentRoute.includes('category')" class="btn btn-danger" (click)="removeCategory(category)">Remove Category</button>
+            <h3 class="card-title">{{'app.remove.title' | translate}}</h3>
+            <p class="card-text text-danger">{{'app.remove.description' | translate}}</p>
+            <button *ngIf="currentRoute.includes('product')" class="btn btn-danger" (click)="removeProduct(product)">{{'app.button.remove' | translate}}</button>
+            <button *ngIf="currentRoute.includes('category')" class="btn btn-danger" (click)="removeCategory(category)">{{'app.button.remove' | translate}}</button>
         </div>
     </div>
 </main>

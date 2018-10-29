@@ -42,6 +42,7 @@ module.exports = (router, log) => {
                             password: hash.digest('hex'),
                             email: req.body.email,
                             apikey: '',
+                            language: req.body.language,
                             created: new Date().getTime(),
                             updated: new Date().getTime()
                         };
@@ -98,6 +99,7 @@ module.exports = (router, log) => {
                                 newItem.password = hashNew.digest('hex');
                             }
                             newItem.email = req.body.email;
+                            newItem.language = req.body.language;
                             newItem.updated = new Date().getTime();
 
                             dbHelper.db.get('users')
@@ -110,7 +112,8 @@ module.exports = (router, log) => {
                                         res.send({
                                             "_id": item._id,
                                             "username": item.username,
-                                            "email": item.email
+                                            "email": item.email,
+                                            "language": item.language
                                         });
                                     } else {
                                         log.err(`error occured: couldn't update user '${req.params.id}'`);
