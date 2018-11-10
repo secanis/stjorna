@@ -20,7 +20,7 @@ module.exports = (router) => {
         .get((req, res) => {
             let additionalPath = '';
             if (req.params.additionalPath) {
-                additionalPath = `/${req.params.additionalPath}`
+                additionalPath = `/${req.params.additionalPath}`;
             }
             // check if there are wanted "autentication" methods for binary data
             if ((req.query.userid || req.headers['x-stjorna-userid']) == req.params.userid) {

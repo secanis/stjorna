@@ -30,7 +30,7 @@ module.exports = {
         if (deleteOnMatch === null || deleteOnMatch === undefined) {
             deleteOnMatch = false;
         }
-        files.forEach(file => {
+        files.forEach((file) => {
             let match = false;
             // iterate over all documents and match the filename
             docs.forEach((doc) => {

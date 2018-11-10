@@ -9,7 +9,7 @@ module.exports = {
         // remove base64 identifier
         let data = base64Image.replace('data:image/jpeg;base64,', '');
         // write data into buffer
-        let buff = new Buffer.from(data, 'base64');
+        let buff = Buffer.from(data, 'base64');
         // generate new hash for imagename
         let hash = crypto.createHash('sha1').update(`${data}-${new Date().getTime()}`, 'utf8').digest('hex');
         let imagePath = `/data/uploads/${userid}${additionalPath}/${hash}.jpeg`;

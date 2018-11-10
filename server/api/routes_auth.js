@@ -6,6 +6,12 @@ const stjornaEnv = require('../lib/env_default.js');
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
+// general error handling when no api key is there
+let errorHandlingNoApiKey = (req, res) => {
+    logger.error(`login - E105: no token or userid & apikey provided`);
+    res.status(401).send({ message: 'E105: no token or userid & apikey provided.', status: 'error' });
+}
+
 module.exports = (router) => {
     // set controll allow origin header
     router.use((req, res, next) => {
@@ -155,10 +161,10 @@ module.exports = (router) => {
                             if (!user) {
                                 logger.error(`login - E107: invalid apikey credentials - ${userid}`);
                                 res.status(401).send({
-                                    "status": "failed",
-                                    "message": "E107: invalid apikey credentials",
-                                    "userid": userid,
-                                    "apikey": apikey
+                                    'status': 'failed',
+                                    'message': 'E107: invalid apikey credentials',
+                                    userid,
+                                    apikey
                                 });
                             } else {
                                 logger.error(`login - error occured: ${err.message}`);
@@ -193,8 +199,3 @@ module.exports = (router) => {
         }
     });
 };
-
-let errorHandlingNoApiKey = (req, res) => {
-    logger.error(`login - E105: no token or userid & apikey provided`);
-    res.status(401).send({ message: 'E105: no token or userid & apikey provided.', status: 'error' });
-}

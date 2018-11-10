@@ -208,5 +208,5 @@ module.exports = (router) => {
                 logger.warn('tried to regenerate api key with unvalid paremeters');
                 res.status(400).send({ 'message': 'not valid parameters, checkout the api documentation.', 'status': 'error' });
             }
-        })
+        });
 };

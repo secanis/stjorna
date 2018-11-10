@@ -85,8 +85,8 @@ module.exports = (router) => {
                     }
                 });
             } else {
-                logger.error(`export - error while creating file: ${err.message}`);
-                res.status(400).send({ 'message': 'please give a correct filetype', 'status': 'error' });
+                logger.error(`export - error while creating file, please give a correct filetype`);
+                res.status(400).send({ 'message': 'error while creating file, please give a correct filetype', 'status': 'error' });
             }
         });
 

@@ -6,12 +6,12 @@ const logger = require('../lib/logging_helper.js').logger;
 
 module.exports = () => {
     // run cleanup cronjob every x minutes
-    new CronJob(process.env.STJORNA_CRON_CLEANUP_INTERVAL, () => {
+    CronJob(process.env.STJORNA_CRON_CLEANUP_INTERVAL, () => {
         logger.info(`cronjob - cleanup_uploads is running`);
 
         fileHelper.getFolderContent(`${process.env.STJORNA_SERVER_STORAGE}/uploads`, (err, users) => {
             if (!err) {
-                users.forEach(user => {
+                users.forEach((user) => {
                     // product cleanup
                     let productsPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/products`;
                     fileHelper.getFolderContent(productsPath, (err, files) => {

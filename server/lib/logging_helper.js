@@ -8,7 +8,7 @@ const stjornaLogFormat = winston.format.combine(
     }),
     winston.format.label({ label: 'stjorna' }),
     winston.format.timestamp(),
-    winston.format.printf(info => {
+    winston.format.printf((info) => {
         const padding = info.level.length <= 7 ? 7 : 17; 
         // detect component, if not write nothing
         let component = info.message.replace(/\s\-\s.*$/g, '');
@@ -29,7 +29,7 @@ const stjornaRequestLogFormat = winston.format.combine(
     }),
     winston.format.label({ label: 'stjorna-req' }),
     winston.format.timestamp(),
-    winston.format.printf(req => {
+    winston.format.printf((req) => {
         return `${req.timestamp} [${req.label}] ${req.message}`;
     })
 );

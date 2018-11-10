@@ -216,5 +216,5 @@ module.exports = (router) => {
                 logger.error(`category - error occured: couldn't load your products by category '${req.params.id}'`);
                 res.status(400).send({ 'message': `Couldn't load your products by category '${req.params.id}'`, 'status': 'error' });
             }
-        })
+        });
 };
