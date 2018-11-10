@@ -2,10 +2,12 @@ const CronJob = require('cron').CronJob;
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
-module.exports = (log) => {
+const logger = require('../lib/logging_helper.js').logger;
+
+module.exports = () => {
     // run cleanup cronjob every x minutes
     new CronJob(process.env.STJORNA_CRON_CLEANUP_INTERVAL, () => {
-        log.inf(`[CRON] cleanup_uploads is running`);
+        logger.info(`cronjob - cleanup_uploads is running`);
 
         fileHelper.getFolderContent(`${process.env.STJORNA_SERVER_STORAGE}/uploads`, (err, users) => {
             if (!err) {
@@ -18,10 +20,10 @@ module.exports = (log) => {
                             if (products) {
                                 fileHelper.matchFileWithListOfObjects(productsPath, files, products, 'imageUrl', true);
                             } else {
-                                log.err(`[CRON] cleanup_uploads - load products failed: ${err.message}`);
+                                logger.error(`cronjob - cleanup_uploads - load products failed: ${err.message}`);
                             }
                         } else {
-                            log.err(`[CRON] cleanup_uploads - walk uploads failed: ${err.message}`);
+                            logger.error(`cronjob - cleanup_uploads - walk uploads failed: ${err.message}`);
                         }
                     });
 
@@ -33,10 +35,10 @@ module.exports = (log) => {
                             if (categories) {
                                 fileHelper.matchFileWithListOfObjects(categoriesPath, files, categories, 'imageUrl', true);
                             } else {
-                                log.err(`[CRON] cleanup_uploads - load products failed: ${err.message}`);
+                                logger.error(`cronjob - cleanup_uploads - load products failed: ${err.message}`);
                             }
                         } else {
-                            log.err(`[CRON] cleanup_uploads - walk uploads failed: ${err.message}`);
+                            logger.error(`cronjob - cleanup_uploads - walk uploads failed: ${err.message}`);
                         }
                     });
                 });

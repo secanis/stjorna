@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const Jimp = require("jimp");
 
+const logger = require('../lib/logging_helper.js').logger;
 const fileHelper = require('../lib/file_helper.js');
 
 module.exports = {
@@ -21,14 +22,14 @@ module.exports = {
                         .quality(config.image_quality)
                         .write(`${__dirname}/..${imagePath}`, (err) => {
                             if (err) {
-                                console.error(`error occured while writing image to filesystem: ${err.message}`);
+                                logger.error(`image - error occured while writing image to filesystem: ${err.message}`);
                             }
                         });
                 }).catch((err) => {
-                    console.error(`error occured while reading image buffer: ${err.message}`);
+                    logger.error(`image - error occured while reading image buffer: ${err.message}`);
                 });
             } else {
-                console.error(`error occured while loading config file: ${err.message}`);
+                logger.error(`image - error occured while loading config file: ${err.message}`);
             }
         });
         return imagePath;

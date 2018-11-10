@@ -1,10 +1,12 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
+const logger = require('../lib/logging_helper.js').logger;
+const stjornaEnv = require('../lib/env_default.js');
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
-module.exports = (router, log) => {
+module.exports = (router) => {
     // set controll allow origin header
     router.use((req, res, next) => {
         // answer to OPTIONS requests
@@ -19,8 +21,8 @@ module.exports = (router, log) => {
             res.writeHead(200, headers);
             res.send();
         } else {
-            // allow it on development at localhost
-            if (req.get('host').includes('localhost')) {
+            // allow more stuff in development mode
+            if (!stjornaEnv.isProduction()) {
                 res.setHeader('Access-Control-Allow-Origin', '*');
                 res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
                 res.setHeader('Access-Control-Allow-Headers', 'x-stjorna-access-token,x-stjorna-userid,X-Requested-With,content-type,content-disposition');
@@ -46,7 +48,7 @@ module.exports = (router, log) => {
                         var token = jwt.sign(user, stjornaConfig.password_secret, {
                             expiresIn: '12h'
                         });
-                        log.inf(`succesful login for ${req.body.username} - ${req.ip}`);
+                        logger.info(`login - succesful for ${req.body.username} - ${req.ip}`);
                         res.send({
                             "status": "successful",
                             "message": "have fun and enjoy life...",
@@ -58,7 +60,7 @@ module.exports = (router, log) => {
                         });
                     } else {
                         if (!user) {
-                            log.err(`E101: invalid login credential - ${req.body.username} - ${req.ip}`);
+                            logger.error(`login - E101: invalid login credential - ${req.body.username} - ${req.ip}`);
                             res.status(401).send({
                                 "status": "failed",
                                 "message": "E101: invalid login credentials",
@@ -66,12 +68,12 @@ module.exports = (router, log) => {
                                 "token": null
                             });
                         } else {
-                            log.err(`error occured: ${err.message}`);
+                            logger.error(`login - error occured: ${err.message}`);
                             res.status(400).send({ "message": err.message, "status": "error" });
                         }
                     }
                 } else {
-                    errorHandlingNoApiKey(req, res, log);
+                    errorHandlingNoApiKey(req, res);
                 }
             });
         });
@@ -85,7 +87,7 @@ module.exports = (router, log) => {
                         let stjornaConfig = JSON.parse(config);
                         jwt.verify(token, stjornaConfig.password_secret, (err, decoded) => {
                             if (err) {
-                                log.err(`E102: failed to authenticate token. your token is invalid - ${req.ip}`);
+                                logger.error(`login - E102: failed to authenticate token. your token is invalid - ${req.ip}`);
                                 res.status(401).send({
                                     message: 'E102: failed to authenticate token. your token is invalid.', status: 'error'
                                 });
@@ -97,12 +99,12 @@ module.exports = (router, log) => {
                             }
                         });
                     } else {
-                        log.err(`error occured: ${err.message}`);
+                        logger.error(`login - error occured: ${err.message}`);
                         res.status(403).send({ "message": 'E114: You are not authenticated, please login.', "status": "error" });
                     }
                 });
             } else {
-                errorHandlingNoApiKey(req, res, log);
+                errorHandlingNoApiKey(req, res);
             }
         });
 
@@ -112,16 +114,13 @@ module.exports = (router, log) => {
         let apikey = req.query.apikey || req.headers['x-stjorna-apikey'];
         let userid = req.query.userid || req.headers['x-stjorna-userid'];
 
-        // log request url in debug mode
-        log.inf(`${req.method}:${req.url}`);
-
         if (token && userid) {
             fileHelper.loadConfigFile((err, config) => {
                 if (!err) {
                     let stjornaConfig = JSON.parse(config);
                     jwt.verify(token, stjornaConfig.password_secret, (err, decoded) => {
                         if (err) {
-                            log.err(`E104: failed to authenticate token.`);
+                            logger.error(`login - E104: failed to authenticate token.`);
                             res.status(401).send({ message: 'E104: failed to authenticate token.', status: 'error' });
                         } else {
                             req.decoded = decoded;
@@ -129,7 +128,7 @@ module.exports = (router, log) => {
                         }
                     });
                 } else {
-                    log.err(`error occured: ${err.message}`);
+                    logger.error(`login - error occured: ${err.message}`);
                     res.status(401).send({ 'message': 'E113: error occured, please try again.', 'status': 'error' });
                 }
             });
@@ -140,7 +139,7 @@ module.exports = (router, log) => {
                     if (stjornaConfig.allow_remote_access) {
                         let user = dbHelper.db.get('users').find({ _id: userid, apikey: apikey }).value();
                         if (user) {
-                            log.inf(`apikey access for ${userid} - ${req.ip} - ${req.path}`);
+                            logger.info(`login - apikey access for ${userid} - ${req.ip} - ${req.path}`);
                             // ruleset for whitelisted paths (setup is configured in else part)
                             if (req.method === 'GET' && (
                                     req.path.includes('products') || 
@@ -149,12 +148,12 @@ module.exports = (router, log) => {
                             )) {
                                 next();
                             } else {
-                                log.err(`E106: not valid HTTP method or could not access route.`);
+                                logger.error(`login - E106: not valid HTTP method or could not access route.`);
                                 res.status(401).send({ message: 'E106: not valid HTTP method or could not access route.', status: 'error' });
                             }
                         } else {
                             if (!user) {
-                                log.err(`E107: invalid apikey credentials - ${userid}`);
+                                logger.error(`login - E107: invalid apikey credentials - ${userid}`);
                                 res.status(401).send({
                                     "status": "failed",
                                     "message": "E107: invalid apikey credentials",
@@ -162,16 +161,16 @@ module.exports = (router, log) => {
                                     "apikey": apikey
                                 });
                             } else {
-                                log.err(`error occured: ${err.message}`);
+                                logger.error(`login - error occured: ${err.message}`);
                                 res.status(400).send({ "message": err.message, "status": "error" });
                             }
                         }
                     } else {
-                        log.err(`E108: config "allow_remote_access" is "false"`);
+                        logger.error(`login - E108: config "allow_remote_access" is "false"`);
                         res.status(403).send({ "message": "E108: please contact the administrator, not allowed.", "status": "error" });
                     }
                 } else {
-                    log.err(`error occured: ${err.message}`);
+                    logger.error(`login - error occured: ${err.message}`);
                     res.status(400).send({ 'message': err, 'status': 'error' });
                 }
             });
@@ -189,13 +188,13 @@ module.exports = (router, log) => {
                     }
                 });
             } else {
-                errorHandlingNoApiKey(req, res, log);
+                errorHandlingNoApiKey(req, res);
             }
         }
     });
 };
 
-let errorHandlingNoApiKey = (req, res, log) => {
-    log.err(`E105: no token or userid & apikey provided`);
+let errorHandlingNoApiKey = (req, res) => {
+    logger.error(`login - E105: no token or userid & apikey provided`);
     res.status(401).send({ message: 'E105: no token or userid & apikey provided.', status: 'error' });
 }

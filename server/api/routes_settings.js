@@ -2,8 +2,9 @@ const crypto = require('crypto');
 
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
+const logger = require('../lib/logging_helper.js').logger;
 
-module.exports = (router, log) => {
+module.exports = (router) => {
     router.route('/v1/settings')
         /**
          * @api {get} /api/v1/settings Get Settings
@@ -21,10 +22,10 @@ module.exports = (router, log) => {
         .get((req, res) => {
             fileHelper.loadConfigFile((err, config) => {
                 if (!err && config) {
-                    log.inf(`get configuration file`);
+                    logger.log('debug', `get configuration file`);
                     res.send(JSON.parse(config));
                 } else {
-                    log.err(`couldn't get configuration`);
+                    logger.error(`couldn't get configuration`);
                     res.status(400).send({ 'message': 'configuration error', 'status': 'error' });
                 }
             });
@@ -43,10 +44,10 @@ module.exports = (router, log) => {
         .post((req, res) => {
             fileHelper.saveConfigFile(req.body, (err, config) => {
                 if (err) {
-                    log.err(`couldn't save configuration`);
+                    logger.error(`couldn't save configuration`);
                     res.status(400).send({ 'message': `save configuration error: ${err.message}`, 'status': 'error' });
                 } else {
-                    log.inf(`configuration saved`);
+                    logger.log('debug', `configuration saved`);
                     res.status(200).send({ 'message': 'configuration successfully saved', 'status': 'ok' });
                 }
             });
@@ -79,10 +80,12 @@ module.exports = (router, log) => {
                     if (!err) {
                         res.send(fileObject.file);
                     } else {
+                        logger.error(`export - error while creating file: ${err.message}`);
                         res.status(400).send(JSON.stringify({ 'message': `error while creating file: ${err.message}`, 'status': 'error' }));
                     }
                 });
             } else {
+                logger.error(`export - error while creating file: ${err.message}`);
                 res.status(400).send({ 'message': 'please give a correct filetype', 'status': 'error' });
             }
         });
@@ -122,7 +125,6 @@ module.exports = (router, log) => {
         .post((req, res) => {
             // database files are created it self by nedb
             if (!fileHelper.isConfigFileExisting()) {
-
                 let responseMessage = {
                     'config_status': {
                         'errors': [],
@@ -141,10 +143,10 @@ module.exports = (router, log) => {
                 // create initial config file
                 fileHelper.saveConfigFile(req.body.config, (err, config) => {
                     if (err) {
-                        log.err(`error occured: ${err.message}`);
+                        logger.error(`error occured: ${err.message}`);
                         responseMessage.config_status.errors.push(err.message);
                     } else {
-                        log.inf(`configuration saved`);
+                        logger.log('debug', `configuration saved`);
                     }
                 });
                 // add user
@@ -167,18 +169,21 @@ module.exports = (router, log) => {
                     .push(newItem)
                     .write()
                     .then(() => {
-                        log.inf(`user '${req.body.user.username}' added`);
+                        logger.log('debug', `user '${req.body.user.username}' added`);
                     });
 
                 // send response to frontend
                 if (responseMessage.config_status.errors.length > 0 || responseMessage.user_status.errors.length > 0) {
+                    logger.error(`configuration - ${responseMessage}`);
                     res.status(400).send({ 'message': responseMessage, 'status': 'error' });
                 } else {
+                    logger.info('configuration sucessfully written');
                     res.send({ 'message': responseMessage, 'status': 'ok' });
                 }
             } else {
                 // config file is existing, prevent possible overwriting
-                res.status(400).send({ 'message': 'configuration successfully saved', 'status': 'ok' });
+                logger.warn('configuration - file is already existing, do not proceed');
+                res.status(400).send({ 'message': 'configuration is already existing', 'status': 'warn' });
             }
         });
 };
