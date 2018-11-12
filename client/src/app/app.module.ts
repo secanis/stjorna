@@ -1,4 +1,4 @@
-import { NgModule, CUSTOM_ELEMENTS_SCHEMA, LOCALE_ID } from '@angular/core';
+import { NgModule, CUSTOM_ELEMENTS_SCHEMA, LOCALE_ID, APP_INITIALIZER } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
@@ -31,6 +31,8 @@ import { CategoryFormComponent } from './_category-form/category-form.component'
 import { routing } from './app.routing';
 import { AuthGuard } from './shared/authGuard';
 import { StjornaService } from './shared/stjorna.service';
+import { TranslateService } from './shared/translate.service';
+import { TranslatePipe } from './shared/translate.pipe';
 import { HttpErrorHandler } from './shared/error-handler.service';
 import { LoginStatusHandler } from './shared/login-handler.service';
 import { MySearchPipe } from './shared/mySearch.pipe';
@@ -73,18 +75,32 @@ registerLocaleData(lcoaleDECH);
         CategoryListComponent,
         CategoryFormComponent,
         MySearchPipe,
+        TranslatePipe
     ],
     bootstrap: [AppComponent],
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     providers: [
         StjornaService,
+        TranslateService,
         HttpErrorHandler,
         LoginStatusHandler,
-        AuthGuard,
-        {provide: LOCALE_ID, useValue: 'de-CH'}
+        AuthGuard, {
+            provide: LOCALE_ID,
+            useValue: 'de-CH'
+        }, {
+            provide: APP_INITIALIZER,
+            useFactory: setupTranslateFactory,
+            deps: [TranslateService],
+            multi: true
+        }
     ]
 })
 
 export class AppModule {
     constructor() {}
+}
+
+export function setupTranslateFactory(
+    service: TranslateService): Function {
+    return () => service.use('en');
 }

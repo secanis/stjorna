@@ -7,7 +7,7 @@ import { LoginStatusHandler } from '../shared/login-handler.service';
     selector: 'stjorna-logout',
     template: `
         <li class="nav-link stjorna-logout-button" (click)="logoutUser()">
-            <i class="stjorna-logout-button fa fa-sign-out"></i> Logout
+            <i class="stjorna-logout-button fa fa-sign-out"></i> {{'app.navbar.logout' | translate}}
         </li>
     `,
     styles: [`

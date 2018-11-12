@@ -1,13 +1,13 @@
 <main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
     <div class="card card-margin">
         <div class="card-body">
-            <h3 class="card-title">Profile</h3>
+            <h3 class="card-title">{{'profile.title' | translate}}</h3>
         </div>
     </div>
     <div class="card-columns">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Basic Profile Information</h5>
+                <h5 class="card-title">{{'profile.basic.title' | translate}}</h5>
                 <form #passForm="ngForm" (ngSubmit)="saveProfile(passForm)">
                     <div class="input-group mb-3">
                         <input id="userid" class="form-control" type="text" name="id" #id for="active" [(ngModel)]="currentUser._id" required readonly>
@@ -17,32 +17,39 @@
                             </button>
                         </div>
                     </div>
-                    <small class="form-text text-muted" type="text">User ID</small><br>
+                    <small class="form-text text-muted" type="text">{{'profile.basic.id' | translate}}</small><br>
                     <input class="form-control" type="text" name="username" #username [(ngModel)]="currentUser.username" required readonly>
-                    <small class="form-text text-muted" for="active">Username</small>
+                    <small class="form-text text-muted" for="active">{{'profile.basic.username' | translate}}</small><br>
                     <input class="form-control" type="email" name="email" #email [(ngModel)]="currentUser.email" required>
-                    <small class="form-text text-muted" for="active">Email</small>
+                    <small class="form-text text-muted" for="active">{{'profile.basic.email' | translate}}</small><br>
+                    <select class="form-control" name="language" [(ngModel)]="currentUser.language" #language="ngModel" required>
+                        <option value="en">{{'profile.basic.lang.en' | translate}}</option>
+                        <option value="de">{{'profile.basic.lang.de' | translate}}</option>
+                    </select>
+                    <small class="form-text text-muted" for="language">
+                        {{'profile.language.description' | translate}}
+                    </small>
                     <hr>
                     <input class="form-control" type="password" minlength="6" name="password" [(ngModel)]="currentUser.password" required #pw="ngModel">
-                    <small class="form-text text-muted" for="active">Actual Password</small><br>
+                    <small class="form-text" [ngClass]="{'text-danger': ((pw.invalid || pw.pristine) && pw.dirty), 'text-muted': !pw.dirty}" for="active">{{'profile.basic.password.actual' | translate}}</small><br>
                     <input class="form-control" type="password" minlength="6" name="passwordNew" [(ngModel)]="currentUser.passwordNew" #pwNew="ngModel">
-                    <small class="form-text text-muted" for="active">New Password</small><br>
+                    <small class="form-text text-muted" for="active">{{'profile.basic.password.new' | translate}}</small><br>
                     <input class="form-control" type="password" minlength="6" name="passwordNewRepeat" [(ngModel)]="currentUser.passwordNewRepeat" #pwNewRepeat="ngModel">
-                    <small class="form-text text-muted" for="active">Repeat New Password</small><br>
+                    <small class="form-text text-muted" for="active">{{'profile.basic.password.newRepeat' | translate}}</small><br>
                     <div *ngIf="((pwNew.invalid || pwNew.pristine) && pwNew.dirty) || 
                             ((pwNewRepeat.invalid || pwNewRepeat.pristine) && pwNewRepeat.dirty) || passwordNew !== passwordNewRepeat" class="alert alert-danger">
                         <small>Every field is required. Please enter correct values. The new passwords has to be the same one.<br>
-                        The passwords should be in minimum 6 characters long. Please be aware to use secure passwords.</small>
+                        The passwords should be in minimum 6 characters long. Please be aware to use secure passwords.</small><br>
                     </div>
                     <div class="text-right">
-                        <button class="btn btn-success" [disabled]="!passForm.dirty" type="submit">Save Profile</button>
+                        <button class="btn btn-success" [disabled]="!passForm.dirty || passForm.invalid" type="submit">{{'app.button.save' | translate}}</button>
                     </div>
                 </form>
             </div>
         </div>
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">API Key</h5>
+                <h5 class="card-title">{{'profile.apikey.title' | translate}}</h5>
                 <div class="input-group mb-3">
                     <input id="apikey" class="form-control" type="text" [(ngModel)]="currentUserApiKey" readonly>
                     <div class="input-group-append">
@@ -51,9 +58,9 @@
                         </button>
                     </div>
                 </div>
-                <small class="form-text text-muted" for="active">API Key (for remote-read-access from other webservice or application)</small><br>
+                <small class="form-text text-muted" for="active">{{'profile.apikey.description' | translate}}</small><br>
                 <div class="text-right">
-                    <button class="btn btn-primary" (click)="generateApiKey()">Re-Generate API Key</button>
+                    <button class="btn btn-primary" (click)="generateApiKey()">{{'profile.apikey.button' | translate}}</button>
                 </div>
             </div>
         </div>

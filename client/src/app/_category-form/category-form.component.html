@@ -1,8 +1,8 @@
 <form #CategoryForm="ngForm" (ngSubmit)="saveNewCategory(CategoryForm)">
     <div class="card card-margin">
         <div class="card-body">
-            <h3 *ngIf="!isEditForm">Create new Category</h3>
-            <h3 *ngIf="isEditForm">Edit Category</h3>
+            <h3 *ngIf="!isEditForm">{{'app.create.category.title' | translate}}y</h3>
+            <h3 *ngIf="isEditForm">{{'app.edit.category.title' | translate}}</h3>
         </div>
     </div>
     <div class="card-deck card-margin">
@@ -10,14 +10,14 @@
             <div class="card-body">
                 <input class="form-control" type="hidden" name="_id" [(ngModel)]="category._id" #_id="ngModel">
                 <input class="form-control" type="text" name="name" [(ngModel)]="category.name" #name="ngModel" required>
-                <small class="form-text text-muted">Categoryname</small><br>
+                <small class="form-text text-muted">{{'app.table.title.name' | translate}}</small><br>
                 <input class="form-control" type="text" name="description" [(ngModel)]="category.description" #description="ngModel" required>
-                <small class="form-text text-muted">Description</small><br>
+                <small class="form-text text-muted">{{'app.table.title.category' | translate}}</small><br>
                 <select class="form-control" name="active" [(ngModel)]="category.active" #active="ngModel" required>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
+                    <option value="true">{{'settings.api.active' | translate}}</option>
+                    <option value="false">{{'settings.api.inactive' | translate}}</option>
                 </select>
-                <small class="form-text text-muted" for="active">Category active</small>
+                <small class="form-text text-muted" for="active">{{'app.table.title.active' | translate}}</small>
             </div>
         </div>
         <div class="card">
@@ -30,12 +30,13 @@
                         [maintainAspectRatio]="true"
                         [aspectRatio]="1/1"
                         [resizeToWidth]="350"
+                        [outputType]="'base64'"
                         format="jpeg"
                         (imageCroppedBase64)="imageCropped($event)"
                         (imageLoaded)="imageLoaded()"
                         (loadImageFailed)="loadImageFailed()"
                     ></image-cropper>
-                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">Cut Image</button>
+                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">{{'app.button.cropimage' | translate}}</button>
                 </div>
                 <div *ngIf="category.image && croppedOk">
                     <input type="hidden" name="image" [(ngModel)]="category.image" #image="ngModel">
@@ -45,7 +46,7 @@
                     <input type="hidden" name="imageUrl" [(ngModel)]="category.imageUrl" #imageUrl="ngModel">
                     <img class="element-form-image" [src]="buildImageResourceUrl(category.imageUrl)" alt="image not found...">
                 </div>
-                <small class="form-text text-muted">Category Image</small>
+                <small class="form-text text-muted">{{'app.form.image' | translate}}</small>
                 <button *ngIf="category.imageUrl || (category.image && croppedOk)" class="btn btn-danger btn-remove-image" (click)="removeImage()" alt="image not found...">
                     <i class="fa fa-trash-o fa-1x"></i>
                 </button>
@@ -55,7 +56,7 @@
     <div class="card-deck card-margin" *ngIf="isEditForm">
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">Product List</h5>
+                <h5 class="card-title">{{'app.products' | translate}}</h5>
                 <stjorna-productlist [productList]="productList" [categoryView]="true"></stjorna-productlist>
             </div>
         </div>
@@ -70,10 +71,10 @@
     </div>
     <div class="card card-margin">
         <div class="card-body">
-            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">Cancel</button>
-            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">Back</button>
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">{{'app.button.cancel' | translate}}</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">{{'app.button.back' | translate}}</button>
             <!-- <button class="btn btn-success pull-right" [disabled]="!CategoryForm.dirty" type="submit">Save Category</button> -->
-            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">Save Category</button>
+            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">{{'app.button.save' | translate}}</button>
         </div>
     </div>
 </form>

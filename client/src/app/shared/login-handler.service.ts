@@ -34,7 +34,8 @@ export class LoginStatusHandler {
                 email: user.email,
                 username: user.username,
                 password: '',
-                token: user.token || this.getCurrentUser().token || ''
+                token: user.token || this.getCurrentUser().token || '',
+                language: user.language
             };
             localStorage.setItem('currentUser', JSON.stringify(obj));
         }
@@ -49,7 +50,8 @@ export class LoginStatusHandler {
                 email: user.email,
                 username: user.username,
                 password: '',
-                token: user.token
+                token: user.token,
+                language: user.language
             };
         } else {
             return null;

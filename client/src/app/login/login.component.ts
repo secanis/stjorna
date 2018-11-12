@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 
 import { StjornaService } from '../shared/stjorna.service';
+
 import { LoginStatusHandler } from '../shared/login-handler.service';
 import { StjornaUserModel } from '../models/user.model';
 
@@ -18,7 +19,8 @@ export class LoginComponent implements OnInit {
         email: '',
         username: '',
         password: '',
-        token: ''
+        token: '',
+        language: ''
     };
 
     constructor(
@@ -48,7 +50,14 @@ export class LoginComponent implements OnInit {
 
     private loginDoneAction(result) {
         if (result.token) {
-            let currentUser = { _id: result._id, username: result.username, password: null, email: result.email, token: result.token };
+            let currentUser = {
+                _id: result._id,
+                username: result.username,
+                password: null,
+                email: result.email,
+                token: result.token,
+                language: result.language
+            };
             this.loginStatusHandler.setCurrentUser(currentUser);
             this.loginStatusHandler.setLoginStatus(true);
             this.router.navigateByUrl('/dashboard');

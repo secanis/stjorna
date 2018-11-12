@@ -22,36 +22,36 @@
                 <li class="nav-item">
                     <a class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('dashboard')}" routerLink="/dashboard">
                         <span data-feather="dashboard"></span>
-                        <i class="fa fa-home"></i> Dashboard
+                        <i class="fa fa-home"></i> {{'app.navbar.dashboard' | translate}}
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('settings')}" routerLink="/settings">
                         <span data-feather="settings"></span>
-                        <i class="fa fa-cogs"></i> Settings
+                        <i class="fa fa-cogs"></i> {{'app.navbar.settings' | translate}}
                     </a>
                 </li>
                 <li class="nav-item">
                     <a *ngIf="currentUser" class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('profile')}" routerLink="/profile/{{currentUser._id}}">
                         <span data-feather="profile"></span>
-                        <i class="fa fa-user"></i> Profile <small>({{currentUser.username}})</small>
+                        <i class="fa fa-user"></i> {{'app.navbar.profile' | translate}} <small>({{currentUser.username}})</small>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('about')}" routerLink="/about">
                         <span data-feather="about"></span>
-                        <i class="fa fa-info-circle"></i> About
+                        <i class="fa fa-info-circle"></i> {{'app.navbar.about' | translate}}
                     </a>
                 </li>
             </ul>
             <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                <span>Other Options</span>
+                <span>{{'app.navbar.options.title' | translate}}</span>
             </h6>
             <ul class="nav flex-column mb-2">
                 <li class="nav-item">
                     <a class="nav-link" routerLink="/new/product">
                         <span data-feather="file-text"></span>
-                        <i class="fa fa-plus"></i> Add Product
+                        <i class="fa fa-plus"></i> {{'app.navbar.addproduct' | translate}}
                     </a>
                 </li>
                 <li class="nav-item">
@@ -63,12 +63,12 @@
                 <li class="nav-item">
                     <a class="nav-link" routerLink="/new/category">
                         <span data-feather="file-text"></span>
-                        <i class="fa fa-plus"></i> Add Category
+                        <i class="fa fa-plus"></i> {{'app.navbar.addcategory' | translate}}
                     </a>
                 </li>
             </ul>
             <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
-                <span>Logout</span>
+                <span>{{'app.navbar.logout' | translate}}</span>
             </h6>
             <ul class="nav flex-column mb-2">
                 <stjorna-logout></stjorna-logout>
