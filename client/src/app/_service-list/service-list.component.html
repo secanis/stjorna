@@ -1,0 +1,31 @@
+<section class="table-responsive">
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th style="width: 20%">Name</th>
+                <th style="width: 10%" *ngIf="!categoryView">Category</th>
+                <th style="width: 30%">Description</th>
+                <th style="width: 20%">Last Update</th>
+                <th style="width: 5%">Active</th>
+                <th style="width: 10%" class="text-right">Price</th>
+                <th style="width: 5%"></th>
+            </tr>
+        </thead>
+        <tr *ngFor="let service of serviceList">
+            <td>{{service.name}}</td>
+            <td *ngIf="!categoryView">{{getCategoryNameById(service.category)}}</td>
+            <td>{{service.description}}</td>
+            <td>{{service.updated | date: 'medium'}}</td>
+            <td><i [ngClass]="getStatusElementCss(service)"></i></td>
+            <td class="text-right">{{service.price | number: '1.2'}}</td>
+            <td class="text-right">
+                <a class="text-stjorna" routerLink="/service/view/{{service._id}}" routerLinkActive="active">
+                    <i class="edit-product fa fa-2x fa-cogs"></i>
+                </a>
+            </td>
+        </tr>
+    </table>
+    <p *ngIf="serviceList.length === 0" class="text-center">
+        Unfortunately you can't see something at the moment. Just add products and categories on the left side.
+    </p>
+</section>

@@ -31,6 +31,7 @@ require('./api/routes_auth')(router, log);
 require('./api/routes_user')(router, log);
 require('./api/routes_categories')(router, log);
 require('./api/routes_products')(router, log);
+require('./api/routes_services')(router, log);
 require('./api/routes_data')(router, log);
 require('./api/routes_info')(router, log);
 require('./api/routes_settings')(router, log);

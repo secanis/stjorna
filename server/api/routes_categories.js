@@ -210,4 +210,29 @@ module.exports = (router, log) => {
                 res.status(400).send({ 'message': `Couldn't load your products by category '${req.params.id}'`, 'status': 'error' });
             }
         })
+
+    router.route('/v1/categories/:id/services')
+    /**
+     * @api {get} /api/v1/categories/:id/services Get Services by Category
+     * @apiName GetServicesByCategory
+     * @apiGroup Category
+     * @apiPermission token/apikey
+     * @apiVersion 1.0.0
+     *
+     * @apiParam {String} id Category ID.
+     *
+     * @apiSuccess {Object[Service]} Service Returns a list of services.
+     */
+        .get((req, res) => {
+            let services = dbHelper.db.get('services')
+                .filter({ category: req.params.id, active: true })
+                .value();
+
+            if (services) {
+                res.send(services);
+            } else {
+                log.err(`error occured: couldn't load your services by category '${req.params.id}'`);
+                res.status(400).send({ 'message': `Couldn't load your services by category '${req.params.id}'`, 'status': 'error' });
+            }
+        })
 };

@@ -60,6 +60,14 @@
             </div>
         </div>
     </div>
+    <div class="card-deck card-margin" *ngIf="isEditForm">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Service List</h5>
+                <stjorna-servicelist [serviceList]="serviceList" [categoryView]="true"></stjorna-servicelist>
+            </div>
+        </div>
+    </div>
     <div class="card card-margin">
         <div class="card-body">
             <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">Cancel</button>

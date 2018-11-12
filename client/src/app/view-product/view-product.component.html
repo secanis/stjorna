@@ -1,6 +1,7 @@
 <main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
     <stjorna-productform *ngIf="product && currentRoute.includes('product')" [product]="product" [isEditForm]="true"></stjorna-productform>
-    <stjorna-categoryform *ngIf="category && currentRoute.includes('category')" [category]="category" [isEditForm]="true" [productList]="productList"></stjorna-categoryform>
+    <stjorna-serviceform *ngIf="service && currentRoute.includes('service')" [service]="service" [isEditForm]="true"></stjorna-serviceform>
+    <stjorna-categoryform *ngIf="category && currentRoute.includes('category')" [category]="category" [isEditForm]="true" [productList]="productList" [serviceList]="serviceList"></stjorna-categoryform>
     <div class="card card-margin">
         <div class="card-body">
             <h3 class="card-title">Danger Zone</h3>

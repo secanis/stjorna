@@ -17,10 +17,12 @@ module.exports = {
             module.exports.db.defaults({
                 categories: [],
                 products: [],
+                services: [],
                 users: []
             }).write().then(() => {
                 log.inf(`>> constellation.categories records  |  ${module.exports.db.get('categories').size().value()}`);
                 log.inf(`>> constellation.products records    |  ${module.exports.db.get('products').size().value()}`);
+                log.inf(`>> constellation.services records    |  ${module.exports.db.get('services').size().value()}`);
                 log.inf(`>> constellation.users records       |  ${module.exports.db.get('users').size().value()}`);
             });
         });
@@ -32,6 +34,7 @@ module.exports = {
         return {
             categories: module.exports.db.get('categories').value(),
             products: module.exports.db.get('products').value(),
+            services: module.exports.db.get('services').value(),
             users: module.exports.db.get('users').value()
         };
     }
