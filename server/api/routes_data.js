@@ -1,8 +1,9 @@
 const fs = require('fs');
 
+const logger = require('../lib/logging_helper.js').logger;
 const fileHelper = require('../lib/file_helper.js');
 
-module.exports = (router, log) => {
+module.exports = (router) => {
     router.route('/data/uploads/:userid/:additionalPath?')
         /**
          * @api {get} /api/data/uploads/:userid/:additionalPath? Get Image List
@@ -19,15 +20,16 @@ module.exports = (router, log) => {
         .get((req, res) => {
             let additionalPath = '';
             if (req.params.additionalPath) {
-                additionalPath = `/${req.params.additionalPath}`
+                additionalPath = `/${req.params.additionalPath}`;
             }
             // check if there are wanted "autentication" methods for binary data
             if ((req.query.userid || req.headers['x-stjorna-userid']) == req.params.userid) {
+                logger.log('debug', `data - try to serve path: ${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}`);
                 fileHelper.getFolderContent(`${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}`, (err, data) => {
                     if (!err) {
                         res.send(data);
                     } else {
-                        log.err(`error occured: ${err.message}`);
+                        logger.error(`data - error occured: ${err.message}`);
                         res.status(500).send({ 'message': err.message, 'status': 'error' });
                     }
                 });
@@ -60,7 +62,7 @@ module.exports = (router, log) => {
                 try {
                     res.sendFile(`${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}/${req.params.image}`);
                 } catch(err) {
-                    log.err(`error occured: ${err.message}`);
+                    logger.error(`data - error occured: ${err.message}`);
                     res.status(500).send({ 'message': err.message, 'status': 'error' });
                 }
             } else {

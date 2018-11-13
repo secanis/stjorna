@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 
+const logger = require('../lib/logging_helper.js').logger;
 const exportExcel = require('./export/excel.js');
 const exportJson = require('./export/json.js');
 
@@ -29,7 +30,7 @@ module.exports = {
         if (deleteOnMatch === null || deleteOnMatch === undefined) {
             deleteOnMatch = false;
         }
-        files.forEach(file => {
+        files.forEach((file) => {
             let match = false;
             // iterate over all documents and match the filename
             docs.forEach((doc) => {
@@ -48,9 +49,9 @@ module.exports = {
         // delete a file by path and filename
         fs.unlink(`${path}/${filename}`, (err, result) => {
             if (!err) {
-                console.log(`[CRON] cleanup_uploads - deleted file: ${filename.name}`);
+                logger.info(`cronjob - cleanup_uploads - deleted file: ${filename.name}`);
             } else {
-                console.log(`[CRON] cleanup_uploads - delete file failed: ${err.message}`);
+                logger.error(`cronjob - cleanup_uploads - delete file failed: ${err.message}`);
             }
         });
     },

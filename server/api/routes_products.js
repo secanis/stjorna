@@ -1,7 +1,8 @@
 const dbHelper = require('../lib/database_helper.js');
+const logger = require('../lib/logging_helper.js').logger;
 const prepareAndSaveImage = require('../lib/image_helper.js').prepareAndSaveImage;
 
-module.exports = (router, log) => {
+module.exports = (router) => {
     router.route('/v1/products')
         /**
          * @api {get} /api/v1/products Get Product List
@@ -20,10 +21,11 @@ module.exports = (router, log) => {
                 products = dbHelper.db.get('products').value();
             }
 
+            logger.log('debug', `product - load product list`);
             if (products) {
                 res.send(products);
             } else {
-                log.err(`error occured: couldn't load your products`);
+                logger.error(`error occured: could not load your products`);
                 res.status(400).send({ 'message': `Couldn't load your products`, 'status': 'error' });
             }
         })
@@ -62,6 +64,8 @@ module.exports = (router, log) => {
                 updatedUser: null
             };
 
+            logger.log('debug', `product - add product with ID: ${newItem._id}`);
+
             dbHelper.db.get('products')
                 .push(newItem)
                 .write()
@@ -70,7 +74,7 @@ module.exports = (router, log) => {
                     if (item) {
                         res.send(item);
                     } else {
-                        log.err(`error occured: couldn't add product`);
+                        logger.error(`error occured: could not add product`);
                         res.status(400).send({ 'message': `Couldn't add product`, 'status': 'error' });
                     }
                 });
@@ -101,10 +105,11 @@ module.exports = (router, log) => {
          */
         .get((req, res) => {
             let product = dbHelper.db.get('products').find({ _id: req.params.id }).value();
+            logger.log('debug', `product - get product with ID: ${req.params.id }`);
             if (product) {
                 res.send(product);
             } else {
-                log.err(`error occured: couldn't load product ${req.params.id}`);
+                logger.error(`error occured: could not load product ${req.params.id}`);
                 res.status(400).send({ 'message': `Couldn't load product ${req.params.id}`, 'status': 'error' });
             }
         })
@@ -142,6 +147,7 @@ module.exports = (router, log) => {
                 updatedUser: req.body.updatedUser
             };
 
+            logger.log('debug', `product - update product with ID: ${req.params.id}`);
             dbHelper.db.get('products')
                 .find({ _id: req.params.id })
                 .assign(newItem)
@@ -151,7 +157,7 @@ module.exports = (router, log) => {
                     if (item && item.updated === newItem.updated) {
                         res.send(item);
                     } else {
-                        log.err(`error occured: couldn't update product '${req.params.id}'`);
+                        logger.error(`error occured: could not update product '${req.params.id}'`);
                         res.status(400).send({ 'message': `Couldn't update product '${req.params.id}'`, 'status': 'error' });
                     }
                 });
@@ -169,6 +175,7 @@ module.exports = (router, log) => {
          * @apiSuccess {Object} Message Returns the status of the deleted Product.
          */
         .delete( (req, res) => {
+            logger.log('debug', `product - delete product with ID: ${req.params.id}`);
             dbHelper.db.get('products')
                 .remove({ _id: req.params.id })
                 .write()
@@ -177,7 +184,7 @@ module.exports = (router, log) => {
                     if (!item) {
                         res.send({ 'message': 'successfully removed', 'status': 'ok' });
                     } else {
-                        log.err(`error occured: couldn't remove products '${req.params.id}'`);
+                        logger.error(`error occured: could not remove products '${req.params.id}'`);
                         res.status(400).send({ 'message': `Couldn't remove products '${req.params.id}'`, 'status': 'error' });
                     }
                 });
