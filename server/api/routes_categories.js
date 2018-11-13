@@ -1,7 +1,8 @@
 const dbHelper = require('../lib/database_helper.js');
+const logger = require('../lib/logging_helper.js').logger;
 const prepareAndSaveImage = require('../lib/image_helper.js').prepareAndSaveImage;
 
-module.exports = (router, log) => {
+module.exports = (router) => {
     router.route('/v1/categories')
         /**
          * @api {get} /api/v1/categories Get Category List
@@ -20,10 +21,11 @@ module.exports = (router, log) => {
                 categories = dbHelper.db.get('categories').value();
             }
 
+            logger.log('debug', `category - load category list`);
             if (categories) {
                 res.send(categories);
             } else {
-                log.err(`error occured: couldn't load your categories`);
+                logger.error(`category - error occured: couldn't load your categories`);
                 res.status(400).send({ 'message': `Couldn't load your categories`, 'status': 'error' });
             }
         })
@@ -60,6 +62,7 @@ module.exports = (router, log) => {
                 updatedUser: null
             };
 
+            logger.log('debug', `category - add product with ID: ${newItem._id}`);
             dbHelper.db.get('categories')
                 .push(newItem)
                 .write()
@@ -68,7 +71,7 @@ module.exports = (router, log) => {
                     if (item) {
                         res.send(item);
                     } else {
-                        log.err(`error occured: couldn't add category`);
+                        logger.error(`category - error occured: couldn't add category`);
                         res.status(400).send({ 'message': `Couldn't add category`, 'status': 'error' });
                     }
                 });
@@ -97,10 +100,11 @@ module.exports = (router, log) => {
          */
         .get((req, res) => {
             let item = dbHelper.db.get('categories').filter({ _id: req.params.id }).value()[0];
+            logger.log('debug', `category - get category with ID: ${req.params.id}`);
             if (item) {
                 res.send(item);
             } else {
-                log.err(`error occured: couldn't load category '${req.params.id}'`);
+                logger.error(`category - error occured: couldn't load category '${req.params.id}'`);
                 res.status(400).send({ 'message': `Couldn't load category '${req.params.id}'`, 'status': 'error' });
             }
         })
@@ -136,6 +140,7 @@ module.exports = (router, log) => {
                 updatedUser: req.body.updatedUser
             };
 
+            logger.log('debug', `category - update category with ID: ${req.params.id}`);
             dbHelper.db.get('categories')
                 .find({ _id: req.params.id })
                 .assign(newItem)
@@ -145,7 +150,7 @@ module.exports = (router, log) => {
                     if (item && item.updated === newItem.updated) {
                         res.send(item);
                     } else {
-                        log.err(`error occured: couldn't update category '${req.params.id}'`);
+                        logger.error(`category - error occured: couldn't update category '${req.params.id}'`);
                         res.status(400).send({ 'message': `Couldn't update category '${req.params.id}'`, 'status': 'error' });
                     }
                 });
@@ -164,13 +169,15 @@ module.exports = (router, log) => {
          */
         .delete((req, res) => {
             let productsWithCategory = dbHelper.db.get('products')
-                .filter({ category: req.params.id })
-                .value();
-
+            .filter({ category: req.params.id })
+            .value();
+            
             if (productsWithCategory && productsWithCategory.length > 0) {
-                log.err(`error occured: couldn't remove category '${req.params.id}', because of existing products with this category`);
+                logger.error(`category - error occured: couldn't remove category '${req.params.id}', because of existing products with this category`);
+                logger.warn(`category - you have ${productsWithCategory.length} existing products on category ${req.params.id}`);
                 res.status(400).send({ 'message': `Couldn't remove category '${req.params.id}', because of existing products with this category`, 'status': 'warning' });
             } else {
+                logger.log('debug', `category - delete category with ID: ${req.params.id}`);
                 dbHelper.db.get('categories')
                     .remove({ _id: req.params.id })
                     .write()
@@ -179,7 +186,7 @@ module.exports = (router, log) => {
                         if (!item) {
                             res.send({ 'message': 'successfully removed', 'status': 'ok' });
                         } else {
-                            log.err(`error occured: couldn't remove category '${req.params.id}'`);
+                            logger.error(`category - error occured: couldn't remove category '${req.params.id}'`);
                             res.status(400).send({ 'message': `Couldn't remove category '${req.params.id}'`, 'status': 'error' });
                         }
                     });
@@ -206,8 +213,8 @@ module.exports = (router, log) => {
             if (products) {
                 res.send(products);
             } else {
-                log.err(`error occured: couldn't load your products by category '${req.params.id}'`);
+                logger.error(`category - error occured: couldn't load your products by category '${req.params.id}'`);
                 res.status(400).send({ 'message': `Couldn't load your products by category '${req.params.id}'`, 'status': 'error' });
             }
-        })
+        });
 };

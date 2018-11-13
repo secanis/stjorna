@@ -1,7 +1,7 @@
 <form #CategoryForm="ngForm" (ngSubmit)="saveNewCategory(CategoryForm)">
     <div class="card card-margin">
         <div class="card-body">
-            <h3 *ngIf="!isEditForm">{{'app.create.category.title' | translate}}y</h3>
+            <h3 *ngIf="!isEditForm">{{'app.create.category.title' | translate}}</h3>
             <h3 *ngIf="isEditForm">{{'app.edit.category.title' | translate}}</h3>
         </div>
     </div>
@@ -12,7 +12,7 @@
                 <input class="form-control" type="text" name="name" [(ngModel)]="category.name" #name="ngModel" required>
                 <small class="form-text text-muted">{{'app.table.title.name' | translate}}</small><br>
                 <input class="form-control" type="text" name="description" [(ngModel)]="category.description" #description="ngModel" required>
-                <small class="form-text text-muted">{{'app.table.title.category' | translate}}</small><br>
+                <small class="form-text text-muted">{{'app.table.title.description' | translate}}</small><br>
                 <select class="form-control" name="active" [(ngModel)]="category.active" #active="ngModel" required>
                     <option value="true">{{'settings.api.active' | translate}}</option>
                     <option value="false">{{'settings.api.inactive' | translate}}</option>

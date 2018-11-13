@@ -17,7 +17,7 @@ let request = http.request(options, (res) => {
 });
 
 request.on('error', (err) => {
-    console.error('ERROR');
+    console.error('ERROR: unexpected error, please check the logs');
     process.exit(1);
 });
 

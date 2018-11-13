@@ -2,6 +2,7 @@ const os = require('os');
 
 // configuration file
 const appInfo = require(`../package.json`);
+const logger = require('../lib/logging_helper.js').logger;
 
 module.exports = (router, log) => {
     router.route('/v1/info/server')
@@ -24,6 +25,7 @@ module.exports = (router, log) => {
          */
         .get((req, res) => {
             try {
+                logger.log('debug', `info - load host information`);
                 let obj = {
                     'hostname': `${os.hostname()}`,
                     'api_port': `${process.env.STJORNA_SERVER_PORT}`,
@@ -38,6 +40,7 @@ module.exports = (router, log) => {
                 };
                 res.send(obj);
             } catch (err) {
+                logger.error(`info - error while loading server info: ${err.message}`);
                 res.status(500).send({ "message": err.message, "status": "error" });
             }
         });
@@ -56,6 +59,7 @@ module.exports = (router, log) => {
         .get((req, res) => {
             let env = process.env;
             const serverEnv = [];
+            logger.log('debug', `info - load environment configuration`);
             Object.keys(env)
                 .filter((key) => key.includes('STJORNA_'))
                 .reduce((obj, key) => {

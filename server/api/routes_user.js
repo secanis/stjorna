@@ -1,9 +1,10 @@
 const crypto = require('crypto');
 
+const logger = require('../lib/logging_helper.js').logger;
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 
-module.exports = (router, log) => {
+module.exports = (router) => {
     router.route('/v1/users')
         .get((req, res) => {
             // check env variables, to work just in test or "no security" mode for security reasons
@@ -12,7 +13,7 @@ module.exports = (router, log) => {
                 if (users) {
                     res.send(users);
                 } else {
-                    log.err(`error occured: couldn't load your users`);
+                    logger.error(`error occured: couldn't load your users`);
                     res.status(400).send({ 'message': `Couldn't load your users`, 'status': 'error' });
                 }
             } else {
@@ -47,6 +48,7 @@ module.exports = (router, log) => {
                             updated: new Date().getTime()
                         };
 
+                        logger.log('debug', `add new user with id ${newItem._id}`);
                         dbHelper.db.get('users')
                             .push(newItem)
                             .write()
@@ -55,12 +57,12 @@ module.exports = (router, log) => {
                                 if (item) {
                                     res.send(item);
                                 } else {
-                                    log.err(`error occured: couldn't add user`);
+                                    logger.error(`error occured: could not add user`);
                                     res.status(400).send({ 'message': `Couldn't add user`, 'status': 'error' });
                                 }
                             });
                     } else {
-                        log.err(`error occured: ${err.message}`);
+                        logger.error(`error occured: ${err.message}`);
                         res.status(400).send({ 'message': err.message, 'status': 'error' });
                     }
                 });
@@ -108,6 +110,7 @@ module.exports = (router, log) => {
                                 .write()
                                 .then(() => {
                                     let item = dbHelper.db.get('users').filter({ _id: req.params.id }).value()[0];
+                                    logger.log('debug', `update user profile for user ${req.params.id}`);
                                     if (item && item.updated === newItem.updated) {
                                         res.send({
                                             "_id": item._id,
@@ -116,16 +119,16 @@ module.exports = (router, log) => {
                                             "language": item.language
                                         });
                                     } else {
-                                        log.err(`error occured: couldn't update user '${req.params.id}'`);
+                                        logger.error(`error occured: could not update user '${req.params.id}'`);
                                         res.status(400).send({ 'message': `Couldn't update user '${req.params.id}'`, 'status': 'error' });
                                     }
                                 });
                         } else {
-                            log.err(`error occured: couldn't successful authenticate user '${req.params.id}'`);
+                            logger.error(`error occured: could not successful authenticate user '${req.params.id}'`);
                             res.status(400).send({ 'message': `Couldn't successful authenticate user '${req.params.id}'`, 'status': 'error' });
                         }
                     } else {
-                        log.err(`error occured: ${err.message}`);
+                        logger.error(`error occured: ${err.message}`);
                         res.status(400).send({ 'message': err.message, 'status': 'error' });
                     }
                 });
@@ -152,16 +155,17 @@ module.exports = (router, log) => {
             if (req.decoded._id === req.params.id) {
                 let item = dbHelper.db.get('users').find({ _id: req.params.id }).value();
                 if (item) {
+                    logger.log('debug', `loaded api key for user ${req.params.id}`);
                     res.send({
                         '_id': item._id,
                         'apikey': item.apikey
                     });
                 } else {
-                    log.err(`error occured: couldn't load apikey for user '${req.params.id}'`);
+                    logger.error(`error occured: could not load apikey for user '${req.params.id}'`);
                     res.status(400).send({ 'message': `Couldn't load apikey for user '${req.params.id}'`, 'status': 'error' });
                 }
             } else {
-                log.err(`error occured: operation not allowed, verification failed`);
+                logger.error(`error occured: operation not allowed, verification failed`);
                 res.status(400).send({ 'message': 'Operation not allowed, verification failed.', 'status': 'error' });
             }
         })
@@ -186,6 +190,7 @@ module.exports = (router, log) => {
                     updated: new Date().getTime()
                 };
                 // reset the apikey
+                logger.log('debug', `updating api key for user ${req.params.id}`);
                 dbHelper.db.get('users')
                     .find({ _id: req.params.id })
                     .assign(newItem)
@@ -195,12 +200,13 @@ module.exports = (router, log) => {
                         if (item && item.updated === newItem.updated) {
                             res.send(item);
                         } else {
-                            log.err(`error occured: couldn't replace apikey for user ${req.params.id}`);
+                            logger.error(`error occured: could not replace apikey for user ${req.params.id}`);
                             res.status(400).send({ 'message': `Couldn't replace apikey for user ${req.params.id}`, 'status': 'error' });
                         }
                     });
             } else {
+                logger.warn('tried to regenerate api key with unvalid paremeters');
                 res.status(400).send({ 'message': 'not valid parameters, checkout the api documentation.', 'status': 'error' });
             }
-        })
+        });
 };

@@ -1,39 +1,40 @@
-require('./lib/env_default.js');
+// load stjorna environment
+const stjornaEnv = require('./lib/env_default.js');
+stjornaEnv.initialize();
+// load library/server stuff for startup
 const express = require('express');
 const router = express.Router();
 const bodyParser = require('body-parser');
+
 // configuration file
 const appInfo = require(`./package.json`);
-// default loglevel
-const log = require('node-logging');
-log.setLevel(process.env.STJORNA_LOGLEVEL);
-
 const app = express();
+const logger = require('./lib/logging_helper.js');
 
 // initialize databases
-require('./lib/database_helper').initialize(log);
+require('./lib/database_helper').initialize();
 
 // initialize cron jobs
-require('./cronjobs/cleanup_uploads')(log);
+require('./cronjobs/cleanup_uploads')();
 
 // initialize bodyParser ans set limits
 app.use(bodyParser.json({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD }));
 app.use(bodyParser.urlencoded({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD, extended: true }));
 
 // initialize request logging
-app.use(log.requestLogger);
+app.use(logger.configureExpressLogging);
 
 // setup routing
 // whitelisted routes
-require('./api/routes_auth')(router, log);
+require('./api/routes_auth')(router);
 
 // secure (not whitelisted) routes
-require('./api/routes_user')(router, log);
-require('./api/routes_categories')(router, log);
-require('./api/routes_products')(router, log);
-require('./api/routes_data')(router, log);
-require('./api/routes_info')(router, log);
-require('./api/routes_settings')(router, log);
+require('./api/routes_user')(router);
+require('./api/routes_categories')(router);
+require('./api/routes_products')(router);
+require('./api/routes_data')(router);
+require('./api/routes_info')(router);
+require('./api/routes_settings')(router);
 
 // static routes
 app.use('/api', router);
@@ -46,8 +47,9 @@ app.get('*', (req, res) => {
 
 // start application
 module.exports = app.listen(process.env.STJORNA_SERVER_PORT);
-log.inf(`>> app   -  ${appInfo.name}:${appInfo.version}`);
-log.inf(`>> port  -  ${process.env.STJORNA_SERVER_PORT}`);
+logger.logger.info(`>> app   :  ${appInfo.name}:${appInfo.version}`);
+logger.logger.info(`>> port  :  ${process.env.STJORNA_SERVER_PORT}`);
 // print configuration
-log.inf(`>> configuration from ${process.env.STJORNA_SERVER_STORAGE}/config.json`);
-log.inf(`>> cleanup interval ${process.env.STJORNA_CRON_CLEANUP_INTERVAL}`);
+logger.logger.info(`>> production mode enabled: ${stjornaEnv.isProduction()}`);
+logger.logger.info(`>> configuration from ${process.env.STJORNA_SERVER_STORAGE}/config.json`);
+logger.logger.info(`>> cleanup interval ${process.env.STJORNA_CRON_CLEANUP_INTERVAL}`);
