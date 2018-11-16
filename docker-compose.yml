@@ -1,0 +1,6 @@
+version: '3.3'
+services:
+  stjorna:
+    image: secanis/stjorna:latest
+    ports:
+      - 8080:3000
