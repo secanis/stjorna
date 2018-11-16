@@ -97,10 +97,8 @@ module.exports = {
         charset: 'UTF-8',
         viewport: 'width=device-width, initial-scale=1',
       },
-      favicon: 'src/public/assets/favicon.ico',
-      // baseHref: '/',
+      favicon: 'src/public/assets/favicon.svg',
       template: 'src/public/index.html',
-      // inject: 'head'
     }),
     new CopyWebpackPlugin([
       { from: 'src/public/assets/i18n/*.json', to: 'assets/i18n', flatten: true },
