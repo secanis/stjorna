@@ -88,7 +88,19 @@ module.exports = {
       {} // a map of your routes
     ),
     new HtmlWebpackPlugin({
-      template: 'src/public/index.html'
+      title: 'STJ&Oacute;RNA - Comfortable Product Managment.',
+      meta: {
+        title: 'STJ&Oacute;RNA - Comfortable Product Managment.',
+        author: 'secanis.ch',
+        publisher: 'secanis.ch',
+        copyright: 'secanis.ch',
+        charset: 'UTF-8',
+        viewport: 'width=device-width, initial-scale=1',
+      },
+      favicon: 'src/public/assets/favicon.ico',
+      // baseHref: '/',
+      template: 'src/public/index.html',
+      // inject: 'head'
     }),
     new CopyWebpackPlugin([
       { from: 'src/public/assets/i18n/*.json', to: 'assets/i18n', flatten: true },
