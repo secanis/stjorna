@@ -100,7 +100,7 @@ module.exports = (router) => {
                             } else {
                                 req.decoded = decoded;
                                 res.send({
-                                    message: 'your token is vaild.', status: 'inf'
+                                    message: 'your token is vaild.', status: 'info'
                                 });
                             }
                         });

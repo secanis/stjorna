@@ -12,7 +12,7 @@ module.exports = {
         let buff = Buffer.from(data, 'base64');
         // generate new hash for imagename
         let hash = crypto.createHash('sha1').update(`${data}-${new Date().getTime()}`, 'utf8').digest('hex');
-        let imagePath = `/data/uploads/${userid}${additionalPath}/${hash}.jpeg`;
+        let imagePath = `/uploads/${userid}${additionalPath}/${hash}.jpeg`;
         fileHelper.loadConfigFile((err, config) => {
             if (!err) {
                 config = JSON.parse(config);
@@ -20,7 +20,7 @@ module.exports = {
                 Jimp.read(buff).then((image) => {
                     image.resize(config.image_dimension, config.image_dimension)
                         .quality(config.image_quality)
-                        .write(`${__dirname}/..${imagePath}`, (err) => {
+                        .write(`${process.env.STJORNA_SERVER_STORAGE}/${imagePath}`, (err) => {
                             if (err) {
                                 logger.error(`image - error occured while writing image to filesystem: ${err.message}`);
                             }
