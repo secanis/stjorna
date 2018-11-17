@@ -9,6 +9,11 @@ STJÓRNA was created to have an easy product management with the possibility to 
 STJÓRNA is islandic and means something like manage or store stuff.
 The two main goal of STJÓRNA are to be very simple in the setup and configuration effort. The second goal was to publish and share the stored data over an REST API with other applications, maybe your website.
 
+- Availability of REST API for third-party applications
+- Language support for German and English
+- Possibility to export all your data as a JSON or Excel file
+- Open Source software - hosted on Github
+
 ## Get Started
 
 You have two possibilities how you can start/deploy STJÓRNA.
@@ -48,6 +53,8 @@ node server/server.js
 cd server; npm run test
 ```
 
+Do not forget to set the NodeJS production mode: `process.env.NODE_ENV = 'production'`!
+
 ## Configuration
 
 ### Setup
@@ -63,8 +70,9 @@ In the setup process you can set the username, email and a password. After an in
 | ------------------------------ | ------------- | --------------------------------------------------------- |
 | STJORNA_SERVER_PORT            | 3000          | Port for the Node server                                  |
 | STJORNA_SERVER_MAX_UPLOAD      | 5mb           | Max image upload size, defined for Express                |
-| STJORNA_LOGLEVEL               | error         | Loglevel                                                  |
-| STJORNA_CRON_CLEANUP_INTERVAL  | */30 * * * *  | Cronjob interval to cleanup the storage                   |
+| STJORNA_LOGLEVEL               | info          | Loglevel (WinstonJS loglevels, `slient` for no logs)      |
+| STJORNA_REQUEST_LOG            |               | Set to `slient` for no logs                               |
+| STJORNA_CRON_CLEANUP_INTERVAL  | 00 3 * * *    | Cronjob interval to cleanup the storage                   |
 | STJORNA_SERVER_STORAGE         | /app/data     | Default path is in the path of the server.js data folder  |
 
 ### Remote REST API
@@ -75,6 +83,13 @@ You can enable/disable the complete API or you enable/disable categories or prod
 
 [Remote REST API Documentation](https://stjorna.secanis.ch/apidoc/index.html)
 
+### HTTPS / Proxy
+
+We do not provide SSL at the moment, STJÓRNA is designed to run behind a reverse proxy which is terminating HTTPS.
+Our setup is running a [Traefik](https://traefik.io/) proxy in front of STJÓRNA.
+
+We would strongly recommend to use SSL if you use STJÓRNA!
+
 ## Screenshots
 
 ![stjorna login page](https://stjorna.secanis.ch/docs/images/stjorna_login.png "STJÓRNA Login Page")
@@ -82,3 +97,10 @@ You can enable/disable the complete API or you enable/disable categories or prod
 ![stjorna dashboard page](https://stjorna.secanis.ch/docs/images/stjorna_dashboard.png "STJÓRNA Dashboard Page")
 
 ![stjorna settings page](https://stjorna.secanis.ch/docs/images/stjorna_settings.png "STJÓRNA Settings Page")
+
+##  Contribution
+
+It would be very nice, when you give us a feedback or when you create issues if you detect problems or bugs.
+If you want to fix it yourself or you have an idea for something new, please create a PR, that would help us a lot.
+
+Happy Coding <3 ...
