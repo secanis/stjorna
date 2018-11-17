@@ -52,9 +52,9 @@ const isSlientLogActivated = (logType) => {
                 return true;
             }
             break;
-    };
+    }
     return false;
-}
+};
 
 // classic logger configuration (console.log stuff)
 const logger = winston.createLogger({
