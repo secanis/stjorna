@@ -7,7 +7,7 @@ const exportJson = require('./export/json.js');
 
 module.exports = {
     getFolderContent: (route, cb) => {
-        // build a complete file tree of all things within a route, base route is /data/uploads/<username>
+        // build a complete file tree of all things within a route, base route is /<data>/uploads/<username>
         let files = fs.readdir(route, 'utf8', (err, files) => {
             let fileList = [];
             if (files) {
@@ -54,6 +54,11 @@ module.exports = {
                 logger.error(`cronjob - cleanup_uploads - delete file failed: ${err.message}`);
             }
         });
+    },
+    createFolder: (dir) => {
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir);
+        }
     },
     loadConfigFile: (cb) => {
         // load config file and call the cb
