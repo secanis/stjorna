@@ -1,4 +1,6 @@
 const chai = require('chai');
+const expect = require('chai').expect;
+
 const app = require('../../package.json');
 
 const apiUrl = '/api/v1';
@@ -32,18 +34,20 @@ describe('Info', () => {
             .end((err, res) => {
                 res.should.have.status(200);
                 res.body.should.be.a('array');
-                res.body[0].should.have.property('name').eql('STJORNA_CRON_CLEANUP_INTERVAL');
-                res.body[0].should.have.property('value').eql('00 3 * * *');
-                res.body[1].should.have.property('name').eql('STJORNA_LOGLEVEL');
+
+                let obj = testHelper.searchObjectByProperty(res.body, 'STJORNA_CRON_CLEANUP_INTERVAL', 'name');
+                expect(obj.value).to.be.equal('00 3 * * *', 'check STJORNA_CRON_CLEANUP_INTERVAL env');
+
+                obj = testHelper.searchObjectByProperty(res.body, 'STJORNA_LOGLEVEL', 'name');
+                expect(obj.value).to.be.equal('slient', 'check STJORNA_LOGLEVEL env');
+
                 // security is just during tests set to 'none', per default this ENV is not set
-                res.body[2].should.have.property('name').eql('STJORNA_REQUEST_LOG');
-                res.body[3].should.have.property('name').eql('STJORNA_SECURITY');
-                res.body[3].should.have.property('value').eql('none');
-                res.body[4].should.have.property('name').eql('STJORNA_SERVER_MAX_UPLOAD');
-                res.body[4].should.have.property('value').eql('5mb');
-                res.body[5].should.have.property('name').eql('STJORNA_SERVER_PORT');
-                res.body[5].should.have.property('value').eql('3000');
-                res.body[6].should.have.property('name').eql('STJORNA_SERVER_STORAGE');
+                obj = testHelper.searchObjectByProperty(res.body, 'STJORNA_SECURITY', 'name');
+                expect(obj.value).to.be.equal('none', 'check STJORNA_SECURITY env');
+
+                obj = testHelper.searchObjectByProperty(res.body, 'STJORNA_SERVER_STORAGE', 'name');
+                expect(obj.value).to.be.equal(process.env.STJORNA_SERVER_STORAGE, 'check STJORNA_SERVER_STORAGE env');
+
                 done();
             });
     });

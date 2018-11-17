@@ -131,6 +131,19 @@ const getServer = () => {
     return server;
 }
 
+const searchObjectByProperty = (arr, search, property)=> {
+    let retVal = null;
+    for (let i = 0; i < arr.length; i++) {
+        let item = arr[i];
+        if (item.hasOwnProperty(property)) {
+            if (item[property].toLowerCase() === search.toLowerCase()) {
+                return item;
+            }
+        }
+    };
+    return retVal;
+};
+
 module.exports = {
     init,
     getDefaultUser,
@@ -138,5 +151,6 @@ module.exports = {
     generateUserObject,
     generateProductObject,
     generateCategoryObject,
-    getServer
+    getServer,
+    searchObjectByProperty
 };
