@@ -1,6 +1,4 @@
-const path = require('path');
-const fs = require('fs');
-var xl = require('excel4node');
+const xl = require('excel4node');
 
 const dbHelper = require('../database_helper.js');
 

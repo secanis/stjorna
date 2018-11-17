@@ -1,15 +1,6 @@
-process.env.STJORNA_LOGLEVEL = 'error';
+const chai = require('chai');
 
-let chai = require('chai');
-let server = require('../server.js');
-
-let apiUrl = '/api/v1';
-
-const user = {
-    username: 'admin',
-    email: 'admin@domain.com',
-    password: 'admin4test'
-};
+const apiUrl = '/api/v1';
 
 const config = {
     image_dimension: process.env.STJORNACONFIG_IMAGE_DIMENSION - 0,
@@ -17,11 +8,12 @@ const config = {
     allow_remote_access: true
 };
 
-require('./_initializeSetup.js');
+const testHelper = require('../_initializeSetup.js');
+testHelper.init();
 
 describe('Setup/Settings', () => {
     it('get setup status', (done) => {
-        chai.request(server)
+        chai.request(testHelper.getServer())
             .get(`${apiUrl}/setup`)
             .end((err, res) => {
                 res.should.have.status(200);
@@ -34,7 +26,7 @@ describe('Setup/Settings', () => {
     });
 
     it('get settings', (done) => {
-        chai.request(server)
+        chai.request(testHelper.getServer())
             .get(`${apiUrl}/settings`)
             .end((err, res) => {
                 res.should.have.status(200);
@@ -49,7 +41,7 @@ describe('Setup/Settings', () => {
     });
 
     it('update settings', (done) => {
-        chai.request(server)
+        chai.request(testHelper.getServer())
             .post(`${apiUrl}/settings`)
             .send({
                 allow_remote_access: false
@@ -58,7 +50,7 @@ describe('Setup/Settings', () => {
                 res.should.have.status(200);
                 res.body.should.be.a('object');
                 res.body.should.have.property('message').eql('configuration successfully saved');
-                chai.request(server)
+                chai.request(testHelper.getServer())
                     .get(`${apiUrl}/settings`)
                     .end((err, res) => {
                         res.should.have.status(200);

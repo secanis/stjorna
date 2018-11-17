@@ -140,6 +140,10 @@ module.exports = (router) => {
                 securityTokenHash.update(new Date().getTime().toString());
                 process.env.STJORNACONFIG_PASSWORD_SECRECT = securityTokenHash.digest('hex');
                 req.body.config.installed = true;
+
+                // check if data folder exists, if not create it
+                fileHelper.createFolder(process.env.STJORNA_SERVER_STORAGE);
+
                 // create initial config file
                 fileHelper.saveConfigFile(req.body.config, (err, config) => {
                     if (err) {
