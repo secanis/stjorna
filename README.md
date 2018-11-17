@@ -15,6 +15,11 @@ STJÓRNA was created to have an easy product management with the possibility to 
 STJÓRNA is islandic and means something like manage or store stuff.
 The two main goal of STJÓRNA are to be very simple in the setup and configuration effort. The second goal was to publish and share the stored data over an REST API with other applications, maybe your website.
 
+- Availability of REST API for third-party applications
+- Language support for German and English
+- Possibility to export all your data as a JSON or Excel file
+- Open Source software - hosted on Github
+
 ## Get Started
 
 You have two possibilities how you can start/deploy STJÓRNA:
@@ -43,13 +48,15 @@ node server/server.js
 cd server; npm run test
 ```
 
+Do not forget to set the NodeJS production mode: `process.env.NODE_ENV = 'production'`!
+
 ### Cofiguration
 
 For more information please have a look on our website: [https://stjorna.secanis.ch](https://stjorna.secanis.ch).
 
-## Demo
+##  Contribution
 
-Start your instance on PWD and navigate <URL>/setup and create a user.
-After the successful setup you can use STJÓRNA in this sandbox.
+It would be very nice, when you give us a feedback or when you create issues if you detect problems or bugs.
+If you want to fix it yourself or you have an idea for something new, please create a PR, that would help us a lot.
 
-[![Try in PWD](https://cdn.rawgit.com/play-with-docker/stacks/cff22438/assets/images/button.png)](http://play-with-docker.com?stack=https://raw.githubusercontent.com/secanis/stjorna/master/docker-compose.yml) 
+Happy Coding <3 ...
