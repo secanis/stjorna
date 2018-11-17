@@ -23,7 +23,9 @@ export class AppComponent implements OnInit {
         this.loginStatusHandler.isLoggedIn().subscribe(result => {
             this.loggedIn = result;
             this.currentUser = this.loginStatusHandler.getCurrentUser();
-            this.translateService.use(this.currentUser.language);
+            if (this.currentUser) {
+                this.translateService.use(this.currentUser.language);
+            }
         });
         this.loggedIn = this.loginStatusHandler.getLoginStatus();
     }

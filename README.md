@@ -46,3 +46,10 @@ cd server; npm run test
 ### Cofiguration
 
 For more information please have a look on our website: [https://stjorna.secanis.ch](https://stjorna.secanis.ch).
+
+## Demo
+
+Start your instance on PWD and navigate <URL>/setup and create a user.
+After the successful setup you can use STJÓRNA in this sandbox.
+
+[![Try in PWD](https://cdn.rawgit.com/play-with-docker/stacks/cff22438/assets/images/button.png)](http://play-with-docker.com?stack=https://raw.githubusercontent.com/secanis/stjorna/master/docker-compose.yml) 
