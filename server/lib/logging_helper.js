@@ -46,11 +46,13 @@ const isSlientLogActivated = (logType) => {
             if (process.env.STJORNA_LOGLEVEL === 'slient') {
                 return true;
             }
+            break;
         case 'request':
             if (process.env.STJORNA_REQUEST_LOG === 'slient') {
                 return true;
             }
-    }
+            break;
+    };
     return false;
 }
 
