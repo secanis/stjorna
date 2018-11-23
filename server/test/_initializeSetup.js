@@ -52,7 +52,7 @@ const init = () => {
                             done();
                         });
                 }
-            } catch {
+            } catch(ex) {
                 console.error(`couldn't start database/database connection.`)
             }
         }, 100);

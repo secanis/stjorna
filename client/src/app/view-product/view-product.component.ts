@@ -1,5 +1,4 @@
 import { Component, OnInit } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ToastrService } from 'ngx-toastr';
 
@@ -52,7 +51,6 @@ export class ViewProductComponent implements OnInit {
     public removeCategory(category: StjornaCategoryModel) {
         if (confirm(`Are you sure you want to delete ${category.name}?`)) {
             this.stjornaService.removeCategory(category).subscribe(result => {
-                console.log(result);
                 if (result.status === 'warning') {
                     this.toastr.warning(result.message);
                 } else if (result.message) {
@@ -68,7 +66,6 @@ export class ViewProductComponent implements OnInit {
     }
 
     private loadProductsByCategory(id) {
-        console.log(id);
         this.stjornaService.getProductsByCategoryId(id).subscribe(result => this.productList = result);
     }
 
