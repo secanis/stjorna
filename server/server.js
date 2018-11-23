@@ -9,10 +9,14 @@ const bodyParser = require('body-parser');
 // configuration file
 const appInfo = require(`./package.json`);
 const app = express();
+const http = require('http').Server(app);
 const logger = require('./lib/logging_helper.js');
 
 // initialize databases
 require('./lib/database_helper').initialize();
+
+// initialize socket/stream
+require('./lib/socket_helper').initalize(http);
 
 // initialize cron jobs
 require('./cronjobs/cleanup_uploads')();
@@ -46,7 +50,7 @@ app.get('*', (req, res) => {
 });
 
 // start application
-module.exports = app.listen(process.env.STJORNA_SERVER_PORT);
+module.exports = http.listen(process.env.STJORNA_SERVER_PORT);
 logger.logger.info(`>> app   :  ${appInfo.name}:${appInfo.version}`);
 logger.logger.info(`>> port  :  ${process.env.STJORNA_SERVER_PORT}`);
 // print configuration
