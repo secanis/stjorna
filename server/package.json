@@ -1,6 +1,6 @@
 {
     "name": "stjorna",
-    "version": "2.1.0",
+    "version": "2.1.1",
     "description": "STJÓRNA product management",
     "main": "server.js",
     "scripts": {
@@ -20,7 +20,7 @@
         "excel4node": "^1.7.0",
         "express": "^4.16.4",
         "express-winston": "^3.0.1",
-        "jimp": "^0.5.6",
+        "jimp": "^0.6.0",
         "jsonwebtoken": "^8.4.0",
         "lowdb": "^1.0.0",
         "uniqid": "^5.0.3",
@@ -35,7 +35,7 @@
         "mocha": "^5.2.0",
         "mocha-junit-reporter": "^1.18.0",
         "mocha-multi-reporters": "^1.1.7",
-        "nodemon": "1.18.6",
+        "nodemon": "1.18.7",
         "nyc": "^13.1.0",
         "request": "^2.88.0",
         "rimraf": "^2.6.2"
