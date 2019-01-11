@@ -76,9 +76,9 @@ jobs:
                     docker push docker.io/secanis/stjorna:latest
                     # github tagging / create release
                     API_JSON=$(printf '{"tag_name": "v%s","target_commitish": "master","name": "%s","body": "Release of version %s","draft": false,"prerelease": false}' $VERSION $VERSION $VERSION)
-                    curl --data "$API_JSON" https://api.github.com/repos/secanis/stjorna/releases?access_token=$GITHUB_KEY >> release.json
+                    curl --data "$API_JSON" https://api.github.com/repos/secanis/stjorna/releases?access_token=$GITHUB_KEY >> ./release.json
                     # github upload assets
-                    RELID=$(node -p -e "require('release.json').id")
+                    RELID=$(node -p -e "require('./release.json').id")
                     curl --user "$GITHUB_USERNAME:$GITHUB_KEY" -X POST https://uploads.github.com/repos/secanis/stjorna/releases/${RELID}/assets?name=stjorna-${VERSION}.tar.gz\ --header 'Content-Type: text/javascript ' --upload-file stjorna-${VERSION}.tar.gz
                 fi
                 # otherwise publish the current branch build
