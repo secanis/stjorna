@@ -22,10 +22,10 @@ jobs:
             command: cd client; npm install
 
         - save_cache:
-            paths:
-            - server/node_modules
-            - client/node_modules
+            path: server/node_modules
             key: v1-dependencies-{{ checksum "server/package.json" }}
+        - save_cache:
+            path: client/node_modules
             key: v1-dependencies-{{ checksum "client/package.json" }}
 
         # BUILD: SERVER
