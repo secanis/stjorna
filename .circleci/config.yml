@@ -2,7 +2,7 @@ version: 2
 jobs:
     build:
         docker:
-        - image: circleci/node:10.5.0
+        - image: circleci/node:11
 
         working_directory: ~/repo
 
@@ -22,10 +22,12 @@ jobs:
             command: cd client; npm install
 
         - save_cache:
-            paths:
-            - server/node_modules
-            - client/node_modules
+            paths: 
+                - server/node_modules
             key: v1-dependencies-{{ checksum "server/package.json" }}
+        - save_cache:
+            paths:
+                - client/node_modules
             key: v1-dependencies-{{ checksum "client/package.json" }}
 
         # BUILD: SERVER
@@ -76,9 +78,9 @@ jobs:
                     docker push docker.io/secanis/stjorna:latest
                     # github tagging / create release
                     API_JSON=$(printf '{"tag_name": "v%s","target_commitish": "master","name": "%s","body": "Release of version %s","draft": false,"prerelease": false}' $VERSION $VERSION $VERSION)
-                    curl --data "$API_JSON" https://api.github.com/repos/secanis/stjorna/releases?access_token=$GITHUB_KEY >> release.json
+                    curl --data "$API_JSON" https://api.github.com/repos/secanis/stjorna/releases?access_token=$GITHUB_KEY >> ./release.json
                     # github upload assets
-                    RELID=$(node -p -e "require('release.json').id")
+                    RELID=$(node -p -e "require('./release.json').id")
                     echo "got release id from github $RELID"
                     curl --user "$GITHUB_USERNAME:$GITHUB_KEY" -X POST https://uploads.github.com/repos/secanis/stjorna/releases/${RELID}/assets?name=stjorna-${VERSION}.tar.gz\ --header 'Content-Type: text/javascript ' --upload-file stjorna-${VERSION}.tar.gz
                 fi
