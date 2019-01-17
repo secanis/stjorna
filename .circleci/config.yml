@@ -82,7 +82,7 @@ jobs:
                     # github upload assets
                     RELID=$(node -p -e "require('./release.json').id")
                     echo "got release id from github $RELID"
-                    curl --user "$GITHUB_USERNAME:$GITHUB_KEY" -X POST https://uploads.github.com/repos/secanis/stjorna/releases/${RELID}/assets?name=stjorna-${VERSION}.tar.gz\ --header 'Content-Type: text/javascript ' --upload-file stjorna-${VERSION}.tar.gz
+                    curl --user "$GITHUB_USERNAME:$GITHUB_KEY" -H "Authorization: token $GITHUB_KEY" -H "Content-Type: $(file -b --mime-type stjorna-${VERSION}.tar.gz)" --data-binary @stjorna-${VERSION}.tar.gz https://uploads.github.com/repos/secanis/stjorna/releases/${RELID}/assets?name=stjorna-${VERSION}.tar.gz
                 fi
                 # otherwise publish the current branch build
                 docker push docker.io/secanis/stjorna:dev-${CIRCLE_BRANCH/\//-}
