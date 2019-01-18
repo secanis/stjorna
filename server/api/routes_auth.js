@@ -10,7 +10,7 @@ const fileHelper = require('../lib/file_helper.js');
 let errorHandlingNoApiKey = (req, res) => {
     logger.error(`login - E105: no token or userid & apikey provided`);
     res.status(401).send({ message: 'E105: no token or userid & apikey provided.', status: 'error' });
-}
+};
 
 module.exports = (router) => {
     // set controll allow origin header

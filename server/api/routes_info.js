@@ -1,7 +1,7 @@
 const os = require('os');
 
 // configuration file
-const appInfo = require(`../package.json`);
+const appInfo = require('../package.json');
 const logger = require('../lib/logging_helper.js').logger;
 
 module.exports = (router, log) => {
@@ -26,6 +26,11 @@ module.exports = (router, log) => {
         .get((req, res) => {
             try {
                 logger.log('debug', `info - load host information`);
+                let loadString = '';
+                os.loadavg().forEach((v,i) => {
+                    if (i > 0) loadString += ' | ';
+                    loadString += `${v * 100}%`;
+                });
                 let obj = {
                     'hostname': `${os.hostname()}`,
                     'api_port': `${process.env.STJORNA_SERVER_PORT}`,
@@ -35,7 +40,7 @@ module.exports = (router, log) => {
                     'mem_free': os.freemem(),
                     'cpu': `${os.cpus()[0].model}`,
                     // loadavg does not work on windows systems
-                    'loadavg': `${os.loadavg()}`,
+                    'loadavg': `${loadString}`,
                     'app_version': `${appInfo.name}:${appInfo.version}`
                 };
                 res.send(obj);
