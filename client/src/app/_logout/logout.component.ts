@@ -13,7 +13,7 @@ import { LoginStatusHandler } from '../shared/login-handler.service';
     styles: [`
         .stjorna-logout-button {
             cursor: pointer;
-            line-height: 50px;
+            line-height: 21px;
         }
     `]
 })
