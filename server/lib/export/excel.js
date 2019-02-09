@@ -4,7 +4,7 @@ const dbHelper = require('../database_helper.js');
 
 module.exports = {
     generateExport: (cb) => {
-        let dataSet = dbHelper.getAllDataSets();
+        let dataSet = dbHelper.getAllDataSetsWithData();
 
         if (dataSet && dataSet.categories.length > 0 && dataSet.products.length > 0) {
             module.exports._excelGenerator(dataSet, cb);

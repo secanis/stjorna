@@ -26,6 +26,8 @@
                 <tr><td>Memory Free</td><td>{{serverInfo.mem_free / 1024 / 1024 / 1024 | number }} GB</td></tr>
                 <tr><td>Load Avgerage</td><td>{{serverInfo.loadavg}}</td></tr>
                 <tr><td>STJÓRNA Version</td><td>{{serverInfo.app_version}}</td></tr>
+                <tr><td>Database Type</td><td>{{serverInfo.database.type}}</td></tr>
+                <tr><td>Database Constellations</td><td>{{serverInfo.database.constellations | json}}</td></tr>
             </table>
         </div>
     </div>

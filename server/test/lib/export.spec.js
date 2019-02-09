@@ -19,7 +19,7 @@ describe('Export', () => {
     });
 
     it('generate excel - bad case', (done) => {
-        dbHelper.getAllDataSets = () => {
+        dbHelper.getAllDataSetsWithData = () => {
             return {
                 categories: [],
                 products: [],
@@ -38,7 +38,7 @@ describe('Export', () => {
 
     it('generate excel', (done) => {
         const ids = testHelper.generateIds();
-        dbHelper.getAllDataSets = () => {
+        dbHelper.getAllDataSetsWithData = () => {
             return {
                 categories: [testHelper.generateCategoryObject(ids.userId, ids.categoryId)],
                 products: [testHelper.generateProductObject(ids.userId, ids.categoryId, ids.productId)],

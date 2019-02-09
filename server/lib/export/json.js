@@ -2,7 +2,7 @@ const dbHelper = require('../database_helper.js');
 
 module.exports = {
     generateExport: (cb) => {
-        let dataSet = dbHelper.getAllDataSets();
+        let dataSet = dbHelper.getAllDataSetsWithData();
 
         if (dataSet) {
             cb(null, {

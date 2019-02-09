@@ -16,7 +16,7 @@ describe('Info', () => {
                 res.should.have.status(200);
                 res.body.should.be.a('object');
                 res.body.should.have.property('hostname');
-                res.body.should.have.property('api_port').eql('3000');
+                res.body.should.have.property('api_port').eql(process.env.STJORNA_SERVER_PORT);
                 res.body.should.have.property('os');
                 res.body.should.have.property('arch');
                 res.body.should.have.property('mem_total');

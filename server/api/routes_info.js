@@ -1,5 +1,7 @@
 const os = require('os');
 
+const dbHelper = require('../lib/database_helper.js');
+
 // configuration file
 const appInfo = require('../package.json');
 const logger = require('../lib/logging_helper.js').logger;
@@ -12,7 +14,7 @@ module.exports = (router, log) => {
          * @apiName GetServerInfo
          * @apiGroup Info
          * @apiPermission loggedin
-         * @apiVersion 1.0.0
+         * @apiVersion 1.0.1
          * 
          * @apiSuccess {String} hostname Hostname
          * @apiSuccess {String} api_port Node port
@@ -26,10 +28,17 @@ module.exports = (router, log) => {
         .get((req, res) => {
             try {
                 logger.log('debug', `info - load host information`);
+                // prepare load values
                 let loadString = '';
                 os.loadavg().forEach((v,i) => {
                     if (i > 0) loadString += ' | ';
                     loadString += `${v * 100}%`;
+                });
+
+                // prepare database infos
+                let dbInfo = dbHelper.getAllDataSets();
+                dbHelper.getAllDataSetMembers().forEach((entry) => {
+                    dbInfo[entry] = dbHelper.getSizeOfDataSet(entry);
                 });
                 let obj = {
                     'hostname': `${os.hostname()}`,
@@ -41,7 +50,11 @@ module.exports = (router, log) => {
                     'cpu': `${os.cpus()[0].model}`,
                     // loadavg does not work on windows systems
                     'loadavg': `${loadString}`,
-                    'app_version': `${appInfo.name}:${appInfo.version}`
+                    'app_version': `${appInfo.name}:${appInfo.version}`,
+                    'database': {
+                        type: process.env.STJORNA_DATABASE_TYPE,
+                        constellations: dbInfo
+                    }
                 };
                 res.send(obj);
             } catch (err) {
