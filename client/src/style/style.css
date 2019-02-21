@@ -1,10 +1,10 @@
 html,
 body {
-    border-radius: 0px !important;
+    border-radius: 0px;
     font-family: 'Raleway', sans-serif;
     margin: 0px;
     padding: 0px;
-    color: #333 !important;
+    color: #333;
     font-weight: normal;
 }
 
@@ -18,9 +18,9 @@ p {
     color: rgba(17, 91, 166, 1);
 }
 
-.text-color-stjorna-active {
-    font-weight: bold !important;
-    color: rgba(17, 91, 166, 1) !important;
+.sidebar > div.sidebar-sticky > ul.flex-column > li.nav-item > a.nav-link.text-color-stjorna-active {
+    font-weight: bold;
+    color: rgba(17, 91, 166, 1);
 }
 
 .background-color-stjorna,
@@ -39,7 +39,7 @@ input,
 select,
 .card,
 .nav-tabs .nav-link {
-    border-radius: 0px !important;
+    border-radius: 0px;
 }
 
 .container {
@@ -84,10 +84,6 @@ select,
 .edit-task,
 .btn-copy-cb {
     cursor: pointer;
-}
-
-.sidebar[_ngcontent-c0] .nav-link.active[_ngcontent-c0] {
-    font-weight: bold;
 }
 
 .element-form-image {

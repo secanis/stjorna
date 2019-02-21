@@ -100,6 +100,7 @@ export class AppModule {
     constructor() {}
 }
 
+// TODO: is this the code which executes 2 times the load command?
 export function setupTranslateFactory(
     service: TranslateService): Function {
     return () => service.use('en');

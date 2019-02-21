@@ -7,13 +7,16 @@ STJÓRNA was created to have an easy product management with the possibility to 
 ## Features
 
 [![CircleCI](https://circleci.com/gh/secanis/stjorna/tree/master.svg?style=svg)](https://circleci.com/gh/secanis/stjorna/tree/master "Latest Build Result @CircleCI")
-[![Anchore Image Overview](https://anchore.io/service/badges/image/a17c6ce810bba93a02391e41c2d50ddf9609883be50776b4d162a497d66eba0e)](https://anchore.io/image/dockerhub/secanis%2Fstjorna%3Alatest)
-[![Anchore Image Policy](https://anchore.io/service/badges/policy/a17c6ce810bba93a02391e41c2d50ddf9609883be50776b4d162a497d66eba0e?registry=dockerhub&repository=secanis/stjorna&tag=latest)](https://anchore.io)
 [![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com")
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/01a7269404b548058afbc8afa52e7add)](https://www.codacy.com/project/matthias.baldi/stjorna/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=secanis/stjorna&amp;utm_campaign=Badge_Grade_Dashboard) [![Join the chat at https://gitter.im/secanis/stjorna](https://badges.gitter.im/secanis/stjorna.svg)](https://gitter.im/secanis/stjorna?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 STJÓRNA is islandic and means something like manage or store stuff.
 The two main goal of STJÓRNA are to be very simple in the setup and configuration effort. The second goal was to publish and share the stored data over an REST API with other applications, maybe your website.
+
+- Availability of REST API for third-party applications
+- Language support for German and English
+- Possibility to export all your data as a JSON or Excel file
+- Open Source software - hosted on Github
 
 ## Get Started
 
@@ -43,13 +46,15 @@ node server/server.js
 cd server; npm run test
 ```
 
+Do not forget to set the NodeJS production mode: `process.env.NODE_ENV = 'production'`!
+
 ### Cofiguration
 
 For more information please have a look on our website: [https://stjorna.secanis.ch](https://stjorna.secanis.ch).
 
-## Demo
+##  Contribution
 
-Start your instance on PWD and navigate <URL>/setup and create a user.
-After the successful setup you can use STJÓRNA in this sandbox.
+It would be very nice, when you give us a feedback or when you create issues if you detect problems or bugs.
+If you want to fix it yourself or you have an idea for something new, please create a PR, that would help us a lot.
 
-[![Try in PWD](https://cdn.rawgit.com/play-with-docker/stacks/cff22438/assets/images/button.png)](http://play-with-docker.com?stack=https://raw.githubusercontent.com/secanis/stjorna/master/docker-compose.yml) 
+Happy Coding <3 ...

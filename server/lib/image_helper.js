@@ -32,6 +32,7 @@ module.exports = {
                 logger.error(`image - error occured while loading config file: ${err.message}`);
             }
         });
-        return imagePath;
+        // return api path to store in database
+        return `/data${imagePath}`;
     }
 };

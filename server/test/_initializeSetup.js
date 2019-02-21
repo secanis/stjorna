@@ -8,6 +8,7 @@ let server;
 let dbHelper;
 
 process.env.NODE_ENV = 'test';
+process.env.STJORNA_SERVER_PORT = 9999;
 process.env.STJORNA_SECURITY = 'none';
 process.env.STJORNA_LOGLEVEL = 'slient';
 process.env.STJORNA_REQUEST_LOG = 'slient';
@@ -52,7 +53,7 @@ const init = () => {
                             done();
                         });
                 }
-            } catch {
+            } catch(ex) {
                 console.error(`couldn't start database/database connection.`)
             }
         }, 100);

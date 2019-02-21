@@ -54,10 +54,10 @@ module.exports = (router) => {
          */
         .get((req, res) => {
             // check if there are wanted "autentication" methods for binary data
-            if ((req.query.userid || req.headers['x-stjorna-userid']) == req.params.userid) {               
+            if ((req.query.userid || req.headers['x-stjorna-userid']) === req.params.userid.toString()) {
                 let additionalPath = '';
                 if (req.params.additionalPath) {
-                    additionalPath = `/${req.params.additionalPath}`
+                    additionalPath = `/${req.params.additionalPath}`;
                 }
                 try {
                     res.sendFile(`${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}/${req.params.image}`);

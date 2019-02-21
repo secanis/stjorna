@@ -7,7 +7,7 @@ const router = express.Router();
 const bodyParser = require('body-parser');
 
 // configuration file
-const appInfo = require(`./package.json`);
+const appInfo = require('./package.json');
 const app = express();
 const logger = require('./lib/logging_helper.js');
 
