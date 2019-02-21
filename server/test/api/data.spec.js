@@ -75,7 +75,7 @@ const exampleImage = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD//gA7Q1J
 const testHelper = require('../_initializeSetup.js');
 testHelper.init();
 
-describe('Products/Categories', () => {
+describe('Products/Services/Categories', () => {
     it('get products', (done) => {
         chai.request(testHelper.getServer())
             .get(`${apiUrl}/products`)
@@ -139,7 +139,7 @@ describe('Products/Categories', () => {
     });
 
     it('get services', (done) => {
-        chai.request(server)
+        chai.request(testHelper.getServer())
             .get(`${apiUrl}/services`)
             .end((err, res) => {
                 res.should.have.status(200);
@@ -149,10 +149,10 @@ describe('Products/Categories', () => {
             });
     });
 
-    // create, alter, get, delete product
+    // create, alter, get, delete service
     it('crud service', (done) => {
         let productId;
-        chai.request(server)
+        chai.request(testHelper.getServer())
             .put(`${apiUrl}/services`)
             .send(product)
             .end((err, res) => {
@@ -168,14 +168,14 @@ describe('Products/Categories', () => {
                 res.body.should.have.property('created');
                 res.body.should.have.property('updated');
                 productId = res.body._id;
-                chai.request(server)
+                chai.request(testHelper.getServer())
                     .post(`${apiUrl}/services/${productId}`)
                     .send(product_2)
                     .end((err, res) => {
                         res.should.have.status(200);
                         res.body.should.be.a('object');
                         res.body.should.have.property('_id').eql(productId);
-                        chai.request(server)
+                        chai.request(testHelper.getServer())
                             .get(`${apiUrl}/services/${productId}`)
                             .end((err, res) => {
                                 res.body.should.have.property('name').eql(product_2.name);
@@ -187,7 +187,7 @@ describe('Products/Categories', () => {
                                 res.body.should.have.property('updatedUser').eql(user.username)
                                 res.body.should.have.property('created');
                                 res.body.should.have.property('updated');
-                                chai.request(server)
+                                chai.request(testHelper.getServer())
                                     .delete(`${apiUrl}/services/${productId}`)
                                     .end((err, res) => {
                                         res.should.have.status(200);
@@ -339,6 +339,35 @@ describe('Products/Categories', () => {
                         let filename = res.body[0].name;
                         chai.request(testHelper.getServer())
                             .get(`/api/data/uploads/undefined/products/${filename}?userid=undefined`)
+                            .end((err, res) => {
+                                res.should.have.status(200);
+                                done();
+                            });
+                    });
+            });
+    });
+
+    it('service with image', (done) => {
+        let p1 = product;
+        p1.image = exampleImage;
+        chai.request(testHelper.getServer())
+            .put(`${apiUrl}/services`)
+            .send(p1)
+            .end((err, res) => {
+                res.should.have.status(200);
+                res.body.should.be.a('object');
+                res.body.should.have.property('name').eql(p1.name);
+                res.body.should.have.property('imageUrl');
+                // test if we can load the image list
+                chai.request(testHelper.getServer())
+                    .get(`/api/data/uploads/undefined/services?userid=undefined`)
+                    .end((err, res) => {
+                        res.should.have.status(200);
+                        res.body.should.be.a('array');
+                        res.body.length.should.be.eql(1);
+                        let filename = res.body[0].name;
+                        chai.request(testHelper.getServer())
+                            .get(`/api/data/uploads/undefined/services/${filename}?userid=undefined`)
                             .end((err, res) => {
                                 res.should.have.status(200);
                                 done();

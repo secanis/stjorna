@@ -1,7 +1,8 @@
 const dbHelper = require('../lib/database_helper.js');
+const logger = require('../lib/logging_helper.js').logger;
 const prepareAndSaveImage = require('../lib/image_helper.js').prepareAndSaveImage;
 
-module.exports = (router, log) => {
+module.exports = (router) => {
     router.route('/v1/services')
         /**
          * @api {get} /api/v1/services Get Service List
@@ -20,10 +21,11 @@ module.exports = (router, log) => {
                 services = dbHelper.db.get('services').value();
             }
 
+            logger.log('debug', `service - load service list`);
             if (services) {
                 res.send(services);
             } else {
-                log.err(`error occured: couldn't load your services`);
+                logger.error(`error occured: couldn't load your services`);
                 res.status(400).send({ 'message': `Couldn't load your services`, 'status': 'error' });
             }
         })
