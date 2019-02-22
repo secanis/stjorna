@@ -9,7 +9,7 @@ module.exports = (router) => {
          * @apiName GetServicesList
          * @apiGroup Service
          * @apiPermission token/apikey
-         * @apiVersion 1.0.0
+         * @apiVersion 1.1.0
          *
          * @apiSuccess {Object[Service]} Service Returns a list of services.
          */
@@ -36,7 +36,7 @@ module.exports = (router) => {
          * @apiName AddServices
          * @apiGroup Service
          * @apiPermission loggedin
-         * @apiVersion 1.0.0
+         * @apiVersion 1.1.0
          *
          * @apiSuccess {Object[Service]} Service Returns the created service.
          */
@@ -73,7 +73,7 @@ module.exports = (router) => {
                     if (item) {
                         res.send(item);
                     } else {
-                        log.err(`error occured: couldn't add service`);
+                        logger.error(`error occured: couldn't add service`);
                         res.status(400).send({ 'message': `Couldn't add service`, 'status': 'error' });
                     }
                 });
@@ -85,7 +85,7 @@ module.exports = (router) => {
      * @apiName GetService
      * @apiGroup Service
      * @apiPermission token/apikey
-     * @apiVersion 1.0.0
+     * @apiVersion 1.1.0
      *
      * @apiParam {String} id unique Service ID.
      *
@@ -107,7 +107,7 @@ module.exports = (router) => {
             if (service) {
                 res.send(service);
             } else {
-                log.err(`error occured: couldn't load service ${req.params.id}`);
+                logger.error(`error occured: couldn't load service ${req.params.id}`);
                 res.status(400).send({ 'message': `Couldn't load service ${req.params.id}`, 'status': 'error' });
             }
         })
@@ -117,7 +117,7 @@ module.exports = (router) => {
          * @apiName UpdateService
          * @apiGroup Service
          * @apiPermission loggedin
-         * @apiVersion 1.0.0
+         * @apiVersion 1.1.0
          *
          * @apiParam {String} id unique Service ID.
          *
@@ -154,7 +154,7 @@ module.exports = (router) => {
                     if (item && item.updated === newItem.updated) {
                         res.send(item);
                     } else {
-                        log.err(`error occured: couldn't update service '${req.params.id}'`);
+                        logger.error(`error occured: couldn't update service '${req.params.id}'`);
                         res.status(400).send({ 'message': `Couldn't update service '${req.params.id}'`, 'status': 'error' });
                     }
                 });
@@ -165,7 +165,7 @@ module.exports = (router) => {
          * @apiName DeleteService
          * @apiGroup Service
          * @apiPermission loggedin
-         * @apiVersion 1.0.0
+         * @apiVersion 1.1.0
          *
          * @apiParam {String} id unique Service ID.
          *
@@ -180,9 +180,9 @@ module.exports = (router) => {
                     if (!item) {
                         res.send({ 'message': 'successfully removed', 'status': 'ok' });
                     } else {
-                        log.err(`error occured: couldn't remove service '${req.params.id}'`);
+                        logger.error(`error occured: couldn't remove service '${req.params.id}'`);
                         res.status(400).send({ 'message': `Couldn't remove service '${req.params.id}'`, 'status': 'error' });
                     }
                 });
         });
-}
+};

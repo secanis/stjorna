@@ -224,7 +224,7 @@ module.exports = (router) => {
      * @apiName GetServicesByCategory
      * @apiGroup Category
      * @apiPermission token/apikey
-     * @apiVersion 1.0.0
+     * @apiVersion 1.1.0
      *
      * @apiParam {String} id Category ID.
      *
@@ -238,7 +238,7 @@ module.exports = (router) => {
             if (services) {
                 res.send(services);
             } else {
-                log.err(`error occured: couldn't load your services by category '${req.params.id}'`);
+                logger.error(`error occured: couldn't load your services by category '${req.params.id}'`);
                 res.status(400).send({ 'message': `Couldn't load your services by category '${req.params.id}'`, 'status': 'error' });
             }
         });
