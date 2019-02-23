@@ -29,6 +29,7 @@ module.exports = (router) => {
                 res.status(400).send({ 'message': `Couldn't load your products`, 'status': 'error' });
             }
         })
+
         /**
          * @api {put} /api/v1/products Add Product
          * @apiPrivate

@@ -8,6 +8,10 @@ export const NewProductRoutes: Routes = [
         component: NewProductComponent
     },
     {
+        path: 'new/service',
+        component: NewProductComponent
+    },
+    {
         path: 'new/category',
         component: NewProductComponent
     }

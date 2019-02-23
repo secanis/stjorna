@@ -8,6 +8,7 @@ import { StjornaProductModel } from '../models/product.model';
 import { StjornaCategoryModel } from '../models/category.model';
 import { StjornaUserModel } from '../models/user.model';
 import { StjornaConfigModel } from '../models/config.model';
+import {StjornaServiceModel} from "../models/service.model";
 
 @Injectable()
 export class StjornaService {
@@ -58,6 +59,36 @@ export class StjornaService {
             .pipe(catchError(this.handleError<any>('remove product')));
     }
 
+    public getServiceList() {
+        return this.http
+            .get<StjornaServiceModel[]>(`${this.host}/api/v1/services`, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<StjornaServiceModel[]>('load service list', [])));
+    }
+
+    public getServiceById(id) {
+        return this.http
+            .get<StjornaServiceModel>(`${this.host}/api/v1/services/${id}`, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<StjornaServiceModel>('load service by id')));
+    }
+
+    public saveNewService(service: StjornaServiceModel) {
+        return this.http
+            .put(`${this.host}/api/v1/services`, service, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<any>('add service')));
+    }
+
+    public saveService(service: StjornaServiceModel) {
+        return this.http
+            .post(`${this.host}/api/v1/services/${service._id}`, service, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<any>('save service')));
+    }
+
+    public removeService(service: StjornaServiceModel) {
+        return this.http
+            .delete(`${this.host}/api/v1/services/${service._id}`, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<any>('remove service')));
+    }
+
     public getCategoryList() {
         return this.http
             .get(`${this.host}/api/v1/categories`, this.getHeaders(this.token))
@@ -92,6 +123,12 @@ export class StjornaService {
         return this.http
             .get(`${this.host}/api/v1/categories/${id}/products`, this.getHeaders(this.token))
             .pipe(catchError(this.handleError<any>('load products by category id')));
+    }
+
+    public getServicesByCategoryId(id) {
+        return this.http
+            .get(`${this.host}/api/v1/categories/${id}/services`, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<any>('load services by category id')));
     }
 
     public getServerInfo() {

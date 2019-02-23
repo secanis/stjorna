@@ -14,6 +14,7 @@ const adapter = new FileAsync(`${process.env.STJORNA_SERVER_STORAGE}/database.js
 const datasets = {
     categories: [],
     products: [],
+    services: [],
     users: []
 };
 

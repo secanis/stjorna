@@ -5,6 +5,7 @@ import { ToastrService } from 'ngx-toastr';
 import { StjornaProductModel } from '../models/product.model';
 import { StjornaCategoryModel } from '../models/category.model';
 import { StjornaService } from '../shared/stjorna.service';
+import {StjornaServiceModel} from "../models/service.model";
 
 @Component({
     selector: 'stjorna-product',
@@ -15,6 +16,8 @@ export class ViewProductComponent implements OnInit {
     public currentRoute: string;
     public product: StjornaProductModel;
     public productList: Array<StjornaProductModel> = [];
+    public service: StjornaServiceModel;
+    public serviceList: Array<StjornaServiceModel> = [];
     public category: StjornaCategoryModel;
 
     constructor(private router: Router, private activatedRoute: ActivatedRoute, private stjornaService: StjornaService, private toastr: ToastrService) { }
@@ -25,9 +28,13 @@ export class ViewProductComponent implements OnInit {
         if (this.currentRoute.includes('product')) {
             this.loadExistingProduct(currentId);
         }
+        if (this.currentRoute.includes('service')) {
+            this.loadExistingService(currentId);
+        }
         if (this.currentRoute.includes('category')) {
             this.loadExistingCategory(currentId);
             this.loadProductsByCategory(currentId);
+            this.loadServicesByCategory(currentId);
         }
     }
 
@@ -41,6 +48,10 @@ export class ViewProductComponent implements OnInit {
                 }
             });
         }
+    }
+
+    private loadExistingService(id) {
+        this.stjornaService.getServiceById(id).subscribe(result => this.service = result);
     }
 
     private loadExistingProduct(id) {
@@ -67,6 +78,10 @@ export class ViewProductComponent implements OnInit {
 
     private loadProductsByCategory(id) {
         this.stjornaService.getProductsByCategoryId(id).subscribe(result => this.productList = result);
+    }
+
+    private loadServicesByCategory(id) {
+        this.stjornaService.getServicesByCategoryId(id).subscribe(result => this.serviceList = result);
     }
 
     // helper methods

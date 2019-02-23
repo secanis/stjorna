@@ -10,6 +10,11 @@ export const ViewProductRoutes: Routes = [
         canActivate: [AuthGuard]
     },
     {
+        path: 'service/view/:id',
+        component: ViewProductComponent,
+        canActivate: [AuthGuard]
+    },
+    {
         path: 'category/view/:id',
         component: ViewProductComponent,
         canActivate: [AuthGuard]

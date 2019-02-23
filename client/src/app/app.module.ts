@@ -22,6 +22,8 @@ import { LogoutComponent } from './_logout/logout.component';
 // register application components
 import { ProductListComponent } from './_product-list/product-list.component';
 import { ProductFormComponent } from './_product-form/product-form.component';
+import { ServiceFormComponent } from './_service-form/service-form.component';
+import { ServiceListComponent } from './_service-list/service-list.component';
 import { CategoryListComponent } from './_category-list/category-list.component';
 import { CategoryFormComponent } from './_category-form/category-form.component';
 
@@ -68,6 +70,8 @@ registerLocaleData(lcoaleDECH);
         LogoutComponent,
         ProductListComponent,
         ProductFormComponent,
+        ServiceFormComponent,
+        ServiceListComponent,
         CategoryListComponent,
         CategoryFormComponent,
         MySearchPipe,

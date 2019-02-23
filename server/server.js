@@ -32,6 +32,7 @@ require('./api/routes_auth')(router);
 require('./api/routes_user')(router);
 require('./api/routes_categories')(router);
 require('./api/routes_products')(router);
+require('./api/routes_services')(router);
 require('./api/routes_data')(router);
 require('./api/routes_info')(router);
 require('./api/routes_settings')(router);

@@ -1,0 +1,80 @@
+<form #serviceForm="ngForm" (ngSubmit)="saveService(serviceForm)">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 *ngIf="!isEditForm">Create new Service</h3>
+            <h3 *ngIf="isEditForm">Edit Service</h3>
+        </div>
+    </div>
+    <div class="card-deck">
+        <div class="card">
+            <div class="card-body">
+                <!-- hidden _id field  -->
+                <input class="form-control" type="hidden" name="_id" [(ngModel)]="service._id" #_id="ngModel">
+                <input class="form-control" type="text" name="name" [(ngModel)]="service.name" #name="ngModel" required>
+                <small class="form-text text-muted" for="name">Service name</small><br>
+                <input class="form-control" type="number" name="price" [(ngModel)]="service.price" #price="ngModel" required>
+                <small class="form-text text-muted" for="price">Price</small><br>
+                <input class="form-control" type="text" name="description" [(ngModel)]="service.description" #description="ngModel" required>
+                <small class="form-text text-muted" for="description">Description</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <select class="form-control" name="category" [(ngModel)]="service.category" #category="ngModel" required>
+                    <option *ngFor="let category of categoryList" value="{{category._id}}">{{category.name}}</option>
+                </select>
+                <small class="form-text text-muted" for="category">Service Category</small><br>
+                <select class="form-control" name="active" [(ngModel)]="service.active" #active="ngModel" required>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+                <small class="form-text text-muted" for="active">Service active</small>
+            </div>
+        </div>
+    </div>
+    <div class="card-deck card-margin">
+        <div class="card">
+            <div class="card-body">
+                <div *ngIf="!croppedOk && !service.imageUrl">
+                    <input type="file" accept="image/*" class="form-control" (change)="fileChangeEvent($event)" />
+                    <div *ngIf="imageChangedEvent && !cropperImageLoaded" class="loader cropper-loader"></div>
+                    <image-cropper
+                        [imageChangedEvent]="imageChangedEvent"
+                        [maintainAspectRatio]="true"
+                        [aspectRatio]="1/1"
+                        [resizeToWidth]="350"
+                        format="jpeg"
+                        (imageCroppedBase64)="imageCropped($event)"
+                        (imageLoaded)="imageLoaded()"
+                        (loadImageFailed)="loadImageFailed()"
+                    ></image-cropper>
+                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">Cut Image</button>
+                </div>
+                <div *ngIf="service.image && croppedOk">
+                    <input type="hidden" name="image" [(ngModel)]="service.image" #image="ngModel">
+                    <img class="element-form-image" [src]="service.image">
+                </div>
+                <div *ngIf="service.imageUrl">
+                    <input type="hidden" name="imageUrl" [(ngModel)]="service.imageUrl" #imageUrl="ngModel">
+                    <img class="element-form-image" [src]="buildImageResourceUrl(service.imageUrl)">
+                </div>
+                <small class="form-text text-muted">service Image</small>
+                <button *ngIf="service.imageUrl || (service.image && croppedOk)" class="btn btn-danger btn-remove-image" (click)="removeImage()">
+                    <i class="fa fa-trash-o fa-1x"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+            </div>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/services">Cancel</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/services">Back</button>
+            <!-- <button class="btn btn-success pull-right" [disabled]="!productForm.dirty || !(product.image.length > 0)" type="submit">Save Product</button> -->
+            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">Save Service</button>
+        </div>
+    </div>
+</form> 
