@@ -69,8 +69,10 @@ In the setup process you can set the username, email and a password. After an in
 | Variable                       | Default       | Description                                               |
 | ------------------------------ | ------------- | --------------------------------------------------------- |
 | STJORNA_SERVER_PORT            | 3000          | Port for the Node server                                  |
-| STJORNA_SERVER_MAX_UPLOAD      | 5mb           | Max image upload size, defined for Express                |
+| STJORNA_SERVER_MAX_UPLOAD      | 8mb           | Max image upload size, defined for Express                |
 | STJORNA_LOGLEVEL               | info          | Loglevel (WinstonJS loglevels, `slient` for no logs)      |
+| STJORNACONFIG_IMAGE_DIMENSION  | 700           | Image dimension, width and height                         |
+| STJORNACONFIG_IMAGE_QUALITY    | 70            | Image quality, between 0-100                              |
 | STJORNA_REQUEST_LOG            |               | Set to `slient` for no logs                               |
 | STJORNA_CRON_CLEANUP_INTERVAL  | 00 3 * * *    | Cronjob interval to cleanup the storage                   |
 | STJORNA_SERVER_STORAGE         | /app/data     | Default path is in the path of the server.js data folder  |
