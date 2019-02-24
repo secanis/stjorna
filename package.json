@@ -20,6 +20,6 @@
   "homepage": "https://stjorna.secanis.ch",
   "devDependencies": {
     "cpy-cli": "^2.0.0",
-    "vuepress": "^0.10.1"
+    "vuepress": "^0.14.9"
   }
 }
