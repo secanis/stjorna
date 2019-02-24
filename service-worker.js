@@ -11,7 +11,7 @@
  * See https://goo.gl/2aRDsh
  */
 
-importScripts("https://storage.googleapis.com/workbox-cdn/releases/3.2.0/workbox-sw.js");
+importScripts("https://storage.googleapis.com/workbox-cdn/releases/3.6.3/workbox-sw.js");
 
 /**
  * The workboxSW.precacheAndRoute() method efficiently caches and responds to
@@ -21,28 +21,48 @@ importScripts("https://storage.googleapis.com/workbox-cdn/releases/3.2.0/workbox
 self.__precacheManifest = [
   {
     "url": "404.html",
-    "revision": "b48ae995c71019630ba4feda9679c848"
+    "revision": "a8b7c2467c4661e8a5fb470cfc322a83"
   },
   {
-    "url": "assets/css/1.styles.0671d4a5.css",
-    "revision": "fa0e7000c1d8d18b57a385ad1d4e036f"
+    "url": "assets/css/0.styles.7bb73d0e.css",
+    "revision": "b99073c7328565fef31b4895fa18a584"
   },
   {
     "url": "assets/img/search.83621669.svg",
     "revision": "83621669651b9a3d4bf64d1a670ad856"
   },
   {
-    "url": "assets/js/0.249fccc7.js",
-    "revision": "83a93614f1462589ba00f10c6cae116e"
+    "url": "assets/js/2.0f4038f2.js",
+    "revision": "ac3c07dd1687b332f8d66d63c115fd6c"
   },
   {
-    "url": "assets/js/app.32b12fbf.js",
-    "revision": "e68f0292ef4f76ab45bdae53896b1f8e"
+    "url": "assets/js/3.e02b9e87.js",
+    "revision": "52769b17212db1b5914d8550984067c2"
+  },
+  {
+    "url": "assets/js/4.5ba35f69.js",
+    "revision": "fea0453b59ad31d4edaf6ac124d9f113"
+  },
+  {
+    "url": "assets/js/app.b8c7f3f5.js",
+    "revision": "8e3d2cccf2329468b428ee20d6c51f68"
   },
   {
     "url": "index.html",
-    "revision": "f55403aca103ad7ce3ae84a8516db27b"
+    "revision": "812cfed3a6be94a31dec7b4f803e5e4f"
   }
 ].concat(self.__precacheManifest || []);
 workbox.precaching.suppressWarnings();
 workbox.precaching.precacheAndRoute(self.__precacheManifest, {});
+addEventListener('message', event => {
+  const replyPort = event.ports[0]
+  const message = event.data
+  if (replyPort && message && message.type === 'skip-waiting') {
+    event.waitUntil(
+      self.skipWaiting().then(
+        () => replyPort.postMessage({ error: null }),
+        error => replyPort.postMessage({ error })
+      )
+    )
+  }
+})
