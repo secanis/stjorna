@@ -51,8 +51,8 @@ export class SetupComponent implements OnInit {
 
     private loadSettingDefaults() {
         this.stjornaService.getSetupDefaults().subscribe(result => {
-            if (result && result.message === 'installation done' && !this.loginStatusHandler.getLoginStatus()) {
-                this.router.navigateByUrl('/dashboard');
+            if (result && result.message === 'installation done' && result.status === 'ok') {
+                this.router.navigate(['dashboard']);
             }
             this.config = new StjornaConfigModel(
                 '',
