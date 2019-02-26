@@ -20,9 +20,9 @@ export class AppComponent implements OnInit {
     constructor(private loginStatusHandler: LoginStatusHandler, private translateService: TranslateService) { }
 
     ngOnInit() {
+        this.currentUser = this.loginStatusHandler.getCurrentUser();
         this.loginStatusHandler.isLoggedIn().subscribe(result => {
             this.loggedIn = result;
-            this.currentUser = this.loginStatusHandler.getCurrentUser();
             if (this.currentUser) {
                 this.translateService.use(this.currentUser.language);
             }
