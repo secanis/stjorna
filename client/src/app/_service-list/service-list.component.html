@@ -1,4 +1,5 @@
 <section class="table-responsive">
+    <stjorna-searchbar (updateSearch)="search = $event"></stjorna-searchbar>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -11,7 +12,7 @@
                 <th style="width: 5%"></th>
             </tr>
         </thead>
-        <tr *ngFor="let service of serviceList">
+        <tr *ngFor="let service of serviceList | mySearch: search">
             <td>{{service.name}}</td>
             <td *ngIf="!categoryView">{{getCategoryNameById(service.category)}}</td>
             <td>{{service.description}}</td>

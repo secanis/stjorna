@@ -29,6 +29,7 @@
     "app.create.category.title": "Neue Kategorie erstellen",
     "app.edit.category.title": "Kategorie editieren",
     "app.form.image": "Bild",
+    "app.searchbar.placeholder": "Gib deine Suche ein ...",
     "profile.title": "Benutzerprofil",
     "profile.basic.title": "Allgemeine Informationen",
     "profile.basic.id": "Benutzer ID",

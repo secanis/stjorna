@@ -29,6 +29,7 @@
     "app.create.category.title": "Create new Category",
     "app.edit.category.title": "Edit Category",
     "app.form.image": "Image",
+    "app.searchbar.placeholder": "Type your search ...",
     "profile.title": "User Profile",
     "profile.basic.title": "General Information",
     "profile.basic.id": "User ID",

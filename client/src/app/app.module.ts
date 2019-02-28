@@ -18,6 +18,7 @@ import { ProfileComponent } from './profile/profile.component';
 import { SettingsComponent } from './settings/settings.component';
 import { LoginComponent } from './login/login.component';
 import { LogoutComponent } from './_logout/logout.component';
+import { SearchbarComponent } from './_searchbar/searchbar.component';
 
 // register application components
 import { ProductListComponent } from './_product-list/product-list.component';
@@ -68,6 +69,7 @@ registerLocaleData(lcoaleDECH);
         SettingsComponent,
         LoginComponent,
         LogoutComponent,
+        SearchbarComponent,
         ProductListComponent,
         ProductFormComponent,
         ServiceFormComponent,
