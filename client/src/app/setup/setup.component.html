@@ -48,6 +48,17 @@
                 <small class="form-text text-muted" for="imageQuality">Describes the quality of the image (jpeg - value from 0 to 100).</small>
             </div>
         </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Database Settings</h5>
+                <select class="form-control" name="databaseType" value="lowdb" disabled>
+                    <option value="lowdb">LowDB</option>
+                    <option value="rethinkdb">RethinkDB</option>
+                </select>
+                <small class="form-text text-muted" for="databaseType">Select the Database you wanna use. LowDB is set as default.<br>
+                    LowDB is a file based database (more or less a JSON), RethinkDB is a NoSQL database - recommended for larger instances.</small><br>
+            </div>
+        </div>
     </div>
     <div class="card card-margin">
         <div class="card-body">

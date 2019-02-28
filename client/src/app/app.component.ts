@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 
+import { StjornaService } from './shared/stjorna.service';
 import { LoginStatusHandler } from './shared/login-handler.service';
 import { TranslateService } from './shared/translate.service';
 
@@ -17,9 +19,22 @@ export class AppComponent implements OnInit {
     public loggedIn: Boolean = false;
     public currentUser: StjornaUserModel;
 
-    constructor(private loginStatusHandler: LoginStatusHandler, private translateService: TranslateService) { }
+    constructor(
+        private router: Router,
+        private stjornaService: StjornaService,
+        private loginStatusHandler: LoginStatusHandler,
+        private translateService: TranslateService
+    ) { }
 
     ngOnInit() {
+        // check if we are in an inital setup
+        this.stjornaService.getSetupDefaults().subscribe(result => {
+            if (result.message !== 'installation done' && result.status !== 'ok') {
+                this.router.navigate(['setup']);
+            }
+        });
+
+        // set initial language
         this.currentUser = this.loginStatusHandler.getCurrentUser();
         this.loginStatusHandler.isLoggedIn().subscribe(result => {
             this.loggedIn = result;
