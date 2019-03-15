@@ -18,6 +18,7 @@ import { ProfileComponent } from './profile/profile.component';
 import { SettingsComponent } from './settings/settings.component';
 import { LoginComponent } from './login/login.component';
 import { LogoutComponent } from './_logout/logout.component';
+import { SpinnerComponent } from './_spinner/spinner.component';
 import { SearchbarComponent } from './_searchbar/searchbar.component';
 
 // register application components
@@ -69,6 +70,7 @@ registerLocaleData(lcoaleDECH);
         SettingsComponent,
         LoginComponent,
         LogoutComponent,
+        SpinnerComponent,
         SearchbarComponent,
         ProductListComponent,
         ProductFormComponent,
