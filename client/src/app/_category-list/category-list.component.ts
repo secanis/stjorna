@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { StjornaCategoryModel } from '../models/category.model';
 import { StjornaService } from '../shared/stjorna.service';
 import { HttpErrorHandler } from '../shared/error-handler.service';
+import { StjornaHelperService } from '../shared/helper.service';
 
 @Component({
     selector: 'stjorna-categorylist',
@@ -16,6 +17,7 @@ export class CategoryListComponent implements OnInit {
     constructor(
         private router: Router,
         private stjornaService: StjornaService,
+        private stjornaHelperService: StjornaHelperService,
         private httpErrorHandler: HttpErrorHandler
     ) { }
 
@@ -25,14 +27,6 @@ export class CategoryListComponent implements OnInit {
 
     private loadAllCategories() {
         this.stjornaService.getCategoryList().subscribe(result => this.categoryListHandler(result));
-    }
-
-    public getStatusElementCss(category: StjornaCategoryModel) {
-        if (category.active) {
-            return { 'fa': true, 'fa-2x': true, 'fa-check': true, 'text-success': true };
-        } else {
-            return { 'fa': true, 'fa-2x': true, 'fa-times': true, 'text-danger': true };
-        }
     }
 
     private categoryListHandler(result) {

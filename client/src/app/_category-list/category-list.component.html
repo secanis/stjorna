@@ -4,9 +4,10 @@
         <thead>
             <tr>
                 <th style="width: 20%">{{'app.table.title.name' | translate}}</th>
-                <th style="width: 50%">{{'app.table.title.description' | translate}}</th>
+                <th style="width: 45%">{{'app.table.title.description' | translate}}</th>
                 <th style="width: 20%">{{'app.table.title.update' | translate}}</th>
                 <th style="width: 5%">{{'app.table.title.active' | translate}}</th>
+                <th style="width: 5%">{{'app.table.title.image' | translate}}</th>
                 <th style="width: 5%"></th>
             </tr>
         </thead>
@@ -14,7 +15,8 @@
             <td>{{category.name}}</td>
             <td>{{category.description}}</td>
             <td>{{category.updated | date: 'medium'}}</td>
-            <td><i [ngClass]="getStatusElementCss(category)"></i></td>
+            <td><i [ngClass]="stjornaHelperService.getStatusElementCss(category)"></i></td>
+            <td><i [ngClass]="stjornaHelperService.getImageElementCss(category)"></i></td>
             <td class="text-right">
                 <a class="text-stjorna" routerLink="/category/view/{{category._id}}" routerLinkActive="active">
                     <i class="edit-product fa fa-2x fa-cogs"></i>

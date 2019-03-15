@@ -6,9 +6,10 @@
                 <th style="width: 20%">{{'app.table.title.name' | translate}}</th>
                 <th style="width: 10%" *ngIf="!categoryView">{{'app.category' | translate}}</th>
                 <th style="width: 30%">{{'app.table.title.description' | translate}}</th>
-                <th style="width: 20%">{{'app.table.title.update' | translate}}</th>
-                <th style="width: 5%">{{'app.table.title.active' | translate}}</th>
-                <th style="width: 10%" class="text-right">{{'app.table.title.price' | translate}}</th>
+                <th style="width: 19%">{{'app.table.title.update' | translate}}</th>
+                <th style="width: 4%">{{'app.table.title.active' | translate}}</th>
+                <th style="width: 4%">{{'app.table.title.image' | translate}}</th>
+                <th style="width: 8%" class="text-right">{{'app.table.title.price' | translate}}</th>
                 <th style="width: 5%"></th>
             </tr>
         </thead>
@@ -17,7 +18,8 @@
             <td *ngIf="!categoryView">{{getCategoryNameById(product.category)}}</td>
             <td>{{product.description}}</td>
             <td>{{product.updated | date: 'medium'}}</td>
-            <td><i [ngClass]="getStatusElementCss(product)"></i></td>
+            <td><i [ngClass]="stjornaHelperService.getStatusElementCss(product)"></i></td>
+            <td><i [ngClass]="stjornaHelperService.getImageElementCss(product)"></i></td>
             <td class="text-right">{{product.price | number: '1.2'}}</td>
             <td class="text-right">
                 <a class="text-stjorna" routerLink="/product/view/{{product._id}}" routerLinkActive="active">
