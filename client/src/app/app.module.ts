@@ -20,6 +20,7 @@ import { LoginComponent } from './login/login.component';
 import { LogoutComponent } from './_logout/logout.component';
 import { SpinnerComponent } from './_spinner/spinner.component';
 import { SearchbarComponent } from './_searchbar/searchbar.component';
+import { ImageCropperComponent } from './_image-cropper/image-cropper.component';
 
 // register application components
 import { ProductListComponent } from './_product-list/product-list.component';
@@ -72,6 +73,7 @@ registerLocaleData(lcoaleDECH);
         LogoutComponent,
         SpinnerComponent,
         SearchbarComponent,
+        ImageCropperComponent,
         ProductListComponent,
         ProductFormComponent,
         ServiceFormComponent,

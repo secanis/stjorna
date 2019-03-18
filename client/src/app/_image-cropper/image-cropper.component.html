@@ -1,0 +1,23 @@
+<div *ngIf="!croppedOk && !element[imageUrlSelector]">
+    <input type="file" accept="image/*" class="form-control" (change)="fileChangeEvent($event)" />
+    <div *ngIf="imageChangedEvent && !cropperImageLoaded" class="loader cropper-loader"></div>
+    <image-cropper [imageChangedEvent]="imageChangedEvent" [maintainAspectRatio]="true" [aspectRatio]="1/1"
+        [resizeToWidth]="0" [outputType]="'base64'" format="jpeg"
+        (imageCroppedBase64)="imageCropped($event)" (imageLoaded)="imageLoaded()"
+        (loadImageFailed)="loadImageFailed()"></image-cropper>
+    <button *ngIf="imageChangedEvent" class="btn btn-success"
+        (click)="cropped(true)">{{'app.button.cropimage' | translate}}</button><br>
+</div>
+<div *ngIf="element[imageSelector] && croppedOk">
+    <input type="hidden" [name]="element[imageSelector]" [(ngModel)]="element[imageSelector]">
+    <img class="element-form-image" [src]="element[imageSelector]">
+</div>
+<div *ngIf="element[imageUrlSelector]">
+    <input type="hidden" [name]="element[imageUrlSelector]" [(ngModel)]="element[imageUrlSelector]">
+    <img class="element-form-image" [src]="buildImageResourceUrl(element[imageUrlSelector])">
+</div>
+<small *ngIf="description" class="form-text text-muted">{{description | translate}}</small><br>
+<button *ngIf="element[imageUrlSelector] || (element[imageSelector] && croppedOk)" class="btn btn-danger btn-remove-image"
+    (click)="removeImage()">
+    <i class="fa fa-trash-o fa-1x"></i>
+</button>

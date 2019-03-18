@@ -23,7 +23,7 @@ module.exports = (router) => {
                 additionalPath = `/${req.params.additionalPath}`;
             }
             // check if there are wanted "autentication" methods for binary data
-            if ((req.query.userid || req.headers['x-stjorna-userid']) == req.params.userid) {
+            if ((req.query.userid || req.headers['x-stjorna-userid'])) {
                 logger.log('debug', `data - try to serve path: ${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}`);
                 fileHelper.getFolderContent(`${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}`, (err, data) => {
                     if (!err) {
@@ -54,7 +54,7 @@ module.exports = (router) => {
          */
         .get((req, res) => {
             // check if there are wanted "autentication" methods for binary data
-            if ((req.query.userid || req.headers['x-stjorna-userid']) === req.params.userid.toString()) {
+            if ((req.query.userid || req.headers['x-stjorna-userid'])) {
                 let additionalPath = '';
                 if (req.params.additionalPath) {
                     additionalPath = `/${req.params.additionalPath}`;

@@ -21,7 +21,6 @@ export class ProductFormComponent implements OnInit {
     public categoryList: Array<StjornaCategoryModel> = [];
     public editHiddenFields = true;
     public imageChangedEvent: any = '';
-    public croppedImage: any = '';
     public croppedOk = false;
     public cropperImageLoaded = false;
     public submitted = false;

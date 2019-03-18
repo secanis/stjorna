@@ -44,7 +44,7 @@ module.exports = (router) => {
                 req.body.active = JSON.parse(req.body.active);
             }
             // prepare and save image
-            let imagePath = req.body.imageUrl;
+            let imagePath = req.body.imageUrl || '';
             if (req.body.image && req.body.image.includes('data:image')) {
                 imagePath = prepareAndSaveImage(req.body.image, '/categories', req.headers['x-stjorna-userid']);
             }
@@ -125,7 +125,7 @@ module.exports = (router) => {
                 req.body.active = JSON.parse(req.body.active);
             }
             // prepare and save image
-            let imagePath = req.body.imageUrl;
+            let imagePath = req.body.imageUrl || '';
             if (req.body.image && req.body.image.includes('data:image')) {
                 imagePath = prepareAndSaveImage(req.body.image, '/categories', req.headers['x-stjorna-userid']);
             }
