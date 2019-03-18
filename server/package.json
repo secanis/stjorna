@@ -1,6 +1,6 @@
 {
     "name": "stjorna",
-    "version": "2.2.0",
+    "version": "2.3.0",
     "description": "STJÓRNA product management",
     "main": "server.js",
     "scripts": {
