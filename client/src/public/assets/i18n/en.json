@@ -64,6 +64,8 @@
     "about.server.info.title": "Server Information",
     "about.license.title": "License",
     "about.libraries.title": "Libraries / Modules",
-    "about.libraries.thanks": "Thank to the following libraries it was possible to create this solution:",
-    "about.libraries.thanks.more": "for more information, check the package.json file."
+    "about.libraries.thanks": "Thanks to the following libraries it was possible to create this solution:",
+    "about.libraries.thanks.more": "for more information, check the package.json file.",
+    "spinner.processing.image.title": "Please wait...",
+    "spinner.processing.image.description": "STJORNA is processing the uploaded image."
 }
