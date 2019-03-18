@@ -34,6 +34,7 @@ import { CategoryFormComponent } from './_category-form/category-form.component'
 import { routing } from './app.routing';
 import { AuthGuard } from './shared/authGuard';
 import { StjornaService } from './shared/stjorna.service';
+import { StjornaHelperService } from './shared/helper.service';
 import { TranslateService } from './shared/translate.service';
 import { TranslatePipe } from './shared/translate.pipe';
 import { HttpErrorHandler } from './shared/error-handler.service';
@@ -87,6 +88,7 @@ registerLocaleData(lcoaleDECH);
     schemas: [CUSTOM_ELEMENTS_SCHEMA],
     providers: [
         StjornaService,
+        StjornaHelperService,
         TranslateService,
         HttpErrorHandler,
         LoginStatusHandler,

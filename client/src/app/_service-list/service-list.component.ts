@@ -5,6 +5,7 @@ import { StjornaCategoryModel } from '../models/category.model';
 import { StjornaService } from '../shared/stjorna.service';
 import { HttpErrorHandler } from '../shared/error-handler.service';
 import {StjornaServiceModel} from "../models/service.model";
+import { StjornaHelperService } from '../shared/helper.service';
 
 @Component({
     selector: 'stjorna-servicelist',
@@ -19,6 +20,7 @@ export class ServiceListComponent implements OnInit {
     constructor(
         private router: Router,
         private stjornaService: StjornaService,
+        private stjornaHelperService: StjornaHelperService,
         private httpErrorHandler: HttpErrorHandler
     ) { }
 
@@ -31,14 +33,6 @@ export class ServiceListComponent implements OnInit {
 
     private loadAllServices() {
         this.stjornaService.getServiceList().subscribe(result => this.serviceListHandler(result));
-    }
-
-    public getStatusElementCss(service: StjornaServiceModel) {
-        if (service.active) {
-            return { 'fa': true, 'fa-2x': true, 'fa-check': true, 'text-success': true };
-        } else {
-            return { 'fa': true, 'fa-2x': true, 'fa-times': true, 'text-danger': true };
-        }
     }
 
     public getCategoryNameById(id: StjornaCategoryModel['_id']): string {

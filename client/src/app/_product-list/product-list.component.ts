@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { StjornaProductModel } from '../models/product.model';
 import { StjornaCategoryModel } from '../models/category.model';
 import { StjornaService } from '../shared/stjorna.service';
+import { StjornaHelperService } from '../shared/helper.service';
 import { HttpErrorHandler } from '../shared/error-handler.service';
 
 @Component({
@@ -19,6 +20,7 @@ export class ProductListComponent implements OnInit {
     constructor(
         private router: Router,
         private stjornaService: StjornaService,
+        private stjornaHelperService: StjornaHelperService,
         private httpErrorHandler: HttpErrorHandler
     ) { }
 
@@ -31,14 +33,6 @@ export class ProductListComponent implements OnInit {
 
     private loadAllProducts() {
         this.stjornaService.getProductList().subscribe(result => this.productListHandler(result));
-    }
-
-    public getStatusElementCss(product: StjornaProductModel) {
-        if (product.active) {
-            return { 'fa': true, 'fa-2x': true, 'fa-check': true, 'text-success': true };
-        } else {
-            return { 'fa': true, 'fa-2x': true, 'fa-times': true, 'text-danger': true };
-        }
     }
 
     public getCategoryNameById(id: StjornaCategoryModel['_id']): string {

@@ -7,6 +7,7 @@
     "app.table.title.description": "Description",
     "app.table.title.update": "Last Update",
     "app.table.title.active": "Active",
+    "app.table.title.image": "Image",
     "app.table.title.price": "Price",
     "app.table.noelement": "Unfortunately you can't see something at the moment. Add products and categories on the left side.",
     "app.navbar.profile": "Profile",
