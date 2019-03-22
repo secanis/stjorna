@@ -23,7 +23,8 @@
         <div class="card">
             <div class="card-body">
                 <stjorna-image-cropper [(element)]="category" [description]="'category image'"></stjorna-image-cropper>
-                <input type="hidden" name="image" [(ngModel)]="category.image" #image="ngModel">
+                <input *ngIf="category?.image" type="hidden" name="image" [(ngModel)]="category.image" #image="ngModel">
+                <input *ngIf="category?.imageUrl" type="hidden" name="imageUrl" [(ngModel)]="category.imageUrl" #imageUrl="ngModel">
             </div>
         </div>
     </div>

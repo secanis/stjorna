@@ -36,7 +36,8 @@
         <div class="card">
             <div class="card-body">
                 <stjorna-image-cropper [(element)]="service" [description]="'service image'"></stjorna-image-cropper>
-                <input type="hidden" name="image" [(ngModel)]="service.image" #image="ngModel">
+                <input *ngIf="service?.image" type="hidden" name="image" [(ngModel)]="service.image" #image="ngModel">
+                <input *ngIf="service?.imageUrl" type="hidden" name="imageUrl" [(ngModel)]="service.imageUrl" #imageUrl="ngModel">
             </div>
         </div>
         <div class="card">
