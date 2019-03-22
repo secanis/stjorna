@@ -22,35 +22,20 @@
         </div>
         <div class="card">
             <div class="card-body">
-                <div *ngIf="!croppedOk && !category.imageUrl">
-                    <input type="file" accept="image/*" class="form-control" (change)="fileChangeEvent($event)" />
-                    <div *ngIf="imageChangedEvent && !cropperImageLoaded" class="loader cropper-loader"></div>
-                    <image-cropper
-                        [imageChangedEvent]="imageChangedEvent"
-                        [maintainAspectRatio]="true"
-                        [aspectRatio]="1/1"
-                        [resizeToWidth]="0"
-                        [outputType]="'base64'"
-                        format="jpeg"
-                        (imageCroppedBase64)="imageCropped($event)"
-                        (imageLoaded)="imageLoaded()"
-                        (loadImageFailed)="loadImageFailed()"
-                    ></image-cropper>
-                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">{{'app.button.cropimage' | translate}}</button>
-                </div>
-                <div *ngIf="category.image && croppedOk">
-                    <input type="hidden" name="image" [(ngModel)]="category.image" #image="ngModel">
-                    <img class="element-form-image" [src]="category.image">
-                </div>
-                <div *ngIf="category.imageUrl">
-                    <input type="hidden" name="imageUrl" [(ngModel)]="category.imageUrl" #imageUrl="ngModel">
-                    <img class="element-form-image" [src]="buildImageResourceUrl(category.imageUrl)" alt="image not found...">
-                </div>
-                <small class="form-text text-muted">{{'app.form.image' | translate}}</small>
-                <button *ngIf="category.imageUrl || (category.image && croppedOk)" class="btn btn-danger btn-remove-image" (click)="removeImage()" alt="image not found...">
-                    <i class="fa fa-trash-o fa-1x"></i>
-                </button>
+                <stjorna-image-cropper [(element)]="category" [description]="'category image'"></stjorna-image-cropper>
+                <input type="hidden" name="image" [(ngModel)]="category.image" #image="ngModel">
             </div>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted"
+                routerLink="/dashboard/categories">{{'app.button.cancel' | translate}}</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted"
+                routerLink="/dashboard/categories">{{'app.button.back' | translate}}</button>
+            <!-- <button class="btn btn-success pull-right" [disabled]="!CategoryForm.dirty" type="submit">Save Category</button> -->
+            <button class="btn btn-success pull-right" [disabled]="submitted"
+                type="submit">{{'app.button.save' | translate}}</button>
         </div>
     </div>
     <div class="card-deck card-margin" *ngIf="isEditForm">
@@ -67,14 +52,6 @@
                 <h5 class="card-title">Service List</h5>
                 <stjorna-servicelist [serviceList]="serviceList" [categoryView]="true"></stjorna-servicelist>
             </div>
-        </div>
-    </div>
-    <div class="card card-margin">
-        <div class="card-body">
-            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">{{'app.button.cancel' | translate}}</button>
-            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted" routerLink="/dashboard/categories">{{'app.button.back' | translate}}</button>
-            <!-- <button class="btn btn-success pull-right" [disabled]="!CategoryForm.dirty" type="submit">Save Category</button> -->
-            <button class="btn btn-success pull-right" [disabled]="submitted" type="submit">{{'app.button.save' | translate}}</button>
         </div>
     </div>
 </form>

@@ -35,33 +35,8 @@
     <div class="card-deck card-margin">
         <div class="card">
             <div class="card-body">
-                <div *ngIf="!croppedOk && !service.imageUrl">
-                    <input type="file" accept="image/*" class="form-control" (change)="fileChangeEvent($event)" />
-                    <div *ngIf="imageChangedEvent && !cropperImageLoaded" class="loader cropper-loader"></div>
-                    <image-cropper
-                        [imageChangedEvent]="imageChangedEvent"
-                        [maintainAspectRatio]="true"
-                        [aspectRatio]="1/1"
-                        [resizeToWidth]="0"
-                        format="jpeg"
-                        (imageCroppedBase64)="imageCropped($event)"
-                        (imageLoaded)="imageLoaded()"
-                        (loadImageFailed)="loadImageFailed()"
-                    ></image-cropper>
-                    <button *ngIf="imageChangedEvent" class="btn btn-success" (click)="cropped(true)">Cut Image</button>
-                </div>
-                <div *ngIf="service.image && croppedOk">
-                    <input type="hidden" name="image" [(ngModel)]="service.image" #image="ngModel">
-                    <img class="element-form-image" [src]="service.image">
-                </div>
-                <div *ngIf="service.imageUrl">
-                    <input type="hidden" name="imageUrl" [(ngModel)]="service.imageUrl" #imageUrl="ngModel">
-                    <img class="element-form-image" [src]="buildImageResourceUrl(service.imageUrl)">
-                </div>
-                <small class="form-text text-muted">service Image</small>
-                <button *ngIf="service.imageUrl || (service.image && croppedOk)" class="btn btn-danger btn-remove-image" (click)="removeImage()">
-                    <i class="fa fa-trash-o fa-1x"></i>
-                </button>
+                <stjorna-image-cropper [(element)]="service" [description]="'service image'"></stjorna-image-cropper>
+                <input type="hidden" name="image" [(ngModel)]="service.image" #image="ngModel">
             </div>
         </div>
         <div class="card">

@@ -22,9 +22,6 @@ export class CategoryFormComponent implements OnInit {
 
     public editHiddenFields = true;
     public imageChangedEvent: any = '';
-    public croppedImage: any = '';
-    public croppedOk = false;
-    public cropperImageLoaded = false;
     public submitted = false;
 
     constructor(
@@ -55,38 +52,6 @@ export class CategoryFormComponent implements OnInit {
         } else {
             this.editHiddenFields = false;
         }
-    }
-
-    public buildImageResourceUrl(imageUrl: string): string {
-        return `${this.stjornaService.getHost()}/api${imageUrl}?token=${this.loginStatusHandler.getCurrentUser().token}&userid=${this.loginStatusHandler.getCurrentUser()._id}`;
-    }
-
-    public removeImage() {
-        this.category.image = null;
-        this.category.imageUrl = null;
-        this.croppedOk = false;
-        this.imageChangedEvent = '';
-    }
-
-    // image methods
-    public fileChangeEvent(event: any): void {
-        this.imageChangedEvent = event;
-    }
-
-    public imageCropped(image: string) {
-        this.category.image = image;
-    }
-
-    public cropped(status: boolean) {
-        this.croppedOk = status;
-    }
-
-    public imageLoaded() {
-        this.cropperImageLoaded = true;
-    }
-
-    public loadImageFailed() {
-        this.toastr.warning('Reload the page and try it again.', 'Couldn\'t load image');
     }
 
     public saveNewCategory(categoryForm: NgForm) {

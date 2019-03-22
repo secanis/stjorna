@@ -9,6 +9,11 @@ import { LoginStatusHandler } from '../shared/login-handler.service';
     templateUrl: 'image-cropper.component.html'
 })
 
+/**
+ * The ImageCropperComponent allows to implement the cropper component in an easy way to reduce
+ * duplicated code in every from component.
+ * @Example <stjorna-image-cropper [(element)]="service" [description]="'service image'"></stjorna-image-cropper>
+ */
 export class ImageCropperComponent {
     /**
      * element {any} You can pass an object, this object must have the imageSelector attributes

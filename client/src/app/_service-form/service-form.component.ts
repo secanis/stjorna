@@ -20,10 +20,6 @@ export class ServiceFormComponent implements OnInit {
 
     public categoryList: Array<StjornaCategoryModel> = [];
     public editHiddenFields = true;
-    public imageChangedEvent: any = '';
-    public croppedImage: any = '';
-    public croppedOk = false;
-    public cropperImageLoaded = false;
     public submitted = false;
 
     constructor(
@@ -75,38 +71,6 @@ export class ServiceFormComponent implements OnInit {
         } else {
             this.toastr.warning('Form Validation', 'Your form input is not valid, please check your values.');
         }
-    }
-
-    public buildImageResourceUrl(imageUrl: string): string {
-        return `${this.stjornaService.getHost()}/api${imageUrl}?token=${this.loginStatusHandler.getCurrentUser().token}&userid=${this.loginStatusHandler.getCurrentUser()._id}`;
-    }
-
-    public removeImage() {
-        this.service.image = null;
-        this.service.imageUrl = null;
-        this.croppedOk = false;
-        this.imageChangedEvent = '';
-    }
-
-    // image methods
-    public fileChangeEvent(event: any): void {
-        this.imageChangedEvent = event;
-    }
-
-    public imageCropped(image: string) {
-        this.service.image = image;
-    }
-
-    public cropped(status: boolean) {
-        this.croppedOk = status;
-    }
-
-    public imageLoaded() {
-        this.cropperImageLoaded = true;
-    }
-
-    public loadImageFailed() {
-        this.toastr.warning('Reload the page and try it again.', 'Couldn\'t load image');
     }
 
     private saveDoneAction(result) {
