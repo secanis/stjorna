@@ -31,7 +31,7 @@ module.exports = (router, log) => {
                 // prepare load values
                 let loadString = '';
                 os.loadavg().forEach((v,i) => {
-                    if (i > 0) loadString += ' | ';
+                    if (i > 0) { loadString += ' | ' };
                     loadString += `${v * 100}%`;
                 });
 
