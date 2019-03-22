@@ -14,6 +14,14 @@ The two main goal of STJÓRNA are to be very simple in the setup and configurati
 - Possibility to export all your data as a JSON or Excel file
 - Open Source software - hosted on Github
 
+[![CircleCI](https://circleci.com/gh/secanis/stjorna/tree/master.svg?style=svg)](https://circleci.com/gh/secanis/stjorna/tree/master "Latest Build Result @CircleCI")
+[![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own version badge on microbadger.com")
+[![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com")
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/01a7269404b548058afbc8afa52e7add)](https://www.codacy.com/project/matthias.baldi/stjorna/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=secanis/stjorna&amp;utm_campaign=Badge_Grade_Dashboard)
+[![Join the chat at https://gitter.im/secanis/stjorna](https://badges.gitter.im/secanis/stjorna.svg)](https://gitter.im/secanis/stjorna?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
+[https://hub.docker.com/r/secanis/stjorna](https://hub.docker.com/r/secanis/stjorna)
+
 ## Get Started
 
 You have two possibilities how you can start/deploy STJÓRNA.
@@ -31,14 +39,6 @@ docker run -p 80:3000 secanis/stjorna
 # for persisting your data
 docker run -p 80:3000 -v path/to/storage:/app/data secanis/stjorna
 ```
-
-[![CircleCI](https://circleci.com/gh/secanis/stjorna/tree/master.svg?style=svg)](https://circleci.com/gh/secanis/stjorna/tree/master "Latest Build Result @CircleCI")
-[![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own version badge on microbadger.com")
-[![](https://images.microbadger.com/badges/image/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own image badge on microbadger.com")
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/01a7269404b548058afbc8afa52e7add)](https://www.codacy.com/project/matthias.baldi/stjorna/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=secanis/stjorna&amp;utm_campaign=Badge_Grade_Dashboard)
-[![Join the chat at https://gitter.im/secanis/stjorna](https://badges.gitter.im/secanis/stjorna.svg)](https://gitter.im/secanis/stjorna?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-
-[https://hub.docker.com/r/secanis/stjorna](https://hub.docker.com/r/secanis/stjorna)
 
 ### NodeJS
 
