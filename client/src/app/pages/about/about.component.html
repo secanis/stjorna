@@ -1,0 +1,125 @@
+<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">{{'about.title' | translate}}</h3>
+            <p class="card-text">STJ&Oacute;RNA was created to have an easy product management with the possibility to
+                access
+                the categories and products over an simple just readable REST API.<br>
+                STJ&Oacute;RNA means in the Islandic language something like manage or store something.<br>
+                If you need help, you can contact us under the following buttons.<br>
+            </p>
+        </div>
+        <div class="card-footer bg-transparent">
+            <a class="btn btn-primary"
+                href="https://github.com/secanis/stjorna">{{'about.issues.title' | translate}}</a>
+            <a class="btn btn-primary btn-list-margin-left"
+                href="https://stjorna.secanis.ch">{{'about.documentation.title' | translate}}</a>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">{{'about.server.info.title' | translate}}</h3><br>
+            <table *ngIf="serverInfo" class="table table-striped">
+                <tr>
+                    <td>Hostname</td>
+                    <td>{{serverInfo.hostname}}</td>
+                </tr>
+                <tr>
+                    <td>Api Port</td>
+                    <td>{{serverInfo.api_port}}</td>
+                </tr>
+                <tr>
+                    <td>OS Type</td>
+                    <td>{{serverInfo.os}}</td>
+                </tr>
+                <tr>
+                    <td>OS Arch</td>
+                    <td>{{serverInfo.arch}}</td>
+                </tr>
+                <tr>
+                    <td>CPU</td>
+                    <td>{{serverInfo.cpu}}</td>
+                </tr>
+                <tr>
+                    <td>Memory Total</td>
+                    <td>{{serverInfo.mem_total / 1024 / 1024 / 1024 | number }} GB</td>
+                </tr>
+                <tr>
+                    <td>Memory Free</td>
+                    <td>{{serverInfo.mem_free / 1024 / 1024 / 1024 | number }} GB</td>
+                </tr>
+                <tr>
+                    <td>Load Avgerage</td>
+                    <td>{{serverInfo.loadavg}}</td>
+                </tr>
+                <tr>
+                    <td>STJÓRNA Version</td>
+                    <td>{{serverInfo.app_version}}</td>
+                </tr>
+                <tr>
+                    <td>Database Type</td>
+                    <td>{{serverInfo.database.type}}</td>
+                </tr>
+                <tr>
+                    <td>Database Constellations</td>
+                    <td>{{serverInfo.database.constellations | json}}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">{{'about.license.title' | translate}}</h3>
+            <div class="card-text">
+                <p>Copyright 2018 secanis.ch</p>
+                <p>
+                    Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+                    associated documentation
+                    files (the "Software"), to deal in the Software without restriction, including without limitation
+                    the rights
+                    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
+                    and to
+                    permit persons to whom the Software is furnished to do so, subject to the following conditions:
+                </p>
+                <p>
+                    The above copyright notice and this permission notice shall be included in all copies or substantial
+                    portions of the
+                    Software.
+                </p>
+                <p>
+                    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+                    NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+                    NONINFRINGEMENT. IN
+                    NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+                    WHETHER
+                    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+                    OR THE
+                    USE OR OTHER DEALINGS IN THE SOFTWARE.
+                </p>
+            </div>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">{{'about.libraries.title' | translate}}</h3>
+            <div class="card-text">
+                <p>{{'about.libraries.thanks' | translate}}</p>
+                <ul>
+                    <li><a href="https://angular.io">Angular</a></li>
+                    <li><a href="https://github.com/typicode/lowdb">Lowdb - Database</a></li>
+                    <li><a href="https://github.com/oliver-moran/jimp">Jimp (image processing - serverside)</a></li>
+                    <li><a href="https://github.com/Mawi137/ngx-image-cropper">ngx-image-cropper (image processing -
+                            clientside)</a></li>
+                    <li><a href="https://github.com/scttcper/ngx-toastr">ngx-toastr (tost messages)</a></li>
+                    <li><a href="https://getbootstrap.com/">Bootstrap</a></li>
+                    <li><a href="https://linearicons.com">Linear Icons Font </a>
+                        <small>
+                            <a href="https://perxis.com">(or the creator: https://perxis.com)</a>
+                        </small>
+                    </li>
+                    <li>{{'about.libraries.thanks.more' | translate}}</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</main>

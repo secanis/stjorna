@@ -1,0 +1,71 @@
+<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">{{'settings.title' | translate}}</h3>
+            <button class="btn btn-success float-right"
+                (click)="saveSettings(config)">{{'app.button.save' | translate}}</button>
+        </div>
+    </div>
+    <div class="card-columns">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.api.title' | translate}}</h5>
+                <select class="form-control" name="allowRemoteAccess" [(ngModel)]="config.allow_remote_access"
+                    #allowRemoteAccess="ngModel" required>
+                    <option value="true">{{'settings.api.active' | translate}}</option>
+                    <option value="false">{{'settings.api.inactive' | translate}}</option>
+                </select>
+                <small class="form-text text-muted" for="allowRemoteAccess">
+                    Remote API access to use your data in third-pary applications.<br>
+                    Example: <code>{{buildExampleUrl()}}</code><br>
+                    For further information and documentation, please visit <a href="https://stjorna.secanis.ch"
+                        target="_blank">https://stjorna.secanis.ch</a>.
+                </small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.image.title' | translate}} <small>(Server)</small></h5>
+                <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
+                    [(ngModel)]="config.image_dimension" #imageDimension="ngModel" required>
+                <small class="form-text text-muted"
+                    for="imageDimension">{{'settings.image.dimmension' | translate}}</small><br>
+                <input class="form-control" type="number" min="0" max="100" step="1" name="imageQuality"
+                    [(ngModel)]="config.image_quality" #imageQuality="ngModel" required>
+                <small class="form-text text-muted" for="imageQuality">{{'settings.image.quality' | translate}}</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.environment.title' | translate}}</h5>
+                <div *ngFor="let ele of configEnv; let l = last;">
+                    <input class="form-control" type="text" disabled value="{{ele.name}} = {{ele.value}}"><br
+                        *ngIf="!l">
+                </div>
+                <small class="form-text text-muted"
+                    for="active">{{'settings.environment.description' | translate}}</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.passwordsecret.title' | translate}}</h5>
+                <input class="form-control" type="text" disabled name="passwordSecret"
+                    [(ngModel)]="config.password_secret" #passwordSecret="ngModel" required>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.export.title' | translate}}</h5>
+                <div class="export-buttons">
+                    <button class="btn btn-sm btn-info"
+                        (click)="triggerExport('excel')">{{'settings.export.button.excel' | translate}}</button>
+                    <button class="btn btn-sm btn-info"
+                        (click)="triggerExport('json')">{{'settings.export.button.json' | translate}}</button>
+                </div>
+                <small class="form-text text-muted" for="allowRemoteAccess">
+                    {{'settings.export.description' | translate}}
+                </small>
+            </div>
+        </div>
+    </div>
+</main>

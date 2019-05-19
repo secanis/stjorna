@@ -1,0 +1,161 @@
+html,
+body {
+    border-radius: 0px;
+    font-family: 'Raleway', sans-serif;
+    margin: 0px;
+    padding: 0px;
+    color: #333;
+    font-weight: normal;
+}
+
+tr,
+td,
+p {
+    font-size: 14px;
+}
+
+.text-color-stjorna {
+    color: rgba(17, 91, 166, 1);
+}
+
+.sidebar > div.sidebar-sticky > ul.flex-column > li.nav-item > a.nav-link.text-color-stjorna-active {
+    font-weight: bold;
+    color: rgba(17, 91, 166, 1);
+}
+
+.background-color-stjorna,
+.btn-stjorna {
+    color: #fff;
+    background-color: rgba(17, 91, 166, 1);
+}
+
+.btn-stjorna:hover {
+    background-color: rgba(20, 98, 155, 1);
+}
+
+button,
+.btn,
+input,
+select,
+.card,
+.nav-tabs .nav-link {
+    border-radius: 0px;
+}
+
+.container {
+    max-width: 1200px;
+}
+
+.navbar {
+    min-height: 20px;
+}
+
+.card-columns {
+    column-count: 2;
+}
+
+.btn {
+    min-width: 200px;
+}
+
+.btn-remove-image {
+    position: absolute;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    min-width: 30px;
+}
+
+.btn-list-margin-left:not(:first-child) {
+    margin-left: 10px;
+}
+
+.card-margin {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.table td,
+.table th,
+.table thead th {
+    vertical-align: middle;
+    height: 60px;
+}
+
+.edit-task,
+.btn-copy-cb {
+    cursor: pointer;
+}
+
+.element-form-image {
+    height: 350px;
+    width: 350px;
+}
+
+.text-stjorna,
+.nav-tabs .nav-link {
+    font-size: 15px;
+}
+
+.nav-tabs .nav-item.show .nav-link {
+    font-weight: bold;
+}
+
+.nav-tabs .nav-link.active {
+    border-color: rgba(10, 10, 10, 0.1);
+    color: rgba(17, 91, 166, 1);
+    font-weight: bold;
+}
+
+.export-buttons {
+    display: flex;
+    justify-content: start;
+}
+
+.export-buttons button {
+    margin-left: 3px;
+    margin-right: 3px;
+}
+
+image-cropper {
+    height: 400px;
+}
+
+.cropper-loader {
+    margin: 50px auto auto;
+    width: 50px;
+    height: 50px;
+}
+
+/* form validation color */
+.ng-valid[required],
+.ng-valid.required {
+    border-left: 5px solid #42A948;
+}
+
+.ng-invalid:not(form) {
+    border-left: 5px solid #a94442;
+}
+
+.ng-pristine:not(form) {
+    border-left: 5px solid #ddd;
+}
+
+/* For devices larger than 400px */
+@media (min-width: 400px) {
+    .container {
+        width: 85%;
+        padding: 0;
+    }
+}
+
+/* For devices larger than 550px */
+@media (min-width: 550px) {
+    .container {
+        width: 80%;
+        padding: 0;
+    }
+}
+
+.lnr-2x {
+    font-size: 170%;
+}

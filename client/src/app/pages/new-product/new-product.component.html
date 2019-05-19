@@ -1,0 +1,5 @@
+<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
+    <stjorna-product-form *ngIf="currentRoute.includes('product')" [isEditForm]="false"></stjorna-product-form>
+    <stjorna-service-form *ngIf="currentRoute.includes('service')" [isEditForm]="false"></stjorna-service-form>
+    <stjorna-category-form *ngIf="currentRoute.includes('category')" [isEditForm]="false"></stjorna-category-form>
+</main>

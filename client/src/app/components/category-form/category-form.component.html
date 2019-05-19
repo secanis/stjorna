@@ -1,0 +1,62 @@
+<form #CategoryForm="ngForm" (ngSubmit)="saveNewCategory(CategoryForm)">
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 *ngIf="!isEditForm">{{'app.create.category.title' | translate}}</h3>
+            <h3 *ngIf="isEditForm">{{'app.edit.category.title' | translate}}</h3>
+        </div>
+    </div>
+    <div class="card-deck card-margin">
+        <div class="card">
+            <div class="card-body">
+                <input class="form-control" type="hidden" name="_id" [(ngModel)]="category._id" #_id="ngModel">
+                <input class="form-control" type="text" name="name" [(ngModel)]="category.name" #name="ngModel"
+                    required>
+                <small class="form-text text-muted">{{'app.table.title.name' | translate}}</small><br>
+                <input class="form-control" type="text" name="description" [(ngModel)]="category.description"
+                    #description="ngModel" required>
+                <small class="form-text text-muted">{{'app.table.title.description' | translate}}</small><br>
+                <select class="form-control" name="active" [(ngModel)]="category.active" #active="ngModel" required>
+                    <option value="true">{{'settings.api.active' | translate}}</option>
+                    <option value="false">{{'settings.api.inactive' | translate}}</option>
+                </select>
+                <small class="form-text text-muted" for="active">{{'app.table.title.active' | translate}}</small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <stjorna-image-cropper [(element)]="category" [description]="'category image'"></stjorna-image-cropper>
+                <input *ngIf="category?.image" type="hidden" name="image" [(ngModel)]="category.image" #image="ngModel">
+                <input *ngIf="category?.imageUrl" type="hidden" name="imageUrl" [(ngModel)]="category.imageUrl"
+                    #imageUrl="ngModel">
+            </div>
+        </div>
+    </div>
+    <div class="card card-margin">
+        <div class="card-body">
+            <button *ngIf="!isEditForm" class="btn btn-warning pull-left" [disabled]="submitted"
+                routerLink="/dashboard/categories">{{'app.button.cancel' | translate}}</button>
+            <button *ngIf="isEditForm" class="btn btn-warning pull-left" [disabled]="submitted"
+                routerLink="/dashboard/categories">{{'app.button.back' | translate}}</button>
+            <!-- <button class="btn btn-success float-right" [disabled]="!CategoryForm.dirty" type="submit">Save Category</button> -->
+            <button class="btn btn-success float-right" [disabled]="submitted"
+                type="submit">{{'app.button.save' | translate}}</button>
+        </div>
+    </div>
+    <div class="card-deck card-margin" *ngIf="isEditForm">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'app.products' | translate}}</h5>
+                <stjorna-product-list [productList]="productList" [categoryView]="true"></stjorna-product-list>
+            </div>
+        </div>
+    </div>
+    <div class="card-deck card-margin" *ngIf="isEditForm">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Service List</h5>
+                <stjorna-service-list [serviceList]="serviceList" [categoryView]="true"></stjorna-service-list>
+            </div>
+        </div>
+    </div>
+</form>
+<stjorna-spinner *ngIf="submitted"></stjorna-spinner>

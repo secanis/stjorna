@@ -1,0 +1,7 @@
+/* You can add global styles to this file, and also import other style files */
+
+@import 'style/lux.min.css';
+/* https://linearicons.com/free#cheat-sheet */
+@import 'style/linear-icon-font.min.css';
+@import 'ngx-toastr/toastr.css';
+@import 'style/stjorna.css';

@@ -1,18 +1,12 @@
 import { enableProdMode } from '@angular/core';
 import { platformBrowserDynamic } from '@angular/platform-browser-dynamic';
+
 import { AppModule } from './app/app.module';
+import { environment } from './environments/environment';
 
-// if not on localhost url, activate prod mode
-if (window.location.hostname !== 'localhost') {
-    enableProdMode();
+if (environment.production) {
+  enableProdMode();
 }
 
-export function main() {
-    return platformBrowserDynamic().bootstrapModule(AppModule);
-}
-
-if (document.readyState === 'complete') {
-    main();
-} else {
-    document.addEventListener('DOMContentLoaded', main);
-}
+platformBrowserDynamic().bootstrapModule(AppModule)
+  .catch(err => console.error(err));

@@ -1,6 +1,6 @@
 {
     "name": "stjorna",
-    "version": "2.3.1",
+    "version": "2.3.2",
     "description": "STJÓRNA product management",
     "main": "server.js",
     "scripts": {
@@ -19,28 +19,28 @@
         "url": "https://github.com/secanis/stjorna.git"
     },
     "dependencies": {
-        "body-parser": "^1.18.3",
-        "cron": "^1.7.0",
-        "excel4node": "^1.7.0",
+        "body-parser": "^1.19.0",
+        "cron": "^1.7.1",
+        "excel4node": "^1.7.2",
         "express": "^4.16.4",
         "express-winston": "^3.1.0",
-        "jimp": "^0.6.0",
+        "jimp": "^0.6.4",
         "jsonwebtoken": "^8.5.1",
         "lowdb": "^1.0.0",
         "uniqid": "^5.0.3",
-        "util": "^0.11.1",
+        "util": "^0.12.0",
         "winston": "^3.2.1"
     },
     "devDependencies": {
         "apidoc": "^0.17.7",
         "chai": "^4.2.0",
-        "chai-http": "^4.2.1",
+        "chai-http": "^4.3.0",
         "codacy-coverage": "^3.4.0",
-        "mocha": "^6.0.2",
-        "mocha-junit-reporter": "^1.18.0",
+        "mocha": "^6.1.4",
+        "mocha-junit-reporter": "^1.22.0",
         "mocha-multi-reporters": "^1.1.7",
-        "nodemon": "1.18.10",
-        "nyc": "^13.3.0",
+        "nodemon": "1.19.0",
+        "nyc": "^14.1.1",
         "request": "^2.88.0",
         "rimraf": "^2.6.3"
     }

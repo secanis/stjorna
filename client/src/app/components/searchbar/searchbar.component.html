@@ -1,0 +1,4 @@
+<div class="stjorna-searchbar">
+    <input #search type="text" class="form-control" (input)="updateSearch.emit(search.value)"
+        placeholder="{{'app.searchbar.placeholder' | translate}}">
+</div>

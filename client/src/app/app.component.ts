@@ -1,28 +1,24 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Router } from '@angular/router';
-
-import { StjornaService } from './shared/stjorna.service';
-import { LoginStatusHandler } from './shared/login-handler.service';
-import { TranslateService } from './shared/translate.service';
-
-import '../style/lux.min.css';
-import '../style/style.css';
-import { StjornaUserModel } from './models/user.model';
+import { User } from './models/user';
+import { StjornaService } from './services/stjorna.service';
+import { LoginHandlerService } from './services/login-handler.service';
+import { TranslateService } from './services/translate.service';
 
 @Component({
-    selector: 'stjorna-app',
+    selector: 'stjorna-root',
     templateUrl: './app.component.html',
-    styleUrls: ['app.component.css']
+    styleUrls: ['./app.component.css']
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
     public toYear: Number;
     public loggedIn: Boolean = false;
-    public currentUser: StjornaUserModel;
+    public currentUser: User;
 
     constructor(
         private router: Router,
         private stjornaService: StjornaService,
-        private loginStatusHandler: LoginStatusHandler,
+        private loginHandlerService: LoginHandlerService,
         private translateService: TranslateService
     ) { }
 
@@ -35,14 +31,14 @@ export class AppComponent implements OnInit {
         });
 
         // set initial language
-        this.currentUser = this.loginStatusHandler.getCurrentUser();
-        this.loginStatusHandler.isLoggedIn().subscribe(result => {
+        this.currentUser = this.loginHandlerService.getCurrentUser();
+        this.loginHandlerService.isLoggedIn().subscribe(result => {
             this.loggedIn = result;
             if (this.currentUser) {
                 this.translateService.use(this.currentUser.language);
             }
         });
-        this.loggedIn = this.loginStatusHandler.getLoginStatus();
+        this.loggedIn = this.loginHandlerService.getLoginStatus();
     }
 
     public getActiveUrlRoute(path: string): boolean {

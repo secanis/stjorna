@@ -1,0 +1,18 @@
+<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
+    <stjorna-product-form *ngIf="product && currentRoute.includes('product')" [product]="product" [isEditForm]="true">
+    </stjorna-product-form>
+    <stjorna-service-form *ngIf="service && currentRoute.includes('service')" [service]="service" [isEditForm]="true">
+    </stjorna-service-form>
+    <stjorna-category-form *ngIf="category && currentRoute.includes('category')" [category]="category"
+        [isEditForm]="true" [productList]="productList" [serviceList]="serviceList"></stjorna-category-form>
+    <div class="card card-margin">
+        <div class="card-body">
+            <h3 class="card-title">{{'app.remove.title' | translate}}</h3>
+            <p class="card-text text-danger">{{'app.remove.description' | translate}}</p>
+            <button *ngIf="currentRoute.includes('product')" class="btn btn-danger"
+                (click)="removeProduct(product)">{{'app.button.remove' | translate}}</button>
+            <button *ngIf="currentRoute.includes('category')" class="btn btn-danger"
+                (click)="removeCategory(category)">{{'app.button.remove' | translate}}</button>
+        </div>
+    </div>
+</main>
