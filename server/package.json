@@ -1,6 +1,6 @@
 {
     "name": "stjorna",
-    "version": "2.3.3",
+    "version": "2.3.4",
     "description": "STJÓRNA product management",
     "main": "server.js",
     "scripts": {
@@ -23,7 +23,7 @@
         "cron": "^1.7.1",
         "excel4node": "^1.7.2",
         "express": "^4.17.1",
-        "express-winston": "^3.1.0",
+        "express-winston": "^3.2.1",
         "jimp": "^0.6.4",
         "jsonwebtoken": "^8.5.1",
         "lowdb": "^1.0.0",
