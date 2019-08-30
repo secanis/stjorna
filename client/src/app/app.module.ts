@@ -71,7 +71,7 @@ registerLocaleData(lcoaleDECH);
         FormsModule,
         ToastrModule.forRoot(),
         ImageCropperModule,
-        NgbModule.forRoot()
+        NgbModule
     ],
     providers: [
         StjornaService,
