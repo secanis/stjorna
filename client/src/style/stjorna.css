@@ -23,6 +23,14 @@ p {
     color: rgba(17, 91, 166, 1);
 }
 
+.sidebar-logo {
+    padding-left: 15px;
+}
+
+.sidebar-logo img {
+    width: 100%;
+}
+
 .background-color-stjorna,
 .btn-stjorna {
     color: #fff;
@@ -47,7 +55,7 @@ select,
 }
 
 .navbar {
-    min-height: 20px;
+    min-height: 10px;
 }
 
 .card-columns {

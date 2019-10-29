@@ -67,7 +67,7 @@
     "about.license.title": "Lizenz",
     "about.libraries.title": "Biblioteken / Module",
     "about.libraries.thanks": "Dank den folgenden Biblioteken, war es möglich diese Lösung zu erstellen:",
-    "about.libraries.thanks.more": "für mehr Informationen, lohnt sich ein Blick in die Datei package.json.",
+    "about.libraries.thanks.more": "für mehr Informationen, lohnt sich ein Blick in die Datei package.json:",
     "spinner.processing.image.title": "Bitte warten...",
     "spinner.processing.image.description": "STJORNA verarbeitet das hochgeladene Bild."
 }

@@ -20,6 +20,12 @@
         *ngIf="!getActiveUrlRoute('setup') && !getActiveUrlRoute('login') || loggedIn">
         <div class="sidebar-sticky">
             <ul class="nav flex-column">
+                <li class="nav-item sidebar-logo">
+                    <img src="assets/stjorna_middle_compressor.png"><br>
+                </li>
+            </ul>
+            <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted"></h6>
+            <ul class="nav flex-column">
                 <li class="nav-item">
                     <a class="nav-link" [ngClass]="{'text-color-stjorna-active': getActiveUrlRoute('dashboard')}"
                         routerLink="/dashboard">
