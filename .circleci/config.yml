@@ -52,7 +52,7 @@ jobs:
         # BUILD: CLIENT
         - run:
             name: Build Angular Application
-            command: cd client; npm run build
+            command: cd client; npm run build:prod
         - run:
             name: Run Client Lint
             command: cd client; npm run lint
