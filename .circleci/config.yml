@@ -58,8 +58,6 @@ jobs:
             command: cd client; npm run lint
 
         # BUILD: DOCKER
-        - setup_remote_docker:
-            docker_layer_caching: true
         - run:
             name: Run Docker Build
             command: |
