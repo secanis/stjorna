@@ -18,8 +18,8 @@ module.exports = {
                 config = JSON.parse(config);
                 // resize and set the quality for the image and save it
                 Jimp.read(buff).then((image) => {
-                    image.resize(config.image_dimension, config.image_dimension)
-                        .quality(config.image_quality)
+                    image.resize(config.image.width, config.image.height)
+                        .quality(config.image.quality)
                         .write(`${process.env.STJORNA_SERVER_STORAGE}/${imagePath}`, (err) => {
                             if (err) {
                                 logger.error(`image - error occured while writing image to filesystem: ${err.message}`);

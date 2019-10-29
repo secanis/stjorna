@@ -27,11 +27,15 @@
             <div class="card-body">
                 <h5 class="card-title">{{'settings.image.title' | translate}} <small>(Server)</small></h5>
                 <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
-                    [(ngModel)]="config.image_dimension" #imageDimension="ngModel" required>
+                    [(ngModel)]="config.image.width" #imageDimension="ngModel" required>
                 <small class="form-text text-muted"
-                    for="imageDimension">{{'settings.image.dimmension' | translate}}</small><br>
+                    for="imageDimension">{{'settings.image.width' | translate}}</small><br>
+                <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
+                    [(ngModel)]="config.image.height" #imageDimension="ngModel" required>
+                <small class="form-text text-muted"
+                    for="imageDimension">{{'settings.image.height' | translate}}</small><br>
                 <input class="form-control" type="number" min="0" max="100" step="1" name="imageQuality"
-                    [(ngModel)]="config.image_quality" #imageQuality="ngModel" required>
+                    [(ngModel)]="config.image.quality" #imageQuality="ngModel" required>
                 <small class="form-text text-muted" for="imageQuality">{{'settings.image.quality' | translate}}</small>
             </div>
         </div>

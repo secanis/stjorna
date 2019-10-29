@@ -17,7 +17,8 @@ module.exports = {
         // configuration default values
         process.env['STJORNACONFIG_PASSWORD_SECRECT']       = process.env.STJORNACONFIG_PASSWORD_SECRECT    || '';
         process.env['STJORNACONFIG_ALLOW_REMOTE_ACCESS']    = process.env.STJORNACONFIG_ALLOW_REMOTE_ACCESS || false;
-        process.env['STJORNACONFIG_IMAGE_DIMENSION']        = process.env.STJORNACONFIG_IMAGE_DIMENSION     || 700;
+        process.env['STJORNACONFIG_IMAGE_WIDTH']            = process.env.STJORNACONFIG_IMAGE_WIDTH         || 700;
+        process.env['STJORNACONFIG_IMAGE_HEIGHT']           = process.env.STJORNACONFIG_IMAGE_HEIGHT        || 700;
         process.env['STJORNACONFIG_IMAGE_QUALITY']          = process.env.STJORNACONFIG_IMAGE_QUALITY       || 70;
         process.env['STJORNACONFIG_INSTALLED']              = process.env.STJORNACONFIG_INSTALLED           || false;
     },

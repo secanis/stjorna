@@ -75,11 +75,14 @@ module.exports = {
             // set the values from the parameter object or set it from the existing configuration
             // if not given or set the defaults from the env_defaults
             let configObj = {
-                "password_secret": existConf.password_secret || process.env.STJORNACONFIG_PASSWORD_SECRECT,
-                "allow_remote_access": null,
-                "image_dimension": newConf.image_dimension || existConf.image_dimension || process.env.STJORNACONFIG_IMAGE_DIMENSION,
-                "image_quality": newConf.image_quality || existConf.image_quality || process.env.STJORNACONFIG_IMAGE_QUALITY,
-                "installed": newConf.installed || existConf.installed || process.env.STJORNACONFIG_INSTALLED
+                password_secret: existConf.password_secret || process.env.STJORNACONFIG_PASSWORD_SECRECT,
+                allow_remote_access: null,
+                image: {
+                    width: (newConf.image && newConf.image.width) || (existConf.image && existConf.image.width) || process.env.STJORNACONFIG_IMAGE_WIDTH,
+                    height: (newConf.image && newConf.image.height) || (existConf.image && existConf.image.height) || process.env.STJORNACONFIG_IMAGE_HEIGHT,
+                    quality: (newConf.image && newConf.image.quality) || (existConf.image && existConf.image.quality) || process.env.STJORNACONFIG_IMAGE_QUALITY
+                },
+                installed: newConf.installed || existConf.installed || process.env.STJORNACONFIG_INSTALLED
             };
             // evaluate if which configuration we have
             if (newConf && newConf.allow_remote_access !== null && newConf.allow_remote_access !== undefined) {

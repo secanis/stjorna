@@ -190,7 +190,10 @@ module.exports = (router) => {
                     if (err || !JSON.parse(config).installed) {
                         next();
                     } else {
-                        res.send({ 'message': 'installation done', 'status': 'ok' });
+                        res.send({
+                            message: 'installation done',
+                            status: 'ok'
+                        });
                     }
                 });
             } else {

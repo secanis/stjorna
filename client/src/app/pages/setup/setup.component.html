@@ -51,15 +51,14 @@
             <div class="card-body">
                 <h5 class="card-title">Image Settings <small>(Server)</small></h5>
                 <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
-                    [(ngModel)]="config.image_dimension" #imageDimension="ngModel" required>
-                <small class="form-text text-muted" for="imageDimension">Describes the size of the image, we will save
-                    on the
-                    server (value between 0 and 1000 in pixels).</small><br>
+                    [(ngModel)]="config.image.width" #imageDimension="ngModel" required>
+                <small class="form-text text-muted" for="imageDimension">{{'settings.image.width' | translate}}</small><br>
+                <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
+                    [(ngModel)]="config.image.height" #imageDimension="ngModel" required>
+                <small class="form-text text-muted" for="imageDimension">{{'settings.image.height' | translate}}</small><br>
                 <input class="form-control" type="number" min="0" max="100" step="1" name="imageQuality"
-                    [(ngModel)]="config.image_quality" #imageQuality="ngModel" required>
-                <small class="form-text text-muted" for="imageQuality">Describes the quality of the image (jpeg - value
-                    from 0
-                    to 100).</small>
+                    [(ngModel)]="config.image.quality" #imageQuality="ngModel" required>
+                <small class="form-text text-muted" for="imageQuality">{{'settings.image.quality' | translate}}</small>
             </div>
         </div>
         <div class="card">

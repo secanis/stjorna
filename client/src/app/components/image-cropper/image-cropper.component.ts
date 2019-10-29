@@ -1,14 +1,16 @@
-import { Component, OnInit, Input, SimpleChanges } from '@angular/core';
+import { Component, OnInit, Input, SimpleChanges, OnChanges } from '@angular/core';
 import { ToastrService } from 'ngx-toastr';
 import { StjornaService } from 'src/app/services/stjorna.service';
 import { LoginHandlerService } from 'src/app/services/login-handler.service';
+import { ImageCroppedEvent } from 'ngx-image-cropper';
+import { Config } from 'src/app/models/config';
 
 @Component({
     selector: 'stjorna-image-cropper',
     templateUrl: './image-cropper.component.html',
     styleUrls: ['./image-cropper.component.css']
 })
-export class ImageCropperComponent {
+export class ImageCropperComponent implements OnInit, OnChanges {
     /**
      * element {any} You can pass an object, this object must have the imageSelector attributes
      * or the image/imageUrl attribute.
@@ -32,12 +34,19 @@ export class ImageCropperComponent {
     public imageChangedEvent: any = '';
     public croppedOk = false;
     public cropperImageLoaded = false;
+    public config: Config;
 
-    constructor(
+    constructor (
         private toastr: ToastrService,
         private stjornaService: StjornaService,
         private loginHandlerService: LoginHandlerService
     ) { }
+
+    ngOnInit() {
+        this.stjornaService.getSettings().subscribe((data) => {
+            this.config = data;
+        });
+    }
 
     ngOnChanges(changes: SimpleChanges) {
         this.element = changes.element.currentValue;
@@ -58,8 +67,9 @@ export class ImageCropperComponent {
         this.imageChangedEvent = event;
     }
 
-    public imageCropped(image: string) {
-        this.element[this.imageSelector] = image;
+    public imageCropped(image: ImageCroppedEvent) {
+        console.log(image);
+        this.element[this.imageSelector] = image.base64;
     }
 
     public cropped(status: boolean) {

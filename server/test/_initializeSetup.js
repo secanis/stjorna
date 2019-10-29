@@ -12,15 +12,19 @@ process.env.STJORNA_SERVER_PORT = 9999;
 process.env.STJORNA_SECURITY = 'none';
 process.env.STJORNA_LOGLEVEL = 'slient';
 process.env.STJORNA_REQUEST_LOG = 'slient';
-process.env.STJORNACONFIG_IMAGE_DIMENSION = 255;
+process.env.STJORNACONFIG_IMAGE_WIDTH = 255;
+process.env.STJORNACONFIG_IMAGE_HEIGHT = 255;
 process.env.STJORNACONFIG_IMAGE_QUALITY = 50;
 process.env.STJORNACONFIG_PASSWORD_SECRECT = 'testpwsecret';
 process.env.STJORNA_SERVER_STORAGE = `${process.cwd()}/testdata`;
 
 const init = () => {
     const config = {
-        image_dimension: process.env.STJORNACONFIG_IMAGE_DIMENSION - 0,
-        image_quality: process.env.STJORNACONFIG_IMAGE_QUALITY - 0,
+        image: {
+            width: process.env.STJORNACONFIG_IMAGE_WIDTH - 0,
+            height: process.env.STJORNACONFIG_IMAGE_HEIGHT - 0,
+            quality: process.env.STJORNACONFIG_IMAGE_QUALITY - 0
+        },
         allow_remote_access: true
     };
     

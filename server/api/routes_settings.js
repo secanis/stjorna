@@ -12,12 +12,14 @@ module.exports = (router) => {
          * @apiName GetSettings
          * @apiGroup Settings
          * @apiPermission loggedin
-         * @apiVersion 1.0.0
+         * @apiVersion 1.2.0
          *
          * @apiSuccess {string} password_secret Returns Settings object
          * @apiSuccess {boolean} allow_remote_access Returns Settings object
-         * @apiSuccess {string} image_dimension Returns Settings object
-         * @apiSuccess {string} image_quality Get the value of password quality
+         * @apiSuccess {object} image Returns Image Settings object
+         * @apiSuccess {number} image.width Width for saved image
+         * @apiSuccess {number} image.height Height for saved image
+         * @apiSuccess {number} image.quality Quality for saved image
          */
         .get((req, res) => {
             fileHelper.loadConfigFile((err, config) => {
@@ -92,9 +94,9 @@ module.exports = (router) => {
 
     router.route('/v1/setup')
         /**
-         * @api {get} /api/v1/setup Get Setup Status
+         * @api {option} /api/v1/setup Get Setup Status without Login
          * @apiPrivate
-         * @apiName GetSetup
+         * @apiName GetSetupWithoutLogin
          * @apiGroup Setup
          * @apiPermission none
          * @apiVersion 1.0.0
@@ -102,13 +104,32 @@ module.exports = (router) => {
          * @apiSuccess {string} message Returns a message string
          * @apiSuccess {boolean} installed Returns the installation
          */
+
+        /**
+         * @api {get} /api/v1/setup Get Setup Status with Login
+         * @apiPrivate
+         * @apiName GetSetupWithLogin
+         * @apiGroup Setup
+         * @apiPermission loggedin
+         * @apiVersion 1.2.0
+         *
+         * @apiSuccess {string} password_secret Returns Settings object
+         * @apiSuccess {boolean} allow_remote_access Returns Settings object
+         * @apiSuccess {object} image Returns Image Settings object
+         * @apiSuccess {number} image.width Width for saved image
+         * @apiSuccess {number} image.height Height for saved image
+         * @apiSuccess {number} image.quality Quality for saved image
+         */
         .get((req, res) => {
             res.send({
-                'message': 'installation status stjorna',
-                'allow_remote_access': process.env.STJORNACONFIG_ALLOW_REMOTE_ACCESS == true,
-                'image_dimension': process.env.STJORNACONFIG_IMAGE_DIMENSION - 0,
-                'image_quality': process.env.STJORNACONFIG_IMAGE_QUALITY - 0,
-                'installed': process.env.STJORNACONFIG_INSTALLED == true
+                message: 'installation status stjorna',
+                allow_remote_access: process.env.STJORNACONFIG_ALLOW_REMOTE_ACCESS == true,
+                image: {
+                    width: process.env.STJORNACONFIG_IMAGE_WIDTH - 0,
+                    height: process.env.STJORNACONFIG_IMAGE_HEIGHT - 0,
+                    quality: process.env.STJORNACONFIG_IMAGE_QUALITY - 0
+                },
+                installed: process.env.STJORNACONFIG_INSTALLED == true
             });
         })
         /**
@@ -126,13 +147,13 @@ module.exports = (router) => {
             // database files are created it self by nedb
             if (!fileHelper.isConfigFileExisting()) {
                 let responseMessage = {
-                    'config_status': {
-                        'errors': [],
-                        'status': 'ok'
+                    config_status: {
+                        errors: [],
+                        status: 'ok'
                     },
-                    'user_status': {
-                        'errors': [],
-                        'status': 'ok'
+                    user_status: {
+                        errors: [],
+                        status: 'ok'
                     }
                 };
                 // generate security token

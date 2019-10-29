@@ -1,9 +1,10 @@
-<div *ngIf="!croppedOk && !element[imageUrlSelector]">
+<div *ngIf="!croppedOk && !element[imageUrlSelector] && config">
     <input type="file" accept="image/*" class="form-control" (change)="fileChangeEvent($event)" />
     <div *ngIf="imageChangedEvent && !cropperImageLoaded" class="loader cropper-loader"></div>
-    <image-cropper [imageChangedEvent]="imageChangedEvent" [maintainAspectRatio]="true" [aspectRatio]="1/1"
-        [resizeToWidth]="0" [outputType]="'base64'" format="jpeg" (imageCroppedBase64)="imageCropped($event)"
-        (imageLoaded)="imageLoaded()" (loadImageFailed)="loadImageFailed()"></image-cropper>
+    <image-cropper [imageChangedEvent]="imageChangedEvent" [maintainAspectRatio]="true"
+        [aspectRatio]="config.image.width/config.image.height" [resizeToWidth]="0" outputType="base64"
+        format="jpeg" (imageCropped)="imageCropped($event)" (imageLoaded)="imageLoaded()"
+        (loadImageFailed)="loadImageFailed()"></image-cropper>
     <button *ngIf="imageChangedEvent" class="btn btn-success"
         (click)="cropped(true)">{{'app.button.cropimage' | translate}}</button><br>
 </div>

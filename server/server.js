@@ -46,6 +46,10 @@ app.get('*', (req, res) => {
     res.sendFile(`${__dirname}/public/index.html`);
 });
 
+// do needed migrations
+const migration = require('./migration/migration');
+migration.executeMigrations();
+
 // start application
 module.exports = app.listen(process.env.STJORNA_SERVER_PORT);
 logger.logger.info(`>> app   :  ${appInfo.name}:${appInfo.version}`);

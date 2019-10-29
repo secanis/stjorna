@@ -35,8 +35,7 @@ export class SettingsComponent implements OnInit {
             this.config = new Config(
                 result.password_secret,
                 result.allow_remote_access,
-                result.image_dimension,
-                result.image_quality,
+                result.image,
                 result.installed
             );
         });
