@@ -8,3 +8,5 @@ server/apidoc*
 todo.md
 reports/
 stjorna.iml
+**/coverage
+**/.nyc_output
