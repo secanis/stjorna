@@ -12,6 +12,7 @@ import { ErrorHandlerService } from 'src/app/services/error-handler.service';
 })
 export class CategoryListComponent implements OnInit {
     public categoryList: Array<Category> = [];
+    public search: string = '';
 
     constructor(
         private router: Router,

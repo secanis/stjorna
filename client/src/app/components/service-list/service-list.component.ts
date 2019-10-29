@@ -14,6 +14,7 @@ export class ServiceListComponent implements OnInit {
     @Input() serviceList: Array<Service> = [];
     public categoryList: Array<Category> = [];
     @Input() categoryView: Boolean = false;
+    public search: string = '';
 
     constructor(
         private stjornaService: StjornaService,

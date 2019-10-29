@@ -1,8 +1,8 @@
 export class Config {
-    private password_secret: string;
-    private allow_remote_access: boolean;
-    private image: ConfigImage;
-    private installed: boolean;
+    password_secret: string;
+    allow_remote_access: boolean;
+    image: ConfigImage;
+    installed: boolean;
 
     constructor(
         password_secret?: string,

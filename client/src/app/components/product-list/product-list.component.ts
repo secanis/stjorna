@@ -14,6 +14,7 @@ export class ProductListComponent implements OnInit {
     @Input() productList: Array<Product> = [];
     public categoryList: Array<Category> = [];
     @Input() categoryView: Boolean = false;
+    public search: string = '';
 
     constructor(
         private stjornaService: StjornaService,

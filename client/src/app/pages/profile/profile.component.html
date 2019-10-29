@@ -50,7 +50,7 @@
                     <small class="form-text text-muted"
                         for="active">{{'profile.basic.password.newRepeat' | translate}}</small><br>
                     <div *ngIf="((pwNew.invalid || pwNew.pristine) && pwNew.dirty) || 
-                            ((pwNewRepeat.invalid || pwNewRepeat.pristine) && pwNewRepeat.dirty) || passwordNew !== passwordNewRepeat"
+                            ((pwNewRepeat.invalid || pwNewRepeat.pristine) && pwNewRepeat.dirty) || currentUser.passwordNew !== currentUser.passwordNewRepeat"
                         class="alert alert-danger">
                         <small>Every field is required. Please enter correct values. The new passwords has to be the
                             same one.<br>
