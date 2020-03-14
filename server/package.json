@@ -1,6 +1,6 @@
 {
     "name": "stjorna",
-    "version": "2.4.2",
+    "version": "2.4.3",
     "description": "STJÓRNA product management",
     "main": "server.js",
     "scripts": {
@@ -20,28 +20,28 @@
     },
     "dependencies": {
         "body-parser": "^1.19.0",
-        "cron": "^1.7.2",
+        "cron": "^1.8.2",
         "excel4node": "^1.7.2",
         "express": "^4.17.1",
-        "express-winston": "^4.0.1",
-        "jimp": "^0.8.5",
+        "express-winston": "^4.0.3",
+        "jimp": "^0.9.5",
         "jsonwebtoken": "^8.5.1",
         "lowdb": "^1.0.0",
-        "uniqid": "^5.0.3",
-        "util": "^0.12.1",
+        "uniqid": "^5.2.0",
+        "util": "^0.12.2",
         "winston": "^3.2.1"
     },
     "devDependencies": {
-        "apidoc": "^0.17.7",
+        "apidoc": "^0.20.0",
         "chai": "^4.2.0",
         "chai-http": "^4.3.0",
         "codacy-coverage": "^3.4.0",
-        "mocha": "^6.2.2",
-        "mocha-junit-reporter": "^1.23.1",
+        "mocha": "^7.1.0",
+        "mocha-junit-reporter": "^1.23.3",
         "mocha-multi-reporters": "^1.1.7",
-        "nodemon": "1.19.4",
-        "nyc": "^14.1.1",
-        "request": "^2.88.0",
-        "rimraf": "^3.0.0"
+        "nodemon": "2.0.2",
+        "nyc": "^15.0.0",
+        "request": "^2.88.2",
+        "rimraf": "^3.0.2"
     }
 }
