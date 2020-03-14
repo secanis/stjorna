@@ -2,7 +2,7 @@ version: 2
 jobs:
     build:
         docker:
-        - image: circleci/node:11
+        - image: circleci/node:12
 
         working_directory: ~/repo
 
@@ -22,7 +22,7 @@ jobs:
             command: cd client; npm install
 
         - save_cache:
-            paths: 
+            paths:
                 - server/node_modules
             key: v1-dependencies-{{ checksum "server/package.json" }}
         - save_cache:
@@ -71,7 +71,7 @@ jobs:
                 # copy file to store it in circle ci
                 cp stjorna-$VERSION.tar.gz stjorna.tar.gz
                 # docker build: if RELEASE then push it
-                if [ -n "$RELEASE" ]; then 
+                if [ -n "$RELEASE" ]; then
                     # docker push
                     docker push docker.io/secanis/stjorna:$VERSION
                     docker push docker.io/secanis/stjorna:latest
@@ -85,6 +85,6 @@ jobs:
                 fi
                 # otherwise publish the current branch build
                 docker push docker.io/secanis/stjorna:dev-${CIRCLE_BRANCH/\//-}
-        
+
         - store_artifacts:
             path: stjorna.tar.gz
