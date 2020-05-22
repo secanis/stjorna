@@ -26,7 +26,7 @@
     "excel4node": "^1.7.2",
     "express": "^4.17.1",
     "express-winston": "^4.0.3",
-    "jimp": "^0.10.1",
+    "jimp": "^0.12.0",
     "jsonwebtoken": "^8.5.1",
     "lowdb": "^1.0.0",
     "uniqid": "^5.2.0",
