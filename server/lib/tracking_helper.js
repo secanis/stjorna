@@ -53,7 +53,7 @@ function apiTrack(req, action, contentInfo) {
         trackObj['cip'] = getRemoteAddr(req);
     }
 
-    matomo.track(trackObj);
+    if (matomo) matomo.track(trackObj);
 }
 
 module.exports = {
