@@ -1,6 +1,6 @@
 {
   "name": "stjorna",
-  "version": "2.4.4",
+  "version": "2.5.0",
   "description": "STJÓRNA product management",
   "main": "server.js",
   "scripts": {
@@ -29,10 +29,11 @@
     "jimp": "^0.12.1",
     "jsonwebtoken": "^8.5.1",
     "lowdb": "^1.0.0",
+    "piwik-tracker": "^1.1.2",
+    "snyk": "^1.330.0",
     "uniqid": "^5.2.0",
     "util": "^0.12.3",
-    "winston": "^3.2.1",
-    "snyk": "^1.330.0"
+    "winston": "^3.2.1"
   },
   "devDependencies": {
     "apidoc": "^0.22.1",

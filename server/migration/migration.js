@@ -8,19 +8,19 @@ function executeMigrations() {
     try {
         const configFile = fs.readFileSync(`${process.env.STJORNA_SERVER_STORAGE}/config.json`);
         if (JSON.parse(configFile).installed) {
-            logger.info(`>> execute migration for folder: ${directoryPath}`);
+            logger.info(`execute migration for folder: ${directoryPath}`);
             const files = fs.readdirSync(directoryPath);
             files
             .filter(file => file !== 'migration.js' && file.endsWith('.js'))
             .some(file => {
-                    logger.info(`  >> execute migration: ${file.replace(/(\.[a-zA-Z0-9]+)/, '')}`);
+                    logger.debug(`  execute migration: ${file.replace(/(\.[a-zA-Z0-9]+)/, '')}`);
                     require(path.join(__dirname + `/${file}`));
-                });    
+                });
         } else {
-            logger.warn('>> can not execute migration, STJORNA is not yet installed');
+            logger.warn('can not execute migration, STJORNA is not yet installed');
         }
     } catch(ex) {
-        logger.debug('>> can not execute migration, STJORNA is not yet installed');
+        logger.debug('can not execute migration, STJORNA is not yet installed');
     }
 }
 

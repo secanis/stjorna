@@ -38,7 +38,8 @@ const service = {
     active: true,
     image: '',
     imageUrl: '',
-    createdUser: user.username
+    createdUser: user.username,
+    updatedUser: user.username,
 };
 
 const service_2 = {
@@ -151,7 +152,7 @@ describe('Products/Services/Categories', () => {
 
     // create, alter, get, delete service
     it('crud service', (done) => {
-        let productId;
+        let serviceId;
         chai.request(testHelper.getServer())
             .put(`${apiUrl}/services`)
             .send(product)
@@ -167,28 +168,28 @@ describe('Products/Services/Categories', () => {
                 res.body.should.have.property('updatedUser').eql(null);
                 res.body.should.have.property('created');
                 res.body.should.have.property('updated');
-                productId = res.body._id;
+                serviceId = res.body._id;
                 chai.request(testHelper.getServer())
-                    .post(`${apiUrl}/services/${productId}`)
-                    .send(product_2)
+                    .post(`${apiUrl}/services/${serviceId}`)
+                    .send(service)
                     .end((err, res) => {
                         res.should.have.status(200);
                         res.body.should.be.a('object');
-                        res.body.should.have.property('_id').eql(productId);
+                        res.body.should.have.property('_id').eql(serviceId);
                         chai.request(testHelper.getServer())
-                            .get(`${apiUrl}/services/${productId}`)
+                            .get(`${apiUrl}/services/${serviceId}`)
                             .end((err, res) => {
-                                res.body.should.have.property('name').eql(product_2.name);
-                                res.body.should.have.property('price').eql(product_2.price);
-                                res.body.should.have.property('category').eql(product_2.category);
-                                res.body.should.have.property('description').eql(product_2.description);
-                                res.body.should.have.property('active').eql(product_2.active);
+                                res.body.should.have.property('name').eql(service.name);
+                                res.body.should.have.property('price').eql(service.price);
+                                res.body.should.have.property('category').eql(service.category);
+                                res.body.should.have.property('description').eql(service.description);
+                                res.body.should.have.property('active').eql(service.active);
                                 res.body.should.have.property('createdUser').eql(user.username);
                                 res.body.should.have.property('updatedUser').eql(user.username)
                                 res.body.should.have.property('created');
                                 res.body.should.have.property('updated');
                                 chai.request(testHelper.getServer())
-                                    .delete(`${apiUrl}/services/${productId}`)
+                                    .delete(`${apiUrl}/services/${serviceId}`)
                                     .end((err, res) => {
                                         res.should.have.status(200);
                                         res.body.should.be.a('object');

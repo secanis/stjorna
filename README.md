@@ -13,11 +13,17 @@ STJÓRNA was created to have an easy product management with the possibility to 
 
 STJÓRNA is islandic and means something like manage or store stuff.
 The two main goal of STJÓRNA are to be very simple in the setup and configuration effort. The second goal was to publish and share the stored data over an REST API with other applications, maybe your website.
+So it is like a CMS for changing data like products or just images on your website.
+The implementation on the client side is very easy and do not require much effort.
 
 - Availability of REST API for third-party applications
+- Easy setup, you will be ready in minutes
 - Language support for German and English
 - Possibility to export all your data as a JSON or Excel file
 - Open Source software - hosted on Github
+- Optional Matomo Tracking over the REST API  to monitor loading activity on categories and products
+
+![Screenshot Stjorna](https://stjorna.secanis.ch/docs/images/stjorna_dashboard.png)
 
 ## Get Started
 
@@ -49,9 +55,10 @@ cd server; npm run test
 
 Do not forget to set the NodeJS production mode: `process.env.NODE_ENV = 'production'`!
 
-### Cofiguration
+### Cofiguration & Setup
 
-For more information please have a look on our website: [https://stjorna.secanis.ch](https://stjorna.secanis.ch).
+Call `https://<yourStjornaInstance>/setup` to configure Stjorna initially.
+For more information please have a look on our documentation: [https://stjorna.secanis.ch](https://stjorna.secanis.ch).
 
 ##  Contribution
 

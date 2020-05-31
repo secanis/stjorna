@@ -62,12 +62,12 @@ function initialize() {
                 // set database defaults and print size of dataset
                 module.exports.db.defaults(datasets).write().then(() => {
                     getAllDataSetMembers().forEach((constellation) => {
-                        logger.info(`constellation.${constellation} records: ${getSizeOfDataSet(constellation)}`);
+                        logger.info(`dataset constellation.${constellation} records: ${getSizeOfDataSet(constellation)}`);
                     });
                 });
             });
             break;
-    
+
         default:
             logger.error(`could not initialize database. unkown database type set: ${process.env.STJORNA_DATABASE_TYPE}`);
             break;

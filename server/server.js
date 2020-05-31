@@ -14,6 +14,9 @@ const logger = require('./lib/logging_helper.js');
 // initialize databases
 require('./lib/database_helper').initialize();
 
+// initialize tracking
+require('./lib/tracking_helper').initialize();
+
 // initialize cron jobs
 require('./cronjobs/cleanup_uploads')();
 
@@ -52,9 +55,9 @@ migration.executeMigrations();
 
 // start application
 module.exports = app.listen(process.env.STJORNA_SERVER_PORT);
-logger.logger.info(`>> app   :  ${appInfo.name}:${appInfo.version}`);
-logger.logger.info(`>> port  :  ${process.env.STJORNA_SERVER_PORT}`);
+logger.logger.info(`app   :  ${appInfo.name}:${appInfo.version}`);
+logger.logger.info(`port  :  ${process.env.STJORNA_SERVER_PORT}`);
 // print configuration
-logger.logger.info(`>> production mode enabled: ${stjornaEnv.isProduction()}`);
-logger.logger.info(`>> configuration from ${process.env.STJORNA_SERVER_STORAGE}/config.json`);
-logger.logger.info(`>> cleanup interval ${process.env.STJORNA_CRON_CLEANUP_INTERVAL}`);
+logger.logger.info(`production mode enabled: ${stjornaEnv.isProduction()}`);
+logger.logger.info(`configuration from ${process.env.STJORNA_SERVER_STORAGE}/config.json`);
+logger.logger.info(`cleanup interval ${process.env.STJORNA_CRON_CLEANUP_INTERVAL}`);
