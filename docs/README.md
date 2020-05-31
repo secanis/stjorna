@@ -8,11 +8,15 @@ STJÓRNA was created to have an easy product management with the possibility to 
 
 STJÓRNA is islandic and means something like manage or store stuff.
 The two main goal of STJÓRNA are to be very simple in the setup and configuration effort. The second goal was to publish and share the stored data over an REST API with other applications, maybe your website.
+So it is like a CMS for changing data like products or just images on your website.
+The implementation on the client side is very easy and do not require much effort.
 
 - Availability of REST API for third-party applications
+- Easy setup, you will be ready in minutes
 - Language support for German and English
 - Possibility to export all your data as a JSON or Excel file
 - Open Source software - hosted on Github
+- Optional Matomo Tracking over the REST API  to monitor loading activity on categories and products
 
 [![CircleCI](https://circleci.com/gh/secanis/stjorna/tree/master.svg?style=svg)](https://circleci.com/gh/secanis/stjorna/tree/master "Latest Build Result @CircleCI")
 [![](https://images.microbadger.com/badges/version/secanis/stjorna.svg)](https://microbadger.com/images/secanis/stjorna "Get your own version badge on microbadger.com")
@@ -65,17 +69,20 @@ In the setup process you can set the username, email and a password. After an in
 
 ### ENV Variables
 
-| Variable                       | Default       | Description                                               |
-| ------------------------------ | ------------- | --------------------------------------------------------- |
-| STJORNA_SERVER_PORT            | 3000          | Port for the Node server                                  |
-| STJORNA_SERVER_MAX_UPLOAD      | 8mb           | Max image upload size, defined for Express                |
-| STJORNA_LOGLEVEL               | info          | Loglevel (WinstonJS loglevels, `slient` for no logs)      |
-| STJORNACONFIG_IMAGE_WIDTH      | 700           | Image width for save process                              |
-| STJORNACONFIG_IMAGE_HEIGHT     | 700           | Image width for save process                              |
-| STJORNACONFIG_IMAGE_QUALITY    | 70            | Image quality, between 0-100%                             |
-| STJORNA_REQUEST_LOG            |               | Set to `slient` for no logs                               |
-| STJORNA_CRON_CLEANUP_INTERVAL  | 00 3 * * *    | Cronjob interval to cleanup the storage                   |
-| STJORNA_SERVER_STORAGE         | /app/data     | Default path is in the path of the server.js data folder  |
+| Variable                       | Default       | Description                                                  |
+| ------------------------------ | ------------- | ------------------------------------------------------------ |
+| STJORNA_SERVER_PORT            | 3000          | Port for the Node server                                     |
+| STJORNA_SERVER_MAX_UPLOAD      | 8mb           | Max image upload size, defined for Express                   |
+| STJORNA_LOGLEVEL               | info          | Loglevel (WinstonJS loglevels, `slient` for no logs)         |
+| STJORNACONFIG_IMAGE_WIDTH      | 700           | Image width for save process                                 |
+| STJORNACONFIG_IMAGE_HEIGHT     | 700           | Image width for save process                                 |
+| STJORNACONFIG_IMAGE_QUALITY    | 70            | Image quality, between 0-100%                                |
+| STJORNA_REQUEST_LOG            |               | Set to `slient` for no logs                                  |
+| STJORNA_CRON_CLEANUP_INTERVAL  | 00 3 * * *    | Cronjob interval to cleanup the storage                      |
+| STJORNA_SERVER_STORAGE         | /app/data     | Default path is in the path of the server.js data folder     |
+| STJORNA_MATOMOID               |               | Optional: PageId in Matomo to track API calls                |
+| STJORNA_MATOMOURL              |               | Optional: Url of your Matomo instance, end with (/piwik.php) |
+| STJORNA_MATOMOTOKEN            |               | Optional: Token to send more specific data to Matomo         |
 
 ### Remote REST API
 
