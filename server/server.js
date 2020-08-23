@@ -19,6 +19,7 @@ require('./lib/tracking_helper').initialize();
 
 // initialize cron jobs
 require('./cronjobs/cleanup_uploads')();
+require('./cronjobs/generate_tumbnails')();
 
 // initialize bodyParser ans set limits
 app.use(bodyParser.json({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD }));
@@ -61,3 +62,4 @@ logger.logger.info(`port  :  ${process.env.STJORNA_SERVER_PORT}`);
 logger.logger.info(`production mode enabled: ${stjornaEnv.isProduction()}`);
 logger.logger.info(`configuration from ${process.env.STJORNA_SERVER_STORAGE}/config.json`);
 logger.logger.info(`cleanup interval ${process.env.STJORNA_CRON_CLEANUP_INTERVAL}`);
+logger.logger.info(`thumbnail interval ${process.env.STJORNA_CRON_THUMBNAIL_INTERVAL}`);

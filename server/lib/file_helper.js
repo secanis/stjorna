@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const sharp = require('sharp');
 
 const logger = require('../lib/logging_helper.js').logger;
 const exportExcel = require('./export/excel.js');
@@ -44,6 +45,13 @@ module.exports = {
                 module.exports.removeFile(path, file.name);
             }
         });
+    },
+    generateImageThumbnails: async (basePath, file) => {
+        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail${file.extension}`)}`)
+        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail.webp`)}`)
+    },
+    generateImageTypeWebP: async (basePath, file) => {
+        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.webp`)}`)
     },
     removeFile: (path, filename) => {
         // delete a file by path and filename

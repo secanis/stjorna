@@ -45,5 +45,7 @@ module.exports = () => {
             }
         });
     });
-    cronJob.start();
+    cronJob.start({
+        runOnInit: true
+    });
 };

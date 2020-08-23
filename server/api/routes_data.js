@@ -53,13 +53,13 @@ module.exports = (router) => {
                     message: 'no permissions for this ressource.',
                     status: 'error',
                 });
-            }
+            } 
         });
 
     router
         .route('/data/uploads/:userid/:additionalPath?/:image')
         /**
-         * @api {get} /api/data/uploads/:userid/:additionalPath?/:image Get Image
+         * @api {get} /api/data/uploads/:userid/:additionalPath?/:image?size=:size? Get Image
          * @apiName GetImage
          * @apiGroup Data
          * @apiPermission token/apikey
@@ -68,24 +68,33 @@ module.exports = (router) => {
          * @apiParam {String} userid users unique ID.
          * @apiParam {String} [additionalPath] additonal path to a binary file
          * @apiParam {String} image image file name to load
+         * @apiParam {String} size Which size of image you want to get (no set = original, thumbnail)
          *
          * @apiSuccess {Data} Data Returns an image (jpeg)
          */
         .get((req, res) => {
             // check if there are wanted "autentication" methods for binary data
             if (req.query.userid || req.headers['x-stjorna-userid']) {
+                let imageFileName = req.params.image;
                 let additionalPath = '';
+
                 if (req.params.additionalPath) {
                     additionalPath = `/${req.params.additionalPath}`;
                 }
+
+                if (req.query && req.query.size) {
+                    const extension = imageFileName.split('.').pop();
+                    imageFileName = `${imageFileName.split('.').slice(0, -1).join('.')}.${req.query.size}.${extension}`;
+                }
+
                 try {
                     trackingHelper.apiTrack(req, 'get image', {
                         c_n: 'image',
-                        c_p: req.params.image,
-                        c_t: `${additionalPath}/${req.params.image}`,
+                        c_p: imageFileName,
+                        c_t: `${additionalPath}/${imageFileName}`,
                     });
                     res.sendFile(
-                        `${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}/${req.params.image}`
+                        `${process.env.STJORNA_SERVER_STORAGE}/uploads/${req.params.userid}${additionalPath}/${imageFileName}`
                     );
                 } catch (err) {
                     logger.error(`data - error occured: ${err.message}`);
