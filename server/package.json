@@ -30,6 +30,7 @@
     "jsonwebtoken": "^8.5.1",
     "lowdb": "^1.0.0",
     "piwik-tracker": "^1.1.2",
+    "sharp": "^0.25.4",
     "snyk": "^1.330.0",
     "uniqid": "^5.2.0",
     "util": "^0.12.3",
