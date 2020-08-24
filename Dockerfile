@@ -3,8 +3,8 @@ FROM node:alpine
 ARG VERSION
 
 LABEL maintainer=support@secanis.ch \
-      ch.secanis.tool=stjorna \
-      ch.secanis.version=$VERSION
+    ch.secanis.tool=stjorna \
+    ch.secanis.version=$VERSION
 
 WORKDIR /app
 ENV NODE_ENV production
@@ -12,7 +12,8 @@ ENV NODE_ENV production
 # add api and app stuff
 ADD stjorna-$VERSION.tar.gz ./
 
-RUN adduser -D myuser \
+RUN npm ci --production \
+    && adduser -D myuser \
     && chown myuser:myuser -R ./
 USER myuser
 
