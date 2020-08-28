@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const moment = require('moment');
 
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
@@ -51,6 +52,38 @@ module.exports = (router) => {
                 } else {
                     logger.log('debug', `configuration saved`);
                     res.status(200).send({ 'message': 'configuration successfully saved', 'status': 'ok' });
+                }
+            });
+        });
+
+    router.route('/v1/state/cron')
+        /**
+         * @api {get} /api/v1/state/cron Get Cron State
+         * @apiPrivate
+         * @apiName GetCronState
+         * @apiGroup State
+         * @apiPermission loggedin
+         * @apiVersion 1.3.0
+         *
+         * @apiSuccess {date} timestamp of the last entry/modification
+         * @apiSuccess {object} cronjobs The cronjob entry item
+         * @apiSuccess {string} cronjobs.name Cronjob name
+         * @apiSuccess {boolean} cronjobs.ok Is the cronjob working as expected
+         * @apiSuccess {date} cronjobs.last Last execution of the cronjob
+         * @apiSuccess {date} cronjobs.next Next execution of the cronjob
+         * @apiSuccess {date} cronjobs.timestamp Updated the state entry
+         */
+        .get((req, res) => {
+            fileHelper.loadCronSateFile((err, file) => {
+                if (!err && file) {
+                    let cronState = JSON.parse(file);
+                    cronState.cronjobs.forEach(e => e['ok'] = moment(new Date()).isBetween(e.last, e.next));
+                    logger.log('debug', `get cronstate file`);
+                    res.send(cronState);
+                    
+                } else {
+                    logger.error(`couldn't get cronstate`);
+                    res.status(400).send({ 'message': 'cronstate error', 'status': 'error' });
                 }
             });
         });

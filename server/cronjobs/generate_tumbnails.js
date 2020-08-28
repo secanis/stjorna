@@ -1,56 +1,57 @@
 const CronJob = require('cron').CronJob;
-const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
+const { writeCronInfo } = require('../lib/file_helper.js');
 
 const logger = require('../lib/logging_helper.js').logger;
 
 
 module.exports = () => {
-    // run cleanup cronjob every x minutes
-    let cronJob = new CronJob(process.env.STJORNA_CRON_THUMBNAIL_INTERVAL, () => {
-        logger.info(`cronjob - thumnail generator is running`);
-
+    let cronJob;
+    const tickFunc = () => {
         fileHelper.getFolderContent(`${process.env.STJORNA_SERVER_STORAGE}/uploads`, (err, users) => {
             if (!err) {
                 users.forEach((user) => {
                     // product loop
-                    let productsPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/products`;
-                    fileHelper.getFolderContent(productsPath, (err, files) => {
-                        if (!err) {
-                            try {
-                                files.forEach(f => {
-                                    if (!f.name.includes('.thumbnail') && !f.name.includes('.webp')) fileHelper.generateImageTypeWebP(productsPath, f);
-                                    if (!f.name.includes('.thumbnail') && !f.name.includes('.webp')) fileHelper.generateImageThumbnails(productsPath, f);
-                                });
-                            } catch (error) {
-                                console.error(error);
-                            }
-                        } else {
-                            logger.error(`cronjob - thumnail generator - walk uploads failed: ${err.message}`);
-                        }
-                    });
+                    const productsPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/products`;
+                    generateFiles(productsPath)
 
                     // category loop
-                    let categoriesPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/categories`;
-                    fileHelper.getFolderContent(categoriesPath, (err, files) => {
-                        if (!err) {
-                            try {
-                                files.forEach(f => {
-                                    if (!f.name.includes('.thumbnail') && !f.name.includes('.webp')) fileHelper.generateImageTypeWebP(categoriesPath, f);
-                                    if (!f.name.includes('.thumbnail') && !f.name.includes('.webp')) fileHelper.generateImageThumbnails(categoriesPath, f);
-                                });
-                            } catch (error) {
-                                console.error(error);
-                            }
-                        } else {
-                            logger.error(`cronjob - thumnail generator - walk uploads failed: ${err.message}`);
-                        }
-                    });
+                    const categoriesPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/categories`;
+                    generateFiles(categoriesPath)
                 });
+
+                writeCronInfo('Thumbnail Generator', cronJob.lastDate(), cronJob.nextDate().toDate());
             }
         });
-    });
-    cronJob.start({
-        runOnInit: true
-    });
+    };
+
+    const generateFiles = (path) => {
+        fileHelper.getFolderContent(path, (err, files) => {
+            if (!err) {
+                try {
+                    files.filter(f => !f.name.includes('.thumbnail') && !f.name.includes('.webp')).forEach(f => {
+                        fileHelper.generateImageTypeWebP(path, f);
+                        fileHelper.generateImageThumbnails(path, f);
+                    });
+                } catch (error) {
+                    console.error(error);
+                }
+            } else {
+                logger.error(`cronjob - thumnail generator - walk uploads failed: ${err.message}`);
+            }
+        });
+    }
+
+
+    setTimeout(() => {
+        // run thumbnail generation cronjob every x minutes
+        cronJob = new CronJob({
+            cronTime: process.env.STJORNA_CRON_THUMBNAIL_INTERVAL,
+            onTick: tickFunc,
+            runOnInit: true
+        });
+
+        logger.info(`cronjob - thumbnail generator is running`);
+        cronJob.start();
+    }, 1000);
 };

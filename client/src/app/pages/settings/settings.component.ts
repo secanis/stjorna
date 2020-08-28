@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { Config } from 'src/app/models/config';
 import { StjornaService } from 'src/app/services/stjorna.service';
 import { ToastrService } from 'ngx-toastr';
+import { Observable } from 'rxjs';
 
 @Component({
     selector: 'stjorna-settings',
@@ -11,6 +12,7 @@ import { ToastrService } from 'ngx-toastr';
 export class SettingsComponent implements OnInit {
     public config: Config = new Config();
     public configEnv: Array<any> = [];
+    cronjobInfo$: Observable<any> = this.stjornaService.getCronjobState();
 
     constructor(private stjornaService: StjornaService, private toastr: ToastrService) { }
 

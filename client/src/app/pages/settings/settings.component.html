@@ -40,6 +40,25 @@
             </div>
         </div>
         <div class="card">
+            <div class="card-body" *ngIf="cronjobInfo$ | async as cronjobInfo; else loading">
+                <h5 class="card-title">{{'settings.cronjob.title' | translate}} <small></small></h5>
+
+                <ng-container *ngFor="let c of cronjobInfo.cronjobs">
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" id="{{c.name}}" disabled [value]="c.name">
+                        <div class="input-group-append">
+                            <span class="input-group-text">
+                                <i *ngIf="c.ok" class="lnr lnr-checkmark-circle text-success"></i>
+                                <i *ngIf="!c.ok" class="lnr lnr-cross-circle text-danger"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <small class="form-text text-muted" for="{{c.name}}">last: {{c.last | date: 'HH:mm dd.MM.yyyy'}} |
+                        next: {{c.next | date: 'HH:mm dd.MM.yyyy'}}</small><br>
+                </ng-container>
+            </div>
+        </div>
+        <div class="card">
             <div class="card-body">
                 <h5 class="card-title">{{'settings.environment.title' | translate}}</h5>
                 <div *ngFor="let ele of configEnv; let l = last;">
@@ -73,3 +92,5 @@
         </div>
     </div>
 </main>
+
+<ng-template #loading>loading...</ng-template>

@@ -139,6 +139,12 @@ export class StjornaService {
             .pipe(catchError(this.handleError<any>('load server env')));
     }
 
+    public getCronjobState() {
+        return this.http
+            .get(`${environment.apiUrl}/api/v1/state/cron`, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<any>('load cronjob state')));
+    }
+
     public getSettings() {
         return this.http
             .get(`${environment.apiUrl}/api/v1/settings`, this.getHeaders(this.token))

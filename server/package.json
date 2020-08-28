@@ -29,6 +29,7 @@
     "jimp": "^0.12.1",
     "jsonwebtoken": "^8.5.1",
     "lowdb": "^1.0.0",
+    "moment": "^2.27.0",
     "piwik-tracker": "^1.1.2",
     "sharp": "^0.25.4",
     "snyk": "^1.330.0",

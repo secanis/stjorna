@@ -35,7 +35,7 @@ module.exports = {
             let match = false;
             // iterate over all documents and match the filename
             docs.forEach((doc) => {
-                if (doc[docsAttr] && doc[docsAttr].includes(file.name)) {
+                if (doc[docsAttr] && doc[docsAttr].includes(file.name.replace(file.extension, '').replace('.thumbnail', ''))) {
                     match = true;
                     return;
                 }
@@ -47,7 +47,7 @@ module.exports = {
         });
     },
     generateImageThumbnails: async (basePath, file) => {
-        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail${file.extension}`)}`)
+        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail.jpeg`)}`)
         await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail.webp`)}`)
     },
     generateImageTypeWebP: async (basePath, file) => {
@@ -57,16 +57,47 @@ module.exports = {
         // delete a file by path and filename
         fs.unlink(`${path}/${filename}`, (err, result) => {
             if (!err) {
-                logger.info(`cronjob - cleanup_uploads - deleted file: ${filename.name}`);
+                logger.info(`cronjob - cleanup_uploads - deleted file: ${filename}`);
             } else {
                 logger.error(`cronjob - cleanup_uploads - delete file failed: ${err.message}`);
             }
         });
     },
+    writeCronInfo: (name, last, next) => {
+        let cronInfo;
+        const defaultObject = {
+            timestamp: new Date(),
+            cronjobs: []
+        };
+
+        if (fs.existsSync(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`)) {
+            const rawFile = fs.readFileSync(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`, 'utf8');
+            cronInfo = JSON.parse((rawFile) ? rawFile : JSON.stringify(defaultObject));
+        } else {
+            cronInfo = defaultObject
+        }
+
+        const itemIndex = cronInfo.cronjobs.findIndex(c => c.name === name);
+        const cronItem = {
+            name,
+            last,
+            next,
+            timestamp: new Date(),
+        };
+        (itemIndex >= 0) ? cronInfo.cronjobs[itemIndex] = cronItem : cronInfo.cronjobs.push(cronItem);
+
+        cronInfo.timestamp = new Date();
+        const err = fs.writeFileSync(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`, JSON.stringify(cronInfo, null, 4), 'utf8');
+        if (err) logger.error('write cron info', err);
+    },
     createFolder: (dir) => {
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir);
         }
+    },
+    loadCronSateFile: (cb) => {
+        // load config file and call the cb
+        fs.readFile(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`, 'utf8', cb);
     },
     loadConfigFile: (cb) => {
         // load config file and call the cb

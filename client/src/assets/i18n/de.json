@@ -60,6 +60,7 @@
     "settings.export.button.excel": "Export Excel",
     "settings.export.button.json": "Export JSON",
     "settings.export.description": "Exportiere deine Daten der Datenbank als Excel Datei oder als JSON.",
+    "settings.cronjob.title": "Cronjobs Übersicht",
     "about.title": "Über STJÓRNA",
     "about.issues.title": "Tickets / Features",
     "about.documentation.title": "Dokumentation",

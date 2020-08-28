@@ -17,10 +17,6 @@ require('./lib/database_helper').initialize();
 // initialize tracking
 require('./lib/tracking_helper').initialize();
 
-// initialize cron jobs
-require('./cronjobs/cleanup_uploads')();
-require('./cronjobs/generate_tumbnails')();
-
 // initialize bodyParser ans set limits
 app.use(bodyParser.json({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD }));
 app.use(bodyParser.urlencoded({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD, extended: true }));
@@ -53,6 +49,12 @@ app.get('*', (req, res) => {
 // do needed migrations
 const migration = require('./migration/migration');
 migration.executeMigrations();
+
+// initialize cron jobs
+setTimeout(() => {
+    require('./cronjobs/cleanup_uploads')();
+    require('./cronjobs/generate_tumbnails')();
+}, 1000);
 
 // start application
 module.exports = app.listen(process.env.STJORNA_SERVER_PORT);
