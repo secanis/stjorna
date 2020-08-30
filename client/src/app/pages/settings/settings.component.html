@@ -43,7 +43,7 @@
             <div class="card-body" *ngIf="cronjobInfo$ | async as cronjobInfo; else loading">
                 <h5 class="card-title">{{'settings.cronjob.title' | translate}} <small></small></h5>
 
-                <ng-container *ngFor="let c of cronjobInfo.cronjobs">
+                <ng-container *ngFor="let c of cronjobInfo">
                     <div class="input-group mb-2">
                         <input type="text" class="form-control" id="{{c.name}}" disabled [value]="c.name">
                         <div class="input-group-append">

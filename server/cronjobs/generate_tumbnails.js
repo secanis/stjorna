@@ -1,13 +1,13 @@
 const CronJob = require('cron').CronJob;
 const fileHelper = require('../lib/file_helper.js');
-const { writeCronInfo } = require('../lib/file_helper.js');
+const { writeCronInfo } = require('../lib/cronjob_helper.js');
 
 const logger = require('../lib/logging_helper.js').logger;
 
 
 module.exports = () => {
     let cronJob;
-    const tickFunc = () => {
+    function tickFunc() {
         fileHelper.getFolderContent(`${process.env.STJORNA_SERVER_STORAGE}/uploads`, (err, users) => {
             if (!err) {
                 users.forEach((user) => {
@@ -19,13 +19,12 @@ module.exports = () => {
                     const categoriesPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/categories`;
                     generateFiles(categoriesPath)
                 });
-
-                writeCronInfo('Thumbnail Generator', cronJob.lastDate(), cronJob.nextDate().toDate());
             }
         });
+        writeCronInfo('Thumbnail Generator', this.lastDate(), this.nextDate().toDate())
     };
 
-    const generateFiles = (path) => {
+    function generateFiles(path) {
         fileHelper.getFolderContent(path, (err, files) => {
             if (!err) {
                 try {
@@ -37,21 +36,20 @@ module.exports = () => {
                     console.error(error);
                 }
             } else {
-                logger.error(`cronjob - thumnail generator - walk uploads failed: ${err.message}`);
+                logger.error(`cron - thumnail generator - walk uploads failed: ${err.message}`);
             }
         });
     }
 
 
-    setTimeout(() => {
-        // run thumbnail generation cronjob every x minutes
-        cronJob = new CronJob({
-            cronTime: process.env.STJORNA_CRON_THUMBNAIL_INTERVAL,
-            onTick: tickFunc,
-            runOnInit: true
-        });
+    // run thumbnail generation cronjob every x minutes
+    cronJob = new CronJob({
+        cronTime: '* * * * *' || process.env.STJORNA_CRON_THUMBNAIL_INTERVAL,
+        timeZone: 'Europe/Zurich',
+        onTick: tickFunc,
+        runOnInit: true
+    });
 
-        logger.info(`cronjob - thumbnail generator is running`);
-        cronJob.start();
-    }, 1000);
+    logger.info(`cron - thumbnail generator is registred`);
+    cronJob.start();
 };

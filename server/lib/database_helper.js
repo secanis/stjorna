@@ -15,7 +15,8 @@ const datasets = {
     categories: [],
     products: [],
     services: [],
-    users: []
+    users: [],
+    cronjobs: []
 };
 
 function generateId() {

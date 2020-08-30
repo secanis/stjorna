@@ -3,6 +3,7 @@ const moment = require('moment');
 
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
+const { getAllCronInfo } = require('../lib/cronjob_helper.js');
 const logger = require('../lib/logging_helper.js').logger;
 
 module.exports = (router) => {
@@ -74,18 +75,10 @@ module.exports = (router) => {
          * @apiSuccess {date} cronjobs.timestamp Updated the state entry
          */
         .get((req, res) => {
-            fileHelper.loadCronSateFile((err, file) => {
-                if (!err && file) {
-                    let cronState = JSON.parse(file);
-                    cronState.cronjobs.forEach(e => e['ok'] = moment(new Date()).isBetween(e.last, e.next));
-                    logger.log('debug', `get cronstate file`);
-                    res.send(cronState);
-                    
-                } else {
-                    logger.error(`couldn't get cronstate`);
-                    res.status(400).send({ 'message': 'cronstate error', 'status': 'error' });
-                }
-            });
+            const cronState = getAllCronInfo();
+            cronState.forEach(e => e['ok'] = moment(new Date()).isBetween(e.last, e.next));
+            logger.log('debug', `get cronstate file`);
+            res.send(cronState);
         });
 
     router.route('/v1/export/:filetype')

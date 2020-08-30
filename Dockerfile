@@ -10,7 +10,7 @@ WORKDIR /app
 ENV NODE_ENV production
 
 # add api and app stuff
-ADD stjorna-$VERSION.tar.gz ./
+COPY ./server .
 
 RUN npm ci --production \
     && adduser -D myuser \
@@ -20,5 +20,6 @@ USER myuser
 HEALTHCHECK --interval=15s --timeout=15s --start-period=5s --retries=3 CMD node /app/healthcheck.js
 
 EXPOSE 3000
+VOLUME [ "/app/data" ]
 
 CMD ["node", "server.js"]

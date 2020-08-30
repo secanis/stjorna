@@ -63,41 +63,10 @@ module.exports = {
             }
         });
     },
-    writeCronInfo: (name, last, next) => {
-        let cronInfo;
-        const defaultObject = {
-            timestamp: new Date(),
-            cronjobs: []
-        };
-
-        if (fs.existsSync(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`)) {
-            const rawFile = fs.readFileSync(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`, 'utf8');
-            cronInfo = JSON.parse((rawFile) ? rawFile : JSON.stringify(defaultObject));
-        } else {
-            cronInfo = defaultObject
-        }
-
-        const itemIndex = cronInfo.cronjobs.findIndex(c => c.name === name);
-        const cronItem = {
-            name,
-            last,
-            next,
-            timestamp: new Date(),
-        };
-        (itemIndex >= 0) ? cronInfo.cronjobs[itemIndex] = cronItem : cronInfo.cronjobs.push(cronItem);
-
-        cronInfo.timestamp = new Date();
-        const err = fs.writeFileSync(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`, JSON.stringify(cronInfo, null, 4), 'utf8');
-        if (err) logger.error('write cron info', err);
-    },
     createFolder: (dir) => {
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir);
         }
-    },
-    loadCronSateFile: (cb) => {
-        // load config file and call the cb
-        fs.readFile(`${process.env.STJORNA_SERVER_STORAGE}/cronjobs.json`, 'utf8', cb);
     },
     loadConfigFile: (cb) => {
         // load config file and call the cb
