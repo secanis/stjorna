@@ -48,14 +48,26 @@ module.exports = {
     },
     generateImageTypeJpeg: async (basePath, file) => {
         const targetThumnailJpegPath = `${basePath}/${file.name.replace(file.extension, `.thumbnail.jpeg`)}`;
-        if (await fs.exists(targetThumnailJpegPath)) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile();
+        const pathThumbnailExists = fs.existsSync(targetThumnailJpegPath);
+
+        if (!pathThumbnailExists) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(targetThumnailJpegPath);
     },
     generateImageTypeWebP: async (basePath, file) => {
-        await this.loadConfigFile(async (c) => {
+        module.exports.loadConfigFile(async (err, c) => {
+            if (c) c = JSON.parse(c);
+
+                if (err) {
+                logger.error(err.message, 'failed to read config file');
+                return;
+            }
             const targetWebpPath = `${basePath}/${file.name.replace(file.extension, `.webp`)}`;
             const targetThumnailWebpPath = `${basePath}/${file.name.replace(file.extension, `.thumbnail.webp`)}`;
-            if (await fs.exists(targetWebpPath)) await sharp(`${basePath}/${file.name}`).resize(c.image.width, c.image.height).toFile(targetWebpPath);
-            if (await fs.exists(targetThumnailWebpPath)) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(targetThumnailWebpPath);
+
+            const pathExists = fs.existsSync(targetWebpPath);
+            const pathThumbnailExists = fs.existsSync(targetThumnailWebpPath);
+
+            if (!pathExists && c) await sharp(`${basePath}/${file.name}`).resize(c.image.width, c.image.height).toFile(targetWebpPath);
+            if (!pathThumbnailExists) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(targetThumnailWebpPath);
         });
     },
     removeFile: (path, filename) => {
