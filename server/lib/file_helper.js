@@ -46,12 +46,17 @@ module.exports = {
             }
         });
     },
-    generateImageThumbnails: async (basePath, file) => {
-        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail.jpeg`)}`)
-        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail.webp`)}`)
+    generateImageTypeJpeg: async (basePath, file) => {
+        const targetThumnailJpegPath = `${basePath}/${file.name.replace(file.extension, `.thumbnail.jpeg`)}`;
+        if (await fs.exists(targetThumnailJpegPath)) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile();
     },
     generateImageTypeWebP: async (basePath, file) => {
-        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.webp`)}`)
+        await this.loadConfigFile(async (c) => {
+            const targetWebpPath = `${basePath}/${file.name.replace(file.extension, `.webp`)}`;
+            const targetThumnailWebpPath = `${basePath}/${file.name.replace(file.extension, `.thumbnail.webp`)}`;
+            if (await fs.exists(targetWebpPath)) await sharp(`${basePath}/${file.name}`).resize(c.image.width, c.image.height).toFile(targetWebpPath);
+            if (await fs.exists(targetThumnailWebpPath)) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(targetThumnailWebpPath);
+        });
     },
     removeFile: (path, filename) => {
         // delete a file by path and filename
@@ -88,9 +93,9 @@ module.exports = {
                 image: {
                     width: (newConf.image && newConf.image.width) || (existConf.image && existConf.image.width) || process.env.STJORNACONFIG_IMAGE_WIDTH,
                     height: (newConf.image && newConf.image.height) || (existConf.image && existConf.image.height) || process.env.STJORNACONFIG_IMAGE_HEIGHT,
-                    quality: (newConf.image && newConf.image.quality) || (existConf.image && existConf.image.quality) || process.env.STJORNACONFIG_IMAGE_QUALITY
+                    quality: (newConf.image && newConf.image.quality) || (existConf.image && existConf.image.quality) || process.env.STJORNACONFIG_IMAGE_QUALITY,
                 },
-                installed: newConf.installed || existConf.installed || process.env.STJORNACONFIG_INSTALLED
+                installed: newConf.installed || existConf.installed || process.env.STJORNACONFIG_INSTALLED,
             };
             // evaluate if which configuration we have
             if (newConf && newConf.allow_remote_access !== null && newConf.allow_remote_access !== undefined) {
@@ -128,10 +133,13 @@ module.exports = {
                 break;
 
             default:
-                cb({
-                    message: 'not matching export type'
-                }, null);
+                cb(
+                    {
+                        message: 'not matching export type',
+                    },
+                    null
+                );
                 break;
         }
-    }
+    },
 };
