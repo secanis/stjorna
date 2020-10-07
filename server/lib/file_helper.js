@@ -46,12 +46,29 @@ module.exports = {
             }
         });
     },
-    generateImageThumbnails: async (basePath, file) => {
-        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail.jpeg`)}`)
-        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.thumbnail.webp`)}`)
+    generateImageTypeJpeg: async (basePath, file) => {
+        const targetThumnailJpegPath = `${basePath}/${file.name.replace(file.extension, `.thumbnail.jpeg`)}`;
+        const pathThumbnailExists = fs.existsSync(targetThumnailJpegPath);
+
+        if (!pathThumbnailExists) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(targetThumnailJpegPath);
     },
     generateImageTypeWebP: async (basePath, file) => {
-        await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(`${basePath}/${file.name.replace(file.extension, `.webp`)}`)
+        module.exports.loadConfigFile(async (err, c) => {
+            if (c) c = JSON.parse(c);
+
+                if (err) {
+                logger.error(err.message, 'failed to read config file');
+                return;
+            }
+            const targetWebpPath = `${basePath}/${file.name.replace(file.extension, `.webp`)}`;
+            const targetThumnailWebpPath = `${basePath}/${file.name.replace(file.extension, `.thumbnail.webp`)}`;
+
+            const pathExists = fs.existsSync(targetWebpPath);
+            const pathThumbnailExists = fs.existsSync(targetThumnailWebpPath);
+
+            if (!pathExists && c) await sharp(`${basePath}/${file.name}`).resize(c.image.width, c.image.height).toFile(targetWebpPath);
+            if (!pathThumbnailExists) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(targetThumnailWebpPath);
+        });
     },
     removeFile: (path, filename) => {
         // delete a file by path and filename
@@ -92,9 +109,9 @@ module.exports = {
                 image: {
                     width: (newConf.image && newConf.image.width) || (existConf.image && existConf.image.width) || process.env.STJORNACONFIG_IMAGE_WIDTH,
                     height: (newConf.image && newConf.image.height) || (existConf.image && existConf.image.height) || process.env.STJORNACONFIG_IMAGE_HEIGHT,
-                    quality: (newConf.image && newConf.image.quality) || (existConf.image && existConf.image.quality) || process.env.STJORNACONFIG_IMAGE_QUALITY
+                    quality: (newConf.image && newConf.image.quality) || (existConf.image && existConf.image.quality) || process.env.STJORNACONFIG_IMAGE_QUALITY,
                 },
-                installed: newConf.installed || existConf.installed || process.env.STJORNACONFIG_INSTALLED
+                installed: newConf.installed || existConf.installed || process.env.STJORNACONFIG_INSTALLED,
             };
 
             if (newConf.modules) {
@@ -138,10 +155,13 @@ module.exports = {
                 break;
 
             default:
-                cb({
-                    message: 'not matching export type'
-                }, null);
+                cb(
+                    {
+                        message: 'not matching export type',
+                    },
+                    null
+                );
                 break;
         }
-    }
+    },
 };

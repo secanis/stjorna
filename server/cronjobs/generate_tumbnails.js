@@ -29,8 +29,8 @@ module.exports = () => {
             if (!err) {
                 try {
                     files.filter(f => !f.name.includes('.thumbnail') && !f.name.includes('.webp')).forEach(f => {
+                        fileHelper.generateImageTypeJpeg(path, f);
                         fileHelper.generateImageTypeWebP(path, f);
-                        fileHelper.generateImageThumbnails(path, f);
                     });
                 } catch (error) {
                     console.error(error);
@@ -44,7 +44,7 @@ module.exports = () => {
 
     // run thumbnail generation cronjob every x minutes
     cronJob = new CronJob({
-        cronTime: '* * * * *' || process.env.STJORNA_CRON_THUMBNAIL_INTERVAL,
+        cronTime: process.env.STJORNA_CRON_THUMBNAIL_INTERVAL,
         timeZone: 'Europe/Zurich',
         onTick: tickFunc,
         runOnInit: true
