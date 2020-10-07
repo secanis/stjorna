@@ -80,11 +80,15 @@ module.exports = {
                 existConf = JSON.parse(obj);
             }
             newConf.allow_remote_access = JSON.parse(newConf.allow_remote_access);
+
             // set the values from the parameter object or set it from the existing configuration
             // if not given or set the defaults from the env_defaults
             let configObj = {
                 password_secret: existConf.password_secret || process.env.STJORNACONFIG_PASSWORD_SECRECT,
                 allow_remote_access: null,
+                modules: {
+                    services: true
+                },
                 image: {
                     width: (newConf.image && newConf.image.width) || (existConf.image && existConf.image.width) || process.env.STJORNACONFIG_IMAGE_WIDTH,
                     height: (newConf.image && newConf.image.height) || (existConf.image && existConf.image.height) || process.env.STJORNACONFIG_IMAGE_HEIGHT,
@@ -92,6 +96,12 @@ module.exports = {
                 },
                 installed: newConf.installed || existConf.installed || process.env.STJORNACONFIG_INSTALLED
             };
+
+            if (newConf.modules) {
+                const modules = Object.keys(newConf.modules);
+                modules.forEach(s => configObj.modules[s] = JSON.parse(newConf.modules[s]));
+            }
+
             // evaluate if which configuration we have
             if (newConf && newConf.allow_remote_access !== null && newConf.allow_remote_access !== undefined) {
                 configObj.allow_remote_access = newConf.allow_remote_access;

@@ -67,7 +67,7 @@
                         <i class="lnr lnr-plus-circle"></i> {{'app.navbar.addproduct' | translate}}
                     </a>
                 </li>
-                <li class="nav-item">
+                <li class="nav-item" *ngIf="(config$ | async)?.modules.services">
                     <a class="nav-link" routerLink="/new/service">
                         <span data-feather="file-text"></span>
                         <i class="lnr lnr-plus-circle"></i> Add Service

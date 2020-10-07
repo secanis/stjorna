@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nodemon --ignore data/ server.js",
     "apidoc:private": "apidoc --private true -i ./api -o ./apidoc-private/",
-    "apidoc:public": "apidoc --private false -i ./api -o ./apidoc/",
+    "apidoc:public": "apidoc -i ./api -o ./apidoc/",
     "test": "rimraf test/testdata & rimraf reports & npm run test:coverage",
     "test:coverage": "nyc --reporter html --reporter lcovonly --report-dir reports/coverage --temp-dir reports/coverage/.nyc_output --reporter text npm run test:api",
     "test:api": "mocha test/**/*.spec.js --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit",

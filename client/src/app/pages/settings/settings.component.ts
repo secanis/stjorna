@@ -1,24 +1,30 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { Config } from 'src/app/models/config';
 import { StjornaService } from 'src/app/services/stjorna.service';
 import { ToastrService } from 'ngx-toastr';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
     selector: 'stjorna-settings',
     templateUrl: './settings.component.html',
     styleUrls: ['./settings.component.css']
 })
-export class SettingsComponent implements OnInit {
-    public config: Config = new Config();
-    public configEnv: Array<any> = [];
+export class SettingsComponent {
+    public config$: Observable<Config> = this.stjornaService.getSettings().pipe(
+        map(r => new Config(
+            r.password_secret,
+            r.allow_remote_access,
+            r.image,
+            r.installed,
+            r.modules
+        ))
+    );
+
+    public configEnv$: Observable<Array<any>> = this.stjornaService.getServerEnvConfig();
     cronjobInfo$: Observable<any> = this.stjornaService.getCronjobState();
 
     constructor(private stjornaService: StjornaService, private toastr: ToastrService) { }
-
-    ngOnInit() {
-        this.loadSettings();
-    }
 
     public saveSettings(config) {
         this.stjornaService.saveSettings(config).subscribe(result => this.saveDoneAction(result));
@@ -30,18 +36,6 @@ export class SettingsComponent implements OnInit {
 
     public triggerExport(fileType: string) {
         this.stjornaService.downloadExport(fileType).subscribe(result => this.downloadFile(result));
-    }
-
-    private loadSettings() {
-        this.stjornaService.getSettings().subscribe(result => {
-            this.config = new Config(
-                result.password_secret,
-                result.allow_remote_access,
-                result.image,
-                result.installed
-            );
-        });
-        this.stjornaService.getServerEnvConfig().subscribe(result => this.configEnv = result);
     }
 
     private saveDoneAction(result) {

@@ -1,0 +1,5 @@
+.module-row {
+    display: flex;
+    justify-content: space-between;
+    line-height: 26px;
+}

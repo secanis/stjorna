@@ -3,12 +3,14 @@ export class Config {
     allow_remote_access: boolean;
     image: ConfigImage;
     installed: boolean;
+    modules: ConfigModules;
 
     constructor(
         password_secret?: string,
         allow_remote_access?: boolean,
         image?: ConfigImage,
-        installed?: boolean
+        installed?: boolean,
+        modules?: ConfigModules,
     ) {
         this.password_secret = password_secret || null;
         this.allow_remote_access = allow_remote_access;
@@ -18,6 +20,7 @@ export class Config {
             quality: 70,
         }
         this.installed = installed;
+        this.modules = modules
     }
 }
 
@@ -25,4 +28,8 @@ export interface ConfigImage {
     width: number;
     height: number;
     quality: number;
+}
+
+export interface ConfigModules {
+    services: boolean
 }

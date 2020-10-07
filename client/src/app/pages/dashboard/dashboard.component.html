@@ -5,7 +5,7 @@
                 <stjorna-product-list></stjorna-product-list>
             </ng-template>
         </ngb-tab>
-        <ngb-tab id="services" title="Services">
+        <ngb-tab id="services" title="Services" *ngIf="(config$ | async)?.modules.services">
             <ng-template ngbTabContent>
                 <stjorna-service-list></stjorna-service-list>
             </ng-template>

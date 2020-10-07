@@ -4,6 +4,9 @@ import { User } from './models/user';
 import { StjornaService } from './services/stjorna.service';
 import { LoginHandlerService } from './services/login-handler.service';
 import { TranslateService } from './services/translate.service';
+import { Observable } from 'rxjs';
+import { Config } from './models/config';
+import { map } from 'rxjs/operators';
 
 @Component({
     selector: 'stjorna-root',
@@ -14,6 +17,15 @@ export class AppComponent implements OnInit {
     public toYear: Number;
     public loggedIn: Boolean = false;
     public currentUser: User;
+    public config$: Observable<Config> = this.stjornaService.getSettings().pipe(
+        map(r => new Config(
+            r.password_secret,
+            r.allow_remote_access,
+            r.image,
+            r.installed,
+            r.modules
+        ))
+    );
 
     constructor(
         private router: Router,

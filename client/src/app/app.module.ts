@@ -39,6 +39,7 @@ import { LoginHandlerService } from './services/login-handler.service';
 import { AuthGuard } from './services/auth.guard';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
+import { ToggleButtonComponent } from './components/toggle-button/toggle-button.component';
 registerLocaleData(lcoaleDECH);
 
 @NgModule({
@@ -63,7 +64,8 @@ registerLocaleData(lcoaleDECH);
         SetupComponent,
         ViewProductComponent,
         SearchPipe,
-        TranslatePipe
+        TranslatePipe,
+        ToggleButtonComponent
     ],
     imports: [
         BrowserModule,
@@ -73,7 +75,7 @@ registerLocaleData(lcoaleDECH);
         FormsModule,
         ToastrModule.forRoot(),
         ImageCropperModule,
-        NgbModule
+        NgbModule,
     ],
     providers: [
         StjornaService,

@@ -1,4 +1,4 @@
-<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
+<main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4" *ngIf="config$ | async as config">
     <div class="card card-margin">
         <div class="card-body">
             <h3 class="card-title">{{'settings.title' | translate}}</h3>
@@ -53,27 +53,20 @@
                             </span>
                         </div>
                     </div>
-                    <small class="form-text text-muted" for="{{c.name}}">last: {{c.last | date: 'HH:mm dd.MM.yyyy'}} |
+                    <small class="form-text text-muted">last: {{c.last | date: 'HH:mm dd.MM.yyyy'}} |
                         next: {{c.next | date: 'HH:mm dd.MM.yyyy'}}</small><br>
                 </ng-container>
             </div>
         </div>
         <div class="card">
             <div class="card-body">
-                <h5 class="card-title">{{'settings.environment.title' | translate}}</h5>
-                <div *ngFor="let ele of configEnv; let l = last;">
-                    <input class="form-control" type="text" disabled value="{{ele.name}} = {{ele.value}}"><br
-                        *ngIf="!l">
+                <h5 class="card-title">{{'settings.modules.title' | translate}}</h5>
+                <div class="module-wrapper">
+                    <div class="module-row">
+                        <span>Module Services:</span>
+                        <app-toggle-button [checked]="config.modules.services" (stateChanged)="config.modules.services = $event"></app-toggle-button>
+                    </div>
                 </div>
-                <small class="form-text text-muted"
-                    for="active">{{'settings.environment.description' | translate}}</small>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">{{'settings.passwordsecret.title' | translate}}</h5>
-                <input class="form-control" type="text" disabled name="passwordSecret"
-                    [(ngModel)]="config.password_secret" #passwordSecret="ngModel" required>
             </div>
         </div>
         <div class="card">
@@ -88,6 +81,26 @@
                 <small class="form-text text-muted" for="allowRemoteAccess">
                     {{'settings.export.description' | translate}}
                 </small>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.passwordsecret.title' | translate}}</h5>
+                <input class="form-control" type="text" disabled name="passwordSecret"
+                    [(ngModel)]="config.password_secret" #passwordSecret="ngModel" required>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.environment.title' | translate}}</h5>
+                <ng-container *ngIf="configEnv$ | async as configEnv; else loading">
+                    <div *ngFor="let ele of configEnv; let l = last;">
+                        <input class="form-control" type="text" disabled value="{{ele.name}} = {{ele.value}}"><br
+                            *ngIf="!l">
+                    </div>
+                    <small class="form-text text-muted"
+                        for="active">{{'settings.environment.description' | translate}}</small>
+                </ng-container>
             </div>
         </div>
     </div>
