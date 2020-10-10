@@ -14,7 +14,7 @@ The implementation on the client side is very easy and do not require much effor
 - Availability of REST API for third-party applications
 - Easy setup, you will be ready in minutes
 - Language support for German and English
-- Possibility to export all your data as a JSON or Excel file
+- Possibility to export all your data as a JSON, Excel or complete backup as a ZIP file - No vendor lock!
 - Open Source software - hosted on Github
 - Optional Matomo Tracking over the REST API  to monitor loading activity on categories and products
 
@@ -69,20 +69,20 @@ In the setup process you can set the username, email and a password. After an in
 
 ### ENV Variables
 
-| Variable                       | Default       | Description                                                  |
-| ------------------------------ | ------------- | ------------------------------------------------------------ |
-| STJORNA_SERVER_PORT            | 3000          | Port for the Node server                                     |
-| STJORNA_SERVER_MAX_UPLOAD      | 8mb           | Max image upload size, defined for Express                   |
-| STJORNA_LOGLEVEL               | info          | Loglevel (WinstonJS loglevels, `slient` for no logs)         |
-| STJORNACONFIG_IMAGE_WIDTH      | 700           | Image width for save process                                 |
-| STJORNACONFIG_IMAGE_HEIGHT     | 700           | Image width for save process                                 |
-| STJORNACONFIG_IMAGE_QUALITY    | 70            | Image quality, between 0-100%                                |
-| STJORNA_REQUEST_LOG            |               | Set to `slient` for no logs                                  |
-| STJORNA_CRON_CLEANUP_INTERVAL  | 00 3 * * *    | Cronjob interval to cleanup the storage                      |
-| STJORNA_SERVER_STORAGE         | /app/data     | Default path is in the path of the server.js data folder     |
-| STJORNA_MATOMOID               |               | Optional: PageId in Matomo to track API calls                |
-| STJORNA_MATOMOURL              |               | Optional: Url of your Matomo instance, end with (/piwik.php) |
-| STJORNA_MATOMOTOKEN            |               | Optional: Token to send more specific data to Matomo         |
+| Variable                      | Default    | Description                                                  |
+| ----------------------------- | ---------- | ------------------------------------------------------------ |
+| STJORNA_SERVER_PORT           | 3000       | Port for the Node server                                     |
+| STJORNA_SERVER_MAX_UPLOAD     | 512mb      | Max image upload size, defined for Express                   |
+| STJORNA_LOGLEVEL              | info       | Loglevel ([WinstonJS loglevels](https://github.com/winstonjs/winston#logging-levels), `slient` for no logs) |
+| STJORNACONFIG_IMAGE_WIDTH     | 700        | Image width for save process                                 |
+| STJORNACONFIG_IMAGE_HEIGHT    | 700        | Image width for save process                                 |
+| STJORNACONFIG_IMAGE_QUALITY   | 70         | Image quality, between 0-100%                                |
+| STJORNA_REQUEST_LOG           |            | Set to `slient` for no logs                                  |
+| STJORNA_CRON_CLEANUP_INTERVAL | 00 3 * * * | Cronjob interval to cleanup the storage                      |
+| STJORNA_SERVER_STORAGE        | /app/data  | Default path is in the path of the server.js data folder     |
+| STJORNA_MATOMOID              |            | Optional: PageId in Matomo to track API calls                |
+| STJORNA_MATOMOURL             |            | Optional: Url of your Matomo instance, end with (/piwik.php) |
+| STJORNA_MATOMOTOKEN           |            | Optional: Token to send more specific data to Matomo         |
 
 ### Remote REST API
 
@@ -98,6 +98,17 @@ We do not provide SSL at the moment, STJÓRNA is designed to run behind a revers
 Our setup is running a [Traefik](https://traefik.io/) proxy in front of STJÓRNA.
 
 We would strongly recommend to use SSL if you use STJÓRNA!
+
+### Migration / Data Backup
+
+If you have to migrate from a Webhosting or Cluster to another Stjorna will support you with an export and import feature for the complete database.
+You have two possibilities how to backup/restore your data.
+
+- Backup/Restore over the API
+  To create a backup you need a login or over the API is are the API Tokens required.
+- Backup Restore over the UI
+  You can restore a backup directly during the setup process, then there are no credentials required.
+  If you want to restore an old version during a running Stjorna instance, you have to login, before you can restore an old backup.
 
 ## Screenshots
 
