@@ -37,9 +37,10 @@ import { TranslateService } from './services/translate.service';
 import { ErrorHandlerService } from './services/error-handler.service';
 import { LoginHandlerService } from './services/login-handler.service';
 import { AuthGuard } from './services/auth.guard';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { ToggleButtonComponent } from './components/toggle-button/toggle-button.component';
+import { RestoreFormComponent } from './pages/settings/restore-form/restore-form.component';
 registerLocaleData(lcoaleDECH);
 
 @NgModule({
@@ -65,7 +66,8 @@ registerLocaleData(lcoaleDECH);
         ViewProductComponent,
         SearchPipe,
         TranslatePipe,
-        ToggleButtonComponent
+        ToggleButtonComponent,
+        RestoreFormComponent
     ],
     imports: [
         BrowserModule,
@@ -73,6 +75,7 @@ registerLocaleData(lcoaleDECH);
         AppRoutingModule,
         HttpClientModule,
         FormsModule,
+        ReactiveFormsModule,
         ToastrModule.forRoot(),
         ImageCropperModule,
         NgbModule,

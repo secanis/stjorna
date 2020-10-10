@@ -21,6 +21,8 @@ export class SetupComponent implements OnInit {
         language: ''
     };
 
+    uploadStatusRestore: number;
+
     constructor(
         private router: Router,
         private stjornaService: StjornaService
@@ -30,14 +32,14 @@ export class SetupComponent implements OnInit {
         this.loadSettingDefaults();
     }
 
-    public completeSetup(user, config) {
+    completeSetup(user, config) {
         this.stjornaService.saveSetupConfiguration({
             config: config,
             user: user
         }).subscribe(result => this.saveDoneAction(result));
     }
 
-    public getIconClass(statusObj, attribute) {
+    getIconClass(statusObj, attribute) {
         if (statusObj && statusObj.message && statusObj.message[attribute]
             && statusObj.message[attribute].status === 'ok') {
             return { 'lnr-checkmark-circle': true, 'text-success': true };

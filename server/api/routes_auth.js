@@ -148,7 +148,7 @@ module.exports = (router) => {
                             logger.info(`login - apikey access for ${userid} - ${req.ip} - ${req.path}`);
                             // ruleset for whitelisted paths (setup is configured in else part)
                             if (req.method === 'GET' && (
-                                    req.path.includes('products') || 
+                                    req.path.includes('products') ||
                                     req.path.includes('categories') ||
                                     req.path.includes('uploads')
                             )) {
@@ -185,7 +185,7 @@ module.exports = (router) => {
             next();
         } else {
             // if it is the setup path and the config installed flag is not on false, route the stuff
-            if (req.path.includes('setup')) {
+            if (req.path.includes('setup') || req.path.includes('restore')) {
                 fileHelper.loadConfigFile((err, config) => {
                     if (err || !JSON.parse(config).installed) {
                         next();

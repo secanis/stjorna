@@ -22,8 +22,10 @@ export class ErrorHandlerService {
         return (error: HttpErrorResponse): Observable<T> => {
             if (error.status === 401) {
                 this.loginHandlerService.setLoginStatus(false);
+                this.toastr.error('Authentication failed', 'Login');
                 this.router.navigateByUrl(`/login`);
             } else if (error.status === 403) {
+                this.toastr.error('Not authorized', 'Security');
                 this.loginHandlerService.setLoginStatus(false);
             } else {
                 if (error.error instanceof Blob) {
@@ -51,6 +53,7 @@ export class ErrorHandlerService {
                 }
                 return of(result);
             }
+            return of();
         };
     }
 

@@ -64,7 +64,8 @@
                 <div class="module-wrapper">
                     <div class="module-row">
                         <span>Module Services:</span>
-                        <app-toggle-button [checked]="config.modules.services" (stateChanged)="config.modules.services = $event"></app-toggle-button>
+                        <app-toggle-button [checked]="config.modules.services"
+                            (stateChanged)="config.modules.services = $event"></app-toggle-button>
                     </div>
                 </div>
             </div>
@@ -73,13 +74,34 @@
             <div class="card-body">
                 <h5 class="card-title">{{'settings.export.title' | translate}}</h5>
                 <div class="export-buttons">
-                    <button class="btn btn-sm btn-info"
-                        (click)="triggerExport('excel')">{{'settings.export.button.excel' | translate}}</button>
-                    <button class="btn btn-sm btn-info"
-                        (click)="triggerExport('json')">{{'settings.export.button.json' | translate}}</button>
+                    <button class="btn btn-sm btn-info" (click)="triggerExport('excel')">
+                        {{'settings.export.button.excel' | translate}}
+                    </button>
+                    <button class="btn btn-sm btn-info" (click)="triggerExport('json')">
+                        {{'settings.export.button.json' | translate}}
+                    </button>
+                    <button class="btn btn-sm btn-info" (click)="triggerExport('zip')">
+                        {{'settings.export.button.zip' | translate}}
+                    </button>
                 </div>
-                <small class="form-text text-muted" for="allowRemoteAccess">
+                <small class="form-text text-muted">
                     {{'settings.export.description' | translate}}
+                </small>
+                <hr>
+                <h5 class="card-title">{{'settings.import.title' | translate}}</h5>
+                <app-restore-form></app-restore-form>
+                <small class="form-text text-muted">
+                    {{'settings.import.description' | translate}}
+                </small>
+                <hr>
+                <h5 class="card-title">{{'settings.reset.title' | translate}}</h5>
+                <div class="export-buttons">
+                    <button class="btn btn-sm btn-danger" (click)="triggerDataReset()">
+                        {{'settings.reset.button' | translate}}
+                    </button>
+                </div>
+                <small class="form-text text-muted">
+                    {{'settings.reset.description' | translate}}
                 </small>
             </div>
         </div>

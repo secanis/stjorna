@@ -5,9 +5,7 @@ const uniqid = require('uniqid');
 
 const logger = require('../lib/logging_helper.js').logger;
 
-if (!fs.existsSync(`${process.env.STJORNA_SERVER_STORAGE}`)) {
-    fs.mkdirSync(`${process.env.STJORNA_SERVER_STORAGE}`);
-}
+createRquiredFolders();
 const adapter = new FileAsync(`${process.env.STJORNA_SERVER_STORAGE}/database.json`);
 
 // configured datasets for stjorna
@@ -18,6 +16,12 @@ const datasets = {
     users: [],
     cronjobs: []
 };
+
+function createRquiredFolders() {
+    if (!fs.existsSync(`${process.env.STJORNA_SERVER_STORAGE}`)) {
+        fs.mkdirSync(`${process.env.STJORNA_SERVER_STORAGE}`);
+    }
+}
 
 function generateId() {
     return uniqid();
@@ -79,9 +83,10 @@ function initialize() {
 module.exports = {
     db: null,
     initialize,
+    createRquiredFolders,
     generateId,
     getAllDataSets,
     getAllDataSetMembers,
     getAllDataSetsWithData,
-    getSizeOfDataSet
+    getSizeOfDataSet,
 };

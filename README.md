@@ -19,7 +19,7 @@ The implementation on the client side is very easy and do not require much effor
 - Availability of REST API for third-party applications
 - Easy setup, you will be ready in minutes
 - Language support for German and English
-- Possibility to export all your data as a JSON or Excel file
+- Possibility to export all your data as a JSON, Excel or complete backup as a ZIP file - No vendor lock!
 - Open Source software - hosted on Github
 - Optional Matomo Tracking over the REST API  to monitor loading activity on categories and products
 

@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stjorna
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stjorna
+  template:
+    metadata:
+      labels:
+        app: stjorna
+    spec:
+      securityContext:
+        fsGroup: 2000
+      containers:
+      - image: secanis/stjorna:latest
+        name: stjorna
+        resources:
+          limits:
+            cpu: 500m
+            memory: "512Mi"
+          requests:
+            cpu: 50m
+            memory: "20Mi"
+        volumeMounts:
+        - mountPath: /app/data
+          name: stjorna-storage
+      restartPolicy: Always
+      volumes:
+      - name: stjorna-storage
+        persistentVolumeClaim:
+          claimName: stjorna-claim0
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stjorna-svc
+spec:
+  ports:
+  - port: 80
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: stjorna
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: stjorna-ingress
+spec:
+  rules:
+  - host: stjorna.cloud.secanis.ch
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: stjorna-svc
+          servicePort: 80
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: stjorna
+  namespace: default
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`stjorna.cloud.secanis.ch`)
+      kind: Rule
+      services:
+        - name: stjorna-svc
+          port: 80
+  tls:
+    secretName: stjorna-cert
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: stjorna-cert
+  namespace: default
+spec:
+  commonName: stjorna.cloud.secanis.ch
+  secretName: stjorna-cert
+  dnsNames:
+    - stjorna.cloud.secanis.ch
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer

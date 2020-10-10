@@ -12,15 +12,7 @@ import { StjornaService } from 'src/app/services/stjorna.service';
 })
 export class DashboardComponent implements OnInit {
     public selectedTab: String = '';
-    public config$: Observable<Config> = this.stjornaService.getSettings().pipe(
-        map(r => new Config(
-            r.password_secret,
-            r.allow_remote_access,
-            r.image,
-            r.installed,
-            r.modules
-        ))
-    );
+    public config$: Observable<Config>;
 
     constructor(private route: ActivatedRoute, private router: Router, private stjornaService: StjornaService) {
         this.route.params.subscribe(params => {
@@ -28,6 +20,16 @@ export class DashboardComponent implements OnInit {
                 this.selectedTab = params.tab;
             }
         });
+
+        this.config$ = this.stjornaService.getSettings().pipe(
+            map(r => new Config(
+                r.password_secret,
+                r.allow_remote_access,
+                r.image,
+                r.installed,
+                r.modules
+            ))
+        );
     }
 
     ngOnInit() { }

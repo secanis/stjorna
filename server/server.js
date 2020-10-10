@@ -18,8 +18,9 @@ require('./lib/database_helper').initialize();
 require('./lib/tracking_helper').initialize();
 
 // initialize bodyParser ans set limits
-app.use(bodyParser.json({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD }));
-app.use(bodyParser.urlencoded({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD, extended: true }));
+app
+    .use(bodyParser.json({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD }))
+    .use(bodyParser.urlencoded({ limit: process.env.STJORNA_SERVER_MAX_UPLOAD, extended: true }));
 
 // initialize request logging
 app.use(logger.configureExpressLogging);

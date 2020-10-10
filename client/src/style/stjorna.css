@@ -116,12 +116,12 @@ select,
 
 .export-buttons {
     display: flex;
-    justify-content: start;
+    justify-content: space-between;
+    flex-wrap: wrap;
 }
 
 .export-buttons button {
-    margin-left: 3px;
-    margin-right: 3px;
+    margin: 3px;
 }
 
 image-cropper {

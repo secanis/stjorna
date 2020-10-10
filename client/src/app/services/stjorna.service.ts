@@ -9,6 +9,7 @@ import { Category } from '../models/category';
 import { Config } from '../models/config';
 import { User } from '../models/user';
 import { environment } from 'src/environments/environment';
+import { FormGroup } from '@angular/forms';
 
 @Injectable({
     providedIn: 'root'
@@ -200,7 +201,7 @@ export class StjornaService {
     public updateUser(newPasswordObj) {
         return this.http
             .post(`${environment.apiUrl}/api/v1/users/${this.loginHandlerService.getCurrentUser()._id}`,
-                    newPasswordObj, this.getHeaders(this.token))
+                newPasswordObj, this.getHeaders(this.token))
             .pipe(catchError(this.handleError<any>('update user')));
     }
 
@@ -210,9 +211,24 @@ export class StjornaService {
 
     public downloadExport(fileType: string) {
         return this.http
-            .get(`${environment.apiUrl}/api/v1/export/${fileType}`, { responseType: 'blob',
-                    observe: 'response', headers: this.getHeaders(this.token).headers })
+            .get(`${environment.apiUrl}/api/v1/export/${fileType}`, {
+                responseType: 'blob',
+                observe: 'response', headers: this.getHeaders(this.token).headers
+            })
             .pipe(catchError(this.handleError<any>(`download export ${fileType}`)));
+    }
+
+    public resetDatabase() {
+        return this.http.post(`${environment.apiUrl}/api/v1/reset`, null, this.getHeaders(this.token))
+            .pipe(catchError(this.handleError<any>('reset database')));
+    }
+
+    public uploadRestoreZip(formData: FormData) {
+        let headers = this.getHeaders(this.token).headers;
+        headers = headers.delete('content-type');
+
+        return this.http.post(`${environment.apiUrl}/api/v1/restore`, formData, { headers, reportProgress: true, observe: 'events' })
+            .pipe(catchError(this.handleError<any>('upload restore zip')));
     }
 
     private getHeaders(token: string) {

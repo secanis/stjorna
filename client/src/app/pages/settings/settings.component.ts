@@ -4,6 +4,8 @@ import { StjornaService } from 'src/app/services/stjorna.service';
 import { ToastrService } from 'ngx-toastr';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { Router } from '@angular/router';
+import { LoginHandlerService } from 'src/app/services/login-handler.service';
 
 @Component({
     selector: 'stjorna-settings',
@@ -24,7 +26,8 @@ export class SettingsComponent {
     public configEnv$: Observable<Array<any>> = this.stjornaService.getServerEnvConfig();
     cronjobInfo$: Observable<any> = this.stjornaService.getCronjobState();
 
-    constructor(private stjornaService: StjornaService, private toastr: ToastrService) { }
+    constructor(private stjornaService: StjornaService, private toastr: ToastrService,
+        private router: Router, private loginHandlerService: LoginHandlerService) { }
 
     public saveSettings(config) {
         this.stjornaService.saveSettings(config).subscribe(result => this.saveDoneAction(result));
@@ -36,6 +39,15 @@ export class SettingsComponent {
 
     public triggerExport(fileType: string) {
         this.stjornaService.downloadExport(fileType).subscribe(result => this.downloadFile(result));
+    }
+
+    public triggerDataReset() {
+        if (confirm(`Are you sure you want to reset COMPLETE Stjorna database?`)) {
+            this.stjornaService.resetDatabase().subscribe(_ => {
+                this.loginHandlerService.setLoginStatus(false);
+                this.router.navigate(['setup']);
+            });
+        }
     }
 
     private saveDoneAction(result) {

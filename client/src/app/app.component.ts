@@ -17,22 +17,14 @@ export class AppComponent implements OnInit {
     public toYear: Number;
     public loggedIn: Boolean = false;
     public currentUser: User;
-    public config$: Observable<Config> = this.stjornaService.getSettings().pipe(
-        map(r => new Config(
-            r.password_secret,
-            r.allow_remote_access,
-            r.image,
-            r.installed,
-            r.modules
-        ))
-    );
+    public config$: Observable<Config>;
 
     constructor(
         private router: Router,
         private stjornaService: StjornaService,
         private loginHandlerService: LoginHandlerService,
         private translateService: TranslateService
-    ) {}
+    ) { }
 
     ngOnInit() {
         // check if we are in an inital setup
@@ -52,6 +44,15 @@ export class AppComponent implements OnInit {
             this.loggedIn = result;
             if (this.currentUser) {
                 this.translateService.use(this.currentUser.language);
+                this.config$ = this.stjornaService.getSettings().pipe(
+                    map(r => new Config(
+                        r.password_secret,
+                        r.allow_remote_access,
+                        r.image,
+                        r.installed,
+                        r.modules
+                    ))
+                );
             }
         });
         this.loggedIn = this.loginHandlerService.getLoginStatus();

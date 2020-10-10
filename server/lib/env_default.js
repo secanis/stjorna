@@ -2,7 +2,7 @@ module.exports = {
     initialize: () => {
         // application startup parameters
         process.env['STJORNA_SERVER_PORT'] = process.env.STJORNA_SERVER_PORT || 3000;
-        process.env['STJORNA_SERVER_MAX_UPLOAD'] = process.env.STJORNA_SERVER_MAX_UPLOAD || '8mb';
+        process.env['STJORNA_SERVER_MAX_UPLOAD'] = process.env.STJORNA_SERVER_MAX_UPLOAD || '512mb';
         process.env['STJORNA_LOGLEVEL'] = process.env.STJORNA_LOGLEVEL || 'info';
         process.env['STJORNA_REQUEST_LOG'] = process.env.STJORNA_REQUEST_LOG || '';
         process.env['STJORNA_CRON_CLEANUP_INTERVAL'] = process.env.STJORNA_CRON_CLEANUP_INTERVAL || '00 3 * * *';

@@ -5,6 +5,7 @@ const sharp = require('sharp');
 const logger = require('../lib/logging_helper.js').logger;
 const exportExcel = require('./export/excel.js');
 const exportJson = require('./export/json.js');
+const exportZip = require('./export/zip.js');
 
 module.exports = {
     getFolderContent: (route, cb) => {
@@ -152,6 +153,9 @@ module.exports = {
                 break;
             case 'json':
                 exportJson.generateExport(cb);
+                break;
+            case 'zip':
+                exportZip.generateExport(cb);
                 break;
 
             default:

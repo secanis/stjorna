@@ -1,89 +1,107 @@
-<form #setupForm="ngForm" class="container" *ngIf="!completedSetup">
-    <div class="card card-margin">
-        <div class="card-body">
-            <h3 class="card-title">Welcome to STJÓRNA</h3>
-            <p>You are just one step away from the usage of STJÓRNA.<br>
-                We preconfigured some recommended values or you set with own ENV variables.<br>
-                In the default settings, the remote api is for security reasons deactivated.</p>
+<div class="container">
+
+    <form #setupForm="ngForm" *ngIf="!completedSetup">
+        <div class="card card-margin">
+            <div class="card-body">
+                <h3 class="card-title">Welcome to STJÓRNA</h3>
+                <p>You are just one step away from the usage of STJÓRNA.<br>
+                    We preconfigured some recommended values or you set with own ENV variables.<br>
+                    In the default settings, the remote api is for security reasons deactivated.</p>
+            </div>
         </div>
+        <div class="card-columns">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Add User</h5>
+                    <input class="form-control" type="text" name="username" [(ngModel)]="user.username" required
+                        #username="ngModel">
+                    <small class="form-text text-muted" for="username">Username</small><br>
+                    <input class="form-control" type="email" name="email" [(ngModel)]="user.email" required
+                        #email="ngModel">
+                    <small class="form-text text-muted" for="email">Email</small><br>
+                    <input class="form-control" type="password" minlength="6" name="password"
+                        [(ngModel)]="user.password" required #pw="ngModel">
+                    <small class="form-text text-muted" for="password">Password</small>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">User Language</h5>
+                    <select class="form-control" name="userLanguage" [(ngModel)]="user.language" #userLanguage="ngModel"
+                        required>
+                        <option value="en">English</option>
+                        <option value="de">German</option>
+                    </select>
+                    <small class="form-text text-muted" for="userLanguage">Remote API access to use your data in
+                        third-pary
+                        applications.</small>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Remote API</h5>
+                    <select class="form-control" name="allowRemoteAccess" [(ngModel)]="config.allow_remote_access"
+                        #allowRemoteAccess="ngModel" required>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                    </select>
+                    <small class="form-text text-muted" for="allowRemoteAccess">Remote API access to use your data in
+                        third-pary
+                        applications.</small>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Image Settings <small>(Server)</small></h5>
+                    <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
+                        [(ngModel)]="config.image.width" #imageDimension="ngModel" required>
+                    <small class="form-text text-muted"
+                        for="imageDimension">{{'settings.image.width' | translate}}</small><br>
+                    <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
+                        [(ngModel)]="config.image.height" #imageDimension="ngModel" required>
+                    <small class="form-text text-muted"
+                        for="imageDimension">{{'settings.image.height' | translate}}</small><br>
+                    <input class="form-control" type="number" min="0" max="100" step="1" name="imageQuality"
+                        [(ngModel)]="config.image.quality" #imageQuality="ngModel" required>
+                    <small class="form-text text-muted"
+                        for="imageQuality">{{'settings.image.quality' | translate}}</small>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Database Settings</h5>
+                    <select class="form-control" name="databaseType" value="lowdb" disabled>
+                        <option value="lowdb">LowDB</option>
+                        <option value="rethinkdb">RethinkDB</option>
+                    </select>
+                    <small class="form-text text-muted" for="databaseType">Select the Database you wanna use. LowDB is
+                        set
+                        as
+                        default.<br>
+                        LowDB is a file based database (more or less a JSON), RethinkDB is a NoSQL database -
+                        recommended
+                        for larger
+                        instances.</small><br>
+                </div>
+            </div>
+        </div>
+        <div class="proceed-button">
+            <button type="submit" class="btn btn-success float-right" [disabled]="!setupForm.valid"
+                (click)="completeSetup(user, config)">Proceed</button>
+        </div>
+    </form>
+    <h2 class="setup-divider"><span>OR</span></h2>
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">{{'settings.import.title' | translate}}</h5>
+                <app-restore-form (uploadStatus)="uploadStatusRestore = $event"></app-restore-form>
+            </div>
+        </div>
+    <div class="proceed-button">
+        <button type="button" class="btn btn-success float-right" [routerLink]="['login']"
+            [disabled]="!uploadStatusRestore || uploadStatusRestore < 100">Finish</button>
     </div>
-    <div class="card-columns">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Add User</h5>
-                <input class="form-control" type="text" name="username" [(ngModel)]="user.username" required
-                    #username="ngModel">
-                <small class="form-text text-muted" for="username">Username</small><br>
-                <input class="form-control" type="email" name="email" [(ngModel)]="user.email" required
-                    #email="ngModel">
-                <small class="form-text text-muted" for="email">Email</small><br>
-                <input class="form-control" type="password" minlength="6" name="password" [(ngModel)]="user.password"
-                    required #pw="ngModel">
-                <small class="form-text text-muted" for="password">Password</small>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">User Language</h5>
-                <select class="form-control" name="userLanguage" [(ngModel)]="user.language" #userLanguage="ngModel"
-                    required>
-                    <option value="en">English</option>
-                    <option value="de">German</option>
-                </select>
-                <small class="form-text text-muted" for="userLanguage">Remote API access to use your data in third-pary
-                    applications.</small>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Remote API</h5>
-                <select class="form-control" name="allowRemoteAccess" [(ngModel)]="config.allow_remote_access"
-                    #allowRemoteAccess="ngModel" required>
-                    <option value="true">Active</option>
-                    <option value="false">Inactive</option>
-                </select>
-                <small class="form-text text-muted" for="allowRemoteAccess">Remote API access to use your data in
-                    third-pary
-                    applications.</small>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Image Settings <small>(Server)</small></h5>
-                <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
-                    [(ngModel)]="config.image.width" #imageDimension="ngModel" required>
-                <small class="form-text text-muted" for="imageDimension">{{'settings.image.width' | translate}}</small><br>
-                <input class="form-control" type="number" min="0" max="1000" step="1" name="imageDimension"
-                    [(ngModel)]="config.image.height" #imageDimension="ngModel" required>
-                <small class="form-text text-muted" for="imageDimension">{{'settings.image.height' | translate}}</small><br>
-                <input class="form-control" type="number" min="0" max="100" step="1" name="imageQuality"
-                    [(ngModel)]="config.image.quality" #imageQuality="ngModel" required>
-                <small class="form-text text-muted" for="imageQuality">{{'settings.image.quality' | translate}}</small>
-            </div>
-        </div>
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Database Settings</h5>
-                <select class="form-control" name="databaseType" value="lowdb" disabled>
-                    <option value="lowdb">LowDB</option>
-                    <option value="rethinkdb">RethinkDB</option>
-                </select>
-                <small class="form-text text-muted" for="databaseType">Select the Database you wanna use. LowDB is set
-                    as
-                    default.<br>
-                    LowDB is a file based database (more or less a JSON), RethinkDB is a NoSQL database - recommended
-                    for larger
-                    instances.</small><br>
-            </div>
-        </div>
-    </div>
-    <div class="card card-margin">
-        <div class="card-body">
-            <button type="submit" class="btn btn-success float-right" (click)="completeSetup(user, config)">Save
-                Settings</button>
-        </div>
-    </div>
-</form>
+</div>
 <form class="container" *ngIf="completedSetup">
     <div class="card card-margin">
         <div class="card-body">

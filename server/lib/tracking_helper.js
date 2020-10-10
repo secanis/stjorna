@@ -1,4 +1,4 @@
-const PiwikTracker = require('piwik-tracker');
+const MatomoTracker = require('matomo-tracker');
 const logger = require('../lib/logging_helper.js').logger;
 
 let matomo;
@@ -16,7 +16,7 @@ function initialize() {
         } else {
             logger.warn('no matomo token configured, skip IP tracking');
         }
-        matomo = new PiwikTracker(matomoPageId, matomoUrl);
+        matomo = new MatomoTracker(matomoPageId, matomoUrl);
     } else {
         logger.warn(
             'no matomo instance configured, skip api tracking setup'

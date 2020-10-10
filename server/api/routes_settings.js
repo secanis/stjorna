@@ -1,9 +1,12 @@
 const crypto = require('crypto');
 const moment = require('moment');
+const fs = require('fs');
 
 const dbHelper = require('../lib/database_helper.js');
 const fileHelper = require('../lib/file_helper.js');
 const { getAllCronInfo } = require('../lib/cronjob_helper.js');
+const upload_helper = require('../lib/upload_helper.js');
+const database_helper = require('../lib/database_helper.js');
 const logger = require('../lib/logging_helper.js').logger;
 
 module.exports = (router) => {
@@ -83,15 +86,15 @@ module.exports = (router) => {
 
     router.route('/v1/export/:filetype')
         /**
-         * @api {get} /api/v1/export/:filetype Export Data
+         * @api {get} /api/v1/export/:filetype Export Data or create complete backup with 'zip' parameter
          * @apiPrivate
          * @apiName ExportData
          * @apiGroup Settings
          * @apiPermission loggedin
          * @apiVersion 1.0.0
-         * 
-         * @apiParam {String} filetype Filetype of your export (json | excel)
-         * 
+         *
+         * @apiParam {String} filetype Filetype of your export (json | excel | zip)
+         *
          * @apiSuccess {string} file Returns the export as file download
          */
         .get((req, res) => {
@@ -116,6 +119,58 @@ module.exports = (router) => {
                 logger.error(`export - error while creating file, please give a correct filetype`);
                 res.status(400).send({ 'message': 'error while creating file, please give a correct filetype', 'status': 'error' });
             }
+        });
+
+    router.route('/v1/reset')
+        /**
+         * @api {post} /api/v1/reset Reset Stjorna database
+         * @apiPrivate
+         * @apiName Reset
+         * @apiGroup Settings
+         * @apiPermission loggedin
+         * @apiVersion 1.4.0
+         *
+         * @apiSuccess {boolean} success Returns reset status
+         */
+        .post((req, res) => {
+            try {
+                fs.rmdirSync(process.env.STJORNA_SERVER_STORAGE, { recursive: true })
+                logger.warn(`reset of complete Stjorna database done!`);
+                res.send({ success: true });
+            } catch (err) {
+                logger.error(`reset database: ${err.message}`);
+                res.status(500).send({ success: false });
+            }
+        });
+
+    router.route('/v1/restore')
+        /**
+         * @api {post} /api/v1/restore Restore Stjorna database
+         * @apiPrivate
+         * @apiName Restore
+         * @apiGroup Settings
+         * @apiPermission none
+         * @apiVersion 1.4.0
+         *
+         * @apiSuccess {boolean} success Returns Restore status
+         */
+        .post((req, res) => {
+            const form = upload_helper.getForm(req);
+
+            form.on('file', async (name, file) => {
+                await upload_helper.extractZip();
+                database_helper.initialize();
+                return res.send({
+                    success: true
+                })
+            });
+
+            form.on('error', (err) => {
+                console.log(err);
+                return res.status(400).send({
+                    success: false
+                });
+            })
         });
 
     router.route('/v1/setup')

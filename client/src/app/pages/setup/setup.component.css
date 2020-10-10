@@ -1,0 +1,19 @@
+.proceed-button {
+    margin-top: 30px;
+    display: block;
+    height: 30px;
+}
+
+.setup-divider {
+   width: 100%;
+   text-align: center;
+   font-size: 1.5rem;
+   border-bottom: 1px solid #bbb;
+   line-height: 0.1em;
+   margin: 50px 0 50px;
+}
+
+.setup-divider span {
+    background:#fff;
+    padding:0 10px;
+}
