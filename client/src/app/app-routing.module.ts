@@ -12,7 +12,7 @@ import { ViewProductComponent } from './pages/view-product/view-product.componen
 
 const routes: Routes = [
     // dashboard
-    { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
+    { path: 'dashboard', redirectTo: 'dashboard/products' },
     { path: 'dashboard/:tab', component: DashboardComponent, canActivate: [AuthGuard] },
     // about
     { path: 'about', component: AboutComponent, canActivate: [AuthGuard] },
@@ -34,11 +34,11 @@ const routes: Routes = [
     // setup
     { path: 'setup', component: SetupComponent },
     // default route
-    { path: '**', redirectTo: '/dashboard' }
+    { path: '**', redirectTo: '/dashboard/products' }
 ];
 
 @NgModule({
-    imports: [RouterModule.forRoot(routes)],
+    imports: [RouterModule.forRoot(routes, { relativeLinkResolution: 'legacy' })],
     exports: [RouterModule]
 })
 export class AppRoutingModule { }

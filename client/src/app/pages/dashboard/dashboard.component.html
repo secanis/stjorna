@@ -1,19 +1,23 @@
 <main role="main" class="col-md-10 ml-sm-auto col-lg-10 pt-3 px-4">
-    <ngb-tabset [activeId]="selectedTab" (tabChange)="tabChange($event)">
-        <ngb-tab id="products" [title]="'app.products' | translate">
-            <ng-template ngbTabContent>
+    <ul ngbNav #nav="ngbNav" [(activeId)]="selectedTab" class="nav-tabs" (navChange)="tabChange($event)">
+        <li ngbNavItem="products">
+            <a ngbNavLink>{{ 'app.products' | translate }}</a>
+            <ng-template ngbNavContent>
                 <stjorna-product-list></stjorna-product-list>
             </ng-template>
-        </ngb-tab>
-        <ngb-tab id="services" title="Services" *ngIf="(config$ | async)?.modules.services">
-            <ng-template ngbTabContent>
+        </li>
+        <li ngbNavItem="services" *ngIf="(config$ | async)?.modules.services">
+            <a ngbNavLink>Services</a>
+            <ng-template ngbNavContent>
                 <stjorna-service-list></stjorna-service-list>
             </ng-template>
-        </ngb-tab>
-        <ngb-tab id="categories" [title]="'app.categories' | translate">
-            <ng-template ngbTabContent>
+        </li>
+        <li ngbNavItem="categories">
+            <a ngbNavLink>{{ 'app.categories' | translate }}</a>
+            <ng-template ngbNavContent>
                 <stjorna-category-list></stjorna-category-list>
             </ng-template>
-        </ngb-tab>
-    </ngb-tabset>
+        </li>
+    </ul>
+    <div [ngbNavOutlet]="nav" class="mt-2"></div>
 </main>
