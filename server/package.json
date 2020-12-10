@@ -21,7 +21,7 @@
     "url": "https://github.com/secanis/stjorna.git"
   },
   "dependencies": {
-    "archiver": "^5.0.2",
+    "archiver": "^5.1.0",
     "body-parser": "^1.19.0",
     "cron": "^1.8.2",
     "excel4node": "^1.7.2",
@@ -36,7 +36,7 @@
     "matomo-tracker": "^2.2.4",
     "moment": "^2.29.1",
     "sharp": "^0.26.3",
-    "snyk": "^1.428.0",
+    "snyk": "^1.436.0",
     "uniqid": "^5.2.0",
     "util": "^0.12.3",
     "winston": "^3.3.3"
