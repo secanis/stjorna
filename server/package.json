@@ -10,9 +10,7 @@
         "test": "rimraf test/testdata & rimraf reports & npm run test:coverage",
         "test:coverage": "nyc --reporter html --reporter lcovonly --report-dir reports/coverage --temp-dir reports/coverage/.nyc_output --reporter text npm run test:api",
         "test:api": "mocha test/**/*.spec.js --reporter mocha-multi-reporters --reporter-options configFile=test/_config.json --timeout 5000 --full-trace --exit",
-        "test:sendcoverage": "cat reports/coverage/lcov.info | codacy-coverage",
-        "snyk-protect": "snyk protect",
-        "prepare": "npm run snyk-protect"
+        "test:sendcoverage": "cat reports/coverage/lcov.info | codacy-coverage"
     },
     "author": "matthias.baldi@secanis.ch",
     "license": "MIT",
@@ -53,6 +51,5 @@
         "nyc": "^15.1.0",
         "request": "^2.88.2",
         "rimraf": "^3.0.2"
-    },
-    "snyk": true
+    }
 }
