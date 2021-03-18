@@ -52,7 +52,7 @@ metadata:
   name: stjorna-ingress
 spec:
   rules:
-  - host: stjorna.cloud.secanis.ch
+  - host: stjorna.yourdomain.com
     http:
       paths:
       - path: /
@@ -69,7 +69,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`stjorna.cloud.secanis.ch`)
+    - match: Host(`stjorna.yourdomain.com`)
       kind: Rule
       services:
         - name: stjorna-svc
@@ -83,10 +83,10 @@ metadata:
   name: stjorna-cert
   namespace: default
 spec:
-  commonName: stjorna.cloud.secanis.ch
+  commonName: stjorna.yourdomain.com
   secretName: stjorna-cert
   dnsNames:
-    - stjorna.cloud.secanis.ch
+    - stjorna.yourdomain.com
   issuerRef:
     name: letsencrypt-prod
     kind: ClusterIssuer
