@@ -10,7 +10,8 @@ const database_helper = require('../lib/database_helper.js');
 const logger = require('../lib/logging_helper.js').logger;
 
 module.exports = (router) => {
-    router.route('/v1/settings')
+    router
+        .route('/v1/settings')
         /**
          * @api {get} /api/v1/settings Get Settings
          * @apiPrivate
@@ -33,7 +34,7 @@ module.exports = (router) => {
                     res.send(JSON.parse(config));
                 } else {
                     logger.error(`couldn't get configuration`);
-                    res.status(400).send({ 'message': 'configuration error', 'status': 'error' });
+                    res.status(400).send({ message: 'configuration error', status: 'error' });
                 }
             });
         })
@@ -52,15 +53,16 @@ module.exports = (router) => {
             fileHelper.saveConfigFile(req.body, (err, config) => {
                 if (err) {
                     logger.error(`couldn't save configuration`);
-                    res.status(400).send({ 'message': `save configuration error: ${err.message}`, 'status': 'error' });
+                    res.status(400).send({ message: `save configuration error: ${err.message}`, status: 'error' });
                 } else {
                     logger.log('debug', `configuration saved`);
-                    res.status(200).send({ 'message': 'configuration successfully saved', 'status': 'ok' });
+                    res.status(200).send({ message: 'configuration successfully saved', status: 'ok' });
                 }
             });
         });
 
-    router.route('/v1/state/cron')
+    router
+        .route('/v1/state/cron')
         /**
          * @api {get} /api/v1/state/cron Get Cron State
          * @apiPrivate
@@ -79,12 +81,13 @@ module.exports = (router) => {
          */
         .get((req, res) => {
             const cronState = getAllCronInfo();
-            cronState.forEach(e => e['ok'] = moment(new Date()).isBetween(e.last, e.next));
+            cronState.forEach((e) => (e['ok'] = moment(new Date()).isBetween(e.last, e.next)));
             logger.log('debug', `get cronstate file`);
             res.send(cronState);
         });
 
-    router.route('/v1/export/:filetype')
+    router
+        .route('/v1/export/:filetype')
         /**
          * @api {get} /api/v1/export/:filetype Export Data or create complete backup with 'zip' parameter
          * @apiPrivate
@@ -112,16 +115,17 @@ module.exports = (router) => {
                         res.send(fileObject.file);
                     } else {
                         logger.error(`export - error while creating file: ${err.message}`);
-                        res.status(400).send(JSON.stringify({ 'message': `error while creating file: ${err.message}`, 'status': 'error' }));
+                        res.status(400).send(JSON.stringify({ message: `error while creating file: ${err.message}`, status: 'error' }));
                     }
                 });
             } else {
                 logger.error(`export - error while creating file, please give a correct filetype`);
-                res.status(400).send({ 'message': 'error while creating file, please give a correct filetype', 'status': 'error' });
+                res.status(400).send({ message: 'error while creating file, please give a correct filetype', status: 'error' });
             }
         });
 
-    router.route('/v1/reset')
+    router
+        .route('/v1/reset')
         /**
          * @api {post} /api/v1/reset Reset Stjorna database
          * @apiPrivate
@@ -134,7 +138,7 @@ module.exports = (router) => {
          */
         .post((req, res) => {
             try {
-                fs.rmdirSync(process.env.STJORNA_SERVER_STORAGE, { recursive: true })
+                fs.rmSync(process.env.STJORNA_SERVER_STORAGE, { recursive: true });
                 logger.warn(`reset of complete Stjorna database done!`);
                 res.send({ success: true });
             } catch (err) {
@@ -143,7 +147,8 @@ module.exports = (router) => {
             }
         });
 
-    router.route('/v1/restore')
+    router
+        .route('/v1/restore')
         /**
          * @api {post} /api/v1/restore Restore Stjorna database
          * @apiPrivate
@@ -161,19 +166,20 @@ module.exports = (router) => {
                 await upload_helper.extractZip();
                 database_helper.initialize();
                 return res.send({
-                    success: true
-                })
+                    success: true,
+                });
             });
 
             form.on('error', (err) => {
                 console.log(err);
                 return res.status(400).send({
-                    success: false
+                    success: false,
                 });
-            })
+            });
         });
 
-    router.route('/v1/setup')
+    router
+        .route('/v1/setup')
         /**
          * @api {option} /api/v1/setup Get Setup Status without Login
          * @apiPrivate
@@ -208,9 +214,9 @@ module.exports = (router) => {
                 image: {
                     width: process.env.STJORNACONFIG_IMAGE_WIDTH - 0,
                     height: process.env.STJORNACONFIG_IMAGE_HEIGHT - 0,
-                    quality: process.env.STJORNACONFIG_IMAGE_QUALITY - 0
+                    quality: process.env.STJORNACONFIG_IMAGE_QUALITY - 0,
                 },
-                installed: process.env.STJORNACONFIG_INSTALLED == true
+                installed: process.env.STJORNACONFIG_INSTALLED == true,
             });
         })
         /**
@@ -230,12 +236,12 @@ module.exports = (router) => {
                 let responseMessage = {
                     config_status: {
                         errors: [],
-                        status: 'ok'
+                        status: 'ok',
                     },
                     user_status: {
                         errors: [],
-                        status: 'ok'
-                    }
+                        status: 'ok',
+                    },
                 };
                 // generate security token
                 let securityTokenHash = crypto.createHash('sha512');
@@ -268,10 +274,11 @@ module.exports = (router) => {
                     apikey: '',
                     language: req.body.user.language,
                     created: new Date().getTime(),
-                    updated: new Date().getTime()
+                    updated: new Date().getTime(),
                 };
 
-                dbHelper.db.get('users')
+                dbHelper.db
+                    .get('users')
                     .push(newItem)
                     .write()
                     .then(() => {
@@ -281,15 +288,15 @@ module.exports = (router) => {
                 // send response to frontend
                 if (responseMessage.config_status.errors.length > 0 || responseMessage.user_status.errors.length > 0) {
                     logger.error(`configuration - ${responseMessage}`);
-                    res.status(400).send({ 'message': responseMessage, 'status': 'error' });
+                    res.status(400).send({ message: responseMessage, status: 'error' });
                 } else {
                     logger.info('configuration sucessfully written');
-                    res.send({ 'message': responseMessage, 'status': 'ok' });
+                    res.send({ message: responseMessage, status: 'ok' });
                 }
             } else {
                 // config file is existing, prevent possible overwriting
                 logger.warn('configuration - file is already existing, do not proceed');
-                res.status(400).send({ 'message': 'configuration is already existing', 'status': 'warn' });
+                res.status(400).send({ message: 'configuration is already existing', status: 'warn' });
             }
         });
 };
