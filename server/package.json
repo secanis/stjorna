@@ -32,7 +32,7 @@
         "jsonwebtoken": "^8.5.1",
         "lowdb": "^1.0.0",
         "matomo-tracker": "^2.2.4",
-        "moment": "^2.29.2",
+        "moment": "^2.29.4",
         "sharp": "^0.30.5",
         "snyk": "^1.685.0",
         "uniqid": "^5.3.0",
