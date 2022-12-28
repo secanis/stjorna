@@ -16,7 +16,7 @@ const user_3 = {
     password: 'admin4test'
 };
 
-const testHelper = require('../_initializeSetup.js');
+const testHelper = require('../_initializeSetup.cjs');
 testHelper.init();
 
 describe('User/Auth', () => {

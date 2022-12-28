@@ -2,12 +2,12 @@ const crypto = require('crypto');
 const moment = require('moment');
 const fs = require('fs');
 
-const dbHelper = require('../lib/database_helper.js');
-const fileHelper = require('../lib/file_helper.js');
-const { getAllCronInfo } = require('../lib/cronjob_helper.js');
-const upload_helper = require('../lib/upload_helper.js');
-const database_helper = require('../lib/database_helper.js');
-const logger = require('../lib/logging_helper.js').logger;
+const dbHelper = require('../lib/database_helper.cjs');
+const fileHelper = require('../lib/file_helper.cjs');
+const { getAllCronInfo } = require('../lib/cronjob_helper.cjs');
+const upload_helper = require('../lib/upload_helper.cjs');
+const database_helper = require('../lib/database_helper.cjs');
+const logger = require('../lib/logging_helper.cjs').logger;
 
 module.exports = (router) => {
     router

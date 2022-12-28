@@ -1,7 +1,7 @@
 const fsTemp = require('fs-temp');
 const fs = require('fs');
 const archiver = require('archiver');
-const logger = require('../../lib/logging_helper.js').logger;
+const logger = require('../logging_helper.cjs').logger;
 
 module.exports = {
     generateExport: (cb) => {

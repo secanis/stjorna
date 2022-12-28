@@ -1,9 +1,9 @@
 const expect = require('chai').expect;
-const exportJson = require('../../lib/export/json.js');
-const exportExcel = require('../../lib/export/excel.js');
-const dbHelper = require('../../lib/database_helper.js');
+const exportJson = require('../../lib/export/json.cjs');
+const exportExcel = require('../../lib/export/excel.cjs');
+const dbHelper = require('../../lib/database_helper.cjs');
 
-const testHelper = require('../_initializeSetup.js');
+const testHelper = require('../_initializeSetup.cjs');
 testHelper.init();
 
 describe('Export', () => {
@@ -25,7 +25,7 @@ describe('Export', () => {
                 products: [],
                 users: []
             };
-        }
+        };
 
         exportExcel.generateExport((err, result) => {
             expect(result).to.be.null;
@@ -44,7 +44,7 @@ describe('Export', () => {
                 products: [testHelper.generateProductObject(ids.userId, ids.categoryId, ids.productId)],
                 users: [testHelper.generateUserObject(ids.userId)]
             };
-        }
+        };
 
         exportExcel.generateExport((err, result) => {
             expect(err).to.be.null;

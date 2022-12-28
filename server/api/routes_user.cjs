@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 
-const logger = require('../lib/logging_helper.js').logger;
-const dbHelper = require('../lib/database_helper.js');
-const fileHelper = require('../lib/file_helper.js');
+const logger = require('../lib/logging_helper.cjs').logger;
+const dbHelper = require('../lib/database_helper.cjs');
+const fileHelper = require('../lib/file_helper.cjs');
 
 module.exports = (router) => {
     router.route('/v1/users')
@@ -33,7 +33,7 @@ module.exports = (router) => {
         .put((req, res) => {
             if (req.body.password && req.body.username) {
                 fileHelper.loadConfigFile((err, config) => {
-                    if(!err) {
+                    if (!err) {
                         let hash = crypto.createHash('sha512');
                         hash.update(req.body.password + JSON.parse(config).password_secret);
 
@@ -145,12 +145,12 @@ module.exports = (router) => {
          * @apiGroup User
          * @apiPermission loggedin
          * @apiVersion 1.0.0
-         * 
+         *
          * @apiParam {String} id users unique ID.
          *
          * @apiSuccess {Object} Apikey Returns apikey object.
          */
-        .get((req, res) =>  {
+        .get((req, res) => {
             // doubled verification for more security
             if (req.decoded._id === req.params.id) {
                 let item = dbHelper.db.get('users').find({ _id: req.params.id }).value();
@@ -176,7 +176,7 @@ module.exports = (router) => {
          * @apiGroup User
          * @apiPermission loggedin
          * @apiVersion 1.0.0
-         * 
+         *
          * @apiParam {String} id users unique ID.
          *
          * @apiSuccess {Object} Apikey Returns a status ok message object.

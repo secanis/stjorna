@@ -1,6 +1,6 @@
 const xl = require('excel4node');
 
-const dbHelper = require('../database_helper.js');
+const dbHelper = require('../database_helper.cjs');
 
 module.exports = {
     generateExport: (cb) => {

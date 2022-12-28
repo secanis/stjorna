@@ -1,8 +1,8 @@
 const CronJob = require('cron').CronJob;
-const fileHelper = require('../lib/file_helper.js');
-const { writeCronInfo } = require('../lib/cronjob_helper.js');
+const fileHelper = require('../lib/file_helper.cjs');
+const { writeCronInfo } = require('../lib/cronjob_helper.cjs');
 
-const logger = require('../lib/logging_helper.js').logger;
+const logger = require('../lib/logging_helper.cjs').logger;
 
 
 module.exports = () => {
@@ -13,15 +13,15 @@ module.exports = () => {
                 users.forEach((user) => {
                     // product loop
                     const productsPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/products`;
-                    generateFiles(productsPath)
+                    generateFiles(productsPath);
 
                     // category loop
                     const categoriesPath = `${process.env.STJORNA_SERVER_STORAGE}/uploads/${user.name}/categories`;
-                    generateFiles(categoriesPath)
+                    generateFiles(categoriesPath);
                 });
             }
         });
-        writeCronInfo('Thumbnail Generator', this.lastDate(), this.nextDate().toDate())
+        writeCronInfo('Thumbnail Generator', this.lastDate(), this.nextDate().toDate());
     };
 
     function generateFiles(path) {

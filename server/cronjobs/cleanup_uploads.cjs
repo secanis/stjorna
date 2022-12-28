@@ -1,9 +1,9 @@
 const CronJob = require('cron').CronJob;
-const dbHelper = require('../lib/database_helper.js');
-const fileHelper = require('../lib/file_helper.js');
-const { writeCronInfo } = require('../lib/cronjob_helper.js');
+const dbHelper = require('../lib/database_helper.cjs');
+const fileHelper = require('../lib/file_helper.cjs');
+const { writeCronInfo } = require('../lib/cronjob_helper.cjs');
 
-const logger = require('../lib/logging_helper.js').logger;
+const logger = require('../lib/logging_helper.cjs').logger;
 
 module.exports = () => {
     let cronJob;
@@ -20,7 +20,7 @@ module.exports = () => {
                     cleanupFunc(categoriesPath, 'categories');
                 });
             }
-            writeCronInfo('Cleanup Uploads', this.lastDate(), this.nextDate().toDate())
+            writeCronInfo('Cleanup Uploads', this.lastDate(), this.nextDate().toDate());
         });
     }
 

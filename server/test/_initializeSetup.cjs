@@ -27,11 +27,11 @@ const init = () => {
         },
         allow_remote_access: true
     };
-    
+
     chai.use(chaiHttp);
-    server = require('../server.js');
-    dbHelper = require('../lib/database_helper.js');
-    
+    server = require('../server.cjs');
+    dbHelper = require('../lib/database_helper.cjs');
+
     before((done) => {
         // wait for database
         let dbState;
@@ -57,18 +57,18 @@ const init = () => {
                             done();
                         });
                 }
-            } catch(ex) {
-                console.error(`couldn't start database/database connection.`)
+            } catch (ex) {
+                console.error(`couldn't start database/database connection.`);
             }
         }, 100);
     });
-    
+
     after((done) => {
         rimraf(`${process.env.STJORNA_SERVER_STORAGE}`, () => {
             done();
         });
     });
-}
+};
 
 // test helper methods
 const getDefaultUser = () => {
@@ -77,7 +77,7 @@ const getDefaultUser = () => {
         email: 'admin@domain.com',
         password: 'admin4test'
     };
-}
+};
 
 const generateIds = () => {
     return {
@@ -85,7 +85,7 @@ const generateIds = () => {
         categoryId: dbHelper.generateId(),
         productId: dbHelper.generateId()
     };
-}
+};
 
 const generateUserObject = (userId) => {
     return {
@@ -98,7 +98,7 @@ const generateUserObject = (userId) => {
         created: new Date().getTime(),
         updated: new Date().getTime()
     };
-}
+};
 
 const generateCategoryObject = (userId, categoryId) => {
     return {
@@ -113,7 +113,7 @@ const generateCategoryObject = (userId, categoryId) => {
         updated: new Date().getTime(),
         updatedUser: null
     };
-}
+};
 
 const generateProductObject = (userId, categoryId, productId) => {
     return {
@@ -134,9 +134,9 @@ const generateProductObject = (userId, categoryId, productId) => {
 
 const getServer = () => {
     return server;
-}
+};
 
-const searchObjectByProperty = (arr, search, property)=> {
+const searchObjectByProperty = (arr, search, property) => {
     let retVal = null;
     for (let i = 0; i < arr.length; i++) {
         let item = arr[i];

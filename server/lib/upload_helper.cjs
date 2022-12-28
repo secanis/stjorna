@@ -1,8 +1,12 @@
 const fs = require('fs');
-const formidable = require('formidable');
 
-const importZip = require('./import/zip.js');
-const database_helper = require('./database_helper.js');
+let formidable;
+(async () => {
+    formidable = await import('formidable');
+})();
+
+const importZip = require('./import/zip.cjs');
+const database_helper = require('./database_helper.cjs');
 
 const DIR_PATH = `${process.env.STJORNA_SERVER_STORAGE}/temp`;
 let FILE_PATH;
@@ -15,9 +19,9 @@ module.exports = {
         form.on('fileBegin', (name, file) => {
             database_helper.createRquiredFolders();
             if (!fs.existsSync(DIR_PATH)) {
-                fs.mkdirSync(DIR_PATH)
+                fs.mkdirSync(DIR_PATH);
             }
-            FILE_PATH = `${DIR_PATH}/${file.name}`
+            FILE_PATH = `${DIR_PATH}/${file.name}`;
             file.path = FILE_PATH;
         });
 

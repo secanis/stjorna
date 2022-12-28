@@ -1,10 +1,10 @@
 const os = require('os');
 
-const dbHelper = require('../lib/database_helper.js');
+const dbHelper = require('../lib/database_helper.cjs');
 
 // configuration file
 const appInfo = require('../package.json');
-const logger = require('../lib/logging_helper.js').logger;
+const logger = require('../lib/logging_helper.cjs').logger;
 
 module.exports = (router, log) => {
     router.route('/v1/info/server')
@@ -15,7 +15,7 @@ module.exports = (router, log) => {
          * @apiGroup Info
          * @apiPermission loggedin
          * @apiVersion 1.0.1
-         * 
+         *
          * @apiSuccess {String} hostname Hostname
          * @apiSuccess {String} api_port Node port
          * @apiSuccess {String} os Host operating system
@@ -30,8 +30,8 @@ module.exports = (router, log) => {
                 logger.log('debug', `info - load host information`);
                 // prepare load values
                 let loadString = '';
-                os.loadavg().forEach((v,i) => {
-                    if (i > 0) { loadString += ' | ' };
+                os.loadavg().forEach((v, i) => {
+                    if (i > 0) { loadString += ' | '; };
                     loadString += `${v * 100}%`;
                 });
 
@@ -71,7 +71,7 @@ module.exports = (router, log) => {
          * @apiGroup Info
          * @apiPermission loggedin
          * @apiVersion 1.0.0
-         * 
+         *
          * @apiSuccess {String[]} environment NodeJS environment configuration ("STJORNA_" variables)
          */
         .get((req, res) => {

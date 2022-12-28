@@ -2,10 +2,10 @@ const path = require('path');
 const fs = require('fs');
 const sharp = require('sharp');
 
-const logger = require('../lib/logging_helper.js').logger;
-const exportExcel = require('./export/excel.js');
-const exportJson = require('./export/json.js');
-const exportZip = require('./export/zip.js');
+const logger = require('./logging_helper.cjs').logger;
+const exportExcel = require('./export/excel.cjs');
+const exportJson = require('./export/json.cjs');
+const exportZip = require('./export/zip.cjs');
 
 module.exports = {
     getFolderContent: (route, cb) => {
@@ -57,7 +57,7 @@ module.exports = {
         module.exports.loadConfigFile(async (err, c) => {
             if (c) c = JSON.parse(c);
 
-                if (err) {
+            if (err) {
                 logger.error(err.message, 'failed to read config file');
                 return;
             }

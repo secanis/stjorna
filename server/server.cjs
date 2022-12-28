@@ -1,5 +1,5 @@
 // load stjorna environment
-const stjornaEnv = require('./lib/env_default.js');
+const stjornaEnv = require('./lib/env_default.cjs');
 stjornaEnv.initialize();
 // load library/server stuff for startup
 const express = require('express');
@@ -9,13 +9,13 @@ const bodyParser = require('body-parser');
 // configuration file
 const appInfo = require('./package.json');
 const app = express();
-const logger = require('./lib/logging_helper.js');
+const logger = require('./lib/logging_helper.cjs');
 
 // initialize databases
-require('./lib/database_helper').initialize();
+require('./lib/database_helper.cjs').initialize();
 
 // initialize tracking
-require('./lib/tracking_helper').initialize();
+require('./lib/tracking_helper.cjs').initialize();
 
 // initialize bodyParser ans set limits
 app
@@ -27,16 +27,16 @@ app.use(logger.configureExpressLogging);
 
 // setup routing
 // whitelisted routes
-require('./api/routes_auth')(router);
+require('./api/routes_auth.cjs')(router);
 
 // secure (not whitelisted) routes
-require('./api/routes_user')(router);
-require('./api/routes_categories')(router);
-require('./api/routes_products')(router);
-require('./api/routes_services')(router);
-require('./api/routes_data')(router);
-require('./api/routes_info')(router);
-require('./api/routes_settings')(router);
+require('./api/routes_user.cjs')(router);
+require('./api/routes_categories.cjs')(router);
+require('./api/routes_products.cjs')(router);
+require('./api/routes_services.cjs')(router);
+require('./api/routes_data.cjs')(router);
+require('./api/routes_info.cjs')(router);
+require('./api/routes_settings.cjs')(router);
 
 // static routes
 app.use('/api', router);
@@ -48,13 +48,13 @@ app.get('*', (req, res) => {
 });
 
 // do needed migrations
-const migration = require('./migration/migration');
+const migration = require('./migration/migration.cjs');
 migration.executeMigrations();
 
 // initialize cron jobs
 setTimeout(() => {
-    require('./cronjobs/cleanup_uploads')();
-    require('./cronjobs/generate_tumbnails')();
+    require('./cronjobs/cleanup_uploads.cjs')();
+    require('./cronjobs/generate_tumbnails.cjs')();
 }, 1000);
 
 // start application

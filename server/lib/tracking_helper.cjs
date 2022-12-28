@@ -1,5 +1,5 @@
 const MatomoTracker = require('matomo-tracker');
-const logger = require('../lib/logging_helper.js').logger;
+const logger = require('./logging_helper.cjs').logger;
 
 let matomo;
 

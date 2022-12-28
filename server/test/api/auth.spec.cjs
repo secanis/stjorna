@@ -3,7 +3,7 @@ const expect = require('chai').expect;
 
 const apiUrl = '/api/v1';
 
-const testHelper = require('../_initializeSetup.js');
+const testHelper = require('../_initializeSetup.cjs');
 testHelper.init();
 
 describe('Authentication', () => {

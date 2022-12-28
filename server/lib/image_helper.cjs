@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 const Jimp = require("jimp");
 
-const logger = require('../lib/logging_helper.js').logger;
-const fileHelper = require('../lib/file_helper.js');
+const logger = require('./logging_helper.cjs').logger;
+const fileHelper = require('./file_helper.cjs');
 
 module.exports = {
     prepareAndSaveImage: (base64Image, additionalPath, userid) => {
@@ -18,8 +18,8 @@ module.exports = {
                 config = JSON.parse(config);
                 // resize and set the quality for the image and save it
                 Jimp.read(buff).then((image) => {
-                    image.resize(config.image.width, config.image.height)
-                        .quality(config.image.quality)
+                    image.resize(config.image.width - 0, config.image.height - 0)
+                        .quality(config.image.quality - 0)
                         .write(`${process.env.STJORNA_SERVER_STORAGE}/${imagePath}`, (err) => {
                             if (err) {
                                 logger.error(`image - error occured while writing image to filesystem: ${err.message}`);

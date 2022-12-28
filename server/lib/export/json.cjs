@@ -1,4 +1,4 @@
-const dbHelper = require('../database_helper.js');
+const dbHelper = require('../database_helper.cjs');
 
 module.exports = {
     generateExport: (cb) => {

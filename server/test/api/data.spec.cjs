@@ -60,7 +60,7 @@ const category = {
     image: '',
     imageUrl: '',
     createdUser: user.username
-}
+};
 
 const category_2 = {
     name: 'catBar',
@@ -69,11 +69,11 @@ const category_2 = {
     image: '',
     imageUrl: '',
     updatedUser: user.username
-}
+};
 
 const exampleImage = 'data:image/jpeg;base64,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';
 
-const testHelper = require('../_initializeSetup.js');
+const testHelper = require('../_initializeSetup.cjs');
 testHelper.init();
 
 describe('Products/Services/Categories', () => {
@@ -123,7 +123,7 @@ describe('Products/Services/Categories', () => {
                                 res.body.should.have.property('description').eql(product_2.description);
                                 res.body.should.have.property('active').eql(product_2.active);
                                 res.body.should.have.property('createdUser').eql(user.username);
-                                res.body.should.have.property('updatedUser').eql(user.username)
+                                res.body.should.have.property('updatedUser').eql(user.username);
                                 res.body.should.have.property('created');
                                 res.body.should.have.property('updated');
                                 chai.request(testHelper.getServer())
@@ -185,7 +185,7 @@ describe('Products/Services/Categories', () => {
                                 res.body.should.have.property('description').eql(service.description);
                                 res.body.should.have.property('active').eql(service.active);
                                 res.body.should.have.property('createdUser').eql(user.username);
-                                res.body.should.have.property('updatedUser').eql(user.username)
+                                res.body.should.have.property('updatedUser').eql(user.username);
                                 res.body.should.have.property('created');
                                 res.body.should.have.property('updated');
                                 chai.request(testHelper.getServer())
@@ -243,7 +243,7 @@ describe('Products/Services/Categories', () => {
                                 res.body.should.have.property('description').eql(category_2.description);
                                 res.body.should.have.property('active').eql(category_2.active);
                                 res.body.should.have.property('createdUser').eql(user.username);
-                                res.body.should.have.property('updatedUser').eql(user.username)
+                                res.body.should.have.property('updatedUser').eql(user.username);
                                 res.body.should.have.property('created');
                                 res.body.should.have.property('updated');
                                 chai.request(testHelper.getServer())

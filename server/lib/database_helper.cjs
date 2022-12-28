@@ -3,7 +3,7 @@ const low = require('lowdb');
 const FileAsync = require('lowdb/adapters/FileAsync');
 const uniqid = require('uniqid');
 
-const logger = require('../lib/logging_helper.js').logger;
+const logger = require('./logging_helper.cjs').logger;
 
 createRquiredFolders();
 const adapter = new FileAsync(`${process.env.STJORNA_SERVER_STORAGE}/database.json`);

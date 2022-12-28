@@ -11,7 +11,7 @@ const config = {
     allow_remote_access: true
 };
 
-const testHelper = require('../_initializeSetup.js');
+const testHelper = require('../_initializeSetup.cjs');
 testHelper.init();
 
 describe('Setup/Settings', () => {

@@ -1,10 +1,10 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
-const logger = require('../lib/logging_helper.js').logger;
-const stjornaEnv = require('../lib/env_default.js');
-const dbHelper = require('../lib/database_helper.js');
-const fileHelper = require('../lib/file_helper.js');
+const logger = require('../lib/logging_helper.cjs').logger;
+const stjornaEnv = require('../lib/env_default.cjs');
+const dbHelper = require('../lib/database_helper.cjs');
+const fileHelper = require('../lib/file_helper.cjs');
 
 // general error handling when no api key is there
 let errorHandlingNoApiKey = (req, res) => {
@@ -148,9 +148,9 @@ module.exports = (router) => {
                             logger.info(`login - apikey access for ${userid} - ${req.ip} - ${req.path}`);
                             // ruleset for whitelisted paths (setup is configured in else part)
                             if (req.method === 'GET' && (
-                                    req.path.includes('products') ||
-                                    req.path.includes('categories') ||
-                                    req.path.includes('uploads')
+                                req.path.includes('products') ||
+                                req.path.includes('categories') ||
+                                req.path.includes('uploads')
                             )) {
                                 next();
                             } else {
@@ -180,7 +180,7 @@ module.exports = (router) => {
                     res.status(400).send({ 'message': err, 'status': 'error' });
                 }
             });
-        // special handling for test mode, or if you want to run it without security
+            // special handling for test mode, or if you want to run it without security
         } else if (process.env.NODE_ENV === 'test' && process.env.STJORNA_SECURITY === 'none') {
             next();
         } else {

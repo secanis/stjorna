@@ -1,4 +1,4 @@
-const dbHelper = require('../lib/database_helper.js');
+const dbHelper = require('./database_helper.cjs');
 
 module.exports = {
     writeCronInfo: (name, last, next) => {

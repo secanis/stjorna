@@ -1,8 +1,8 @@
 const expect = require('chai').expect;
 
-const loggingHelper = require('../../lib/logging_helper.js');
+const loggingHelper = require('../../lib/logging_helper.cjs');
 
-const testHelper = require('../_initializeSetup.js');
+const testHelper = require('../_initializeSetup.cjs');
 testHelper.init();
 
 const timestampNow = new Date().toUTCString();
@@ -40,15 +40,15 @@ describe('Logging', () => {
         let result = loggingHelper._isSlientLogActivated('application');
         result.should.be.a('boolean');
         expect(result).to.be.equal(true, 'slient application log');
-    
+
         result = loggingHelper._isSlientLogActivated('request');
         result.should.be.a('boolean');
         expect(result).to.be.equal(true, 'slient request log');
-    
+
         result = loggingHelper._isSlientLogActivated('dummy');
         result.should.be.a('boolean');
         expect(result).to.be.equal(false, 'dummy param slient log');
-    
+
         result = loggingHelper._isSlientLogActivated();
         result.should.be.a('boolean');
         expect(result).to.be.equal(false, 'empty param slient log');

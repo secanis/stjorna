@@ -1,7 +1,7 @@
-const dbHelper = require('../lib/database_helper.js');
-const trackingHelper = require('../lib/tracking_helper.js');
-const logger = require('../lib/logging_helper.js').logger;
-const prepareAndSaveImage = require('../lib/image_helper.js')
+const dbHelper = require('../lib/database_helper.cjs');
+const trackingHelper = require('../lib/tracking_helper.cjs');
+const logger = require('../lib/logging_helper.cjs').logger;
+const prepareAndSaveImage = require('../lib/image_helper.cjs')
     .prepareAndSaveImage;
 
 module.exports = (router) => {

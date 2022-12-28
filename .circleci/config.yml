@@ -2,89 +2,89 @@ version: 2
 jobs:
     build:
         docker:
-        - image: circleci/node:12
+            - image: circleci/node:12
 
         working_directory: ~/repo
 
         steps:
-        - checkout
-        - restore_cache:
-            keys:
-            - v1-dependencies-{{ checksum "server/package.json" }}
-            - v1-dependencies-{{ checksum "client/package.json" }}
-            - v1-dependencies-
+            - checkout
+            - restore_cache:
+                  keys:
+                      - v1-dependencies-{{ checksum "server/package.json" }}
+                      - v1-dependencies-{{ checksum "client/package.json" }}
+                      - v1-dependencies-
 
-        - run:
-            name: Install Server Dependencies
-            command: cd server; npm install
-        - run:
-            name: Install Client Dependencies
-            command: cd client; npm install
+            - run:
+                  name: Install Server Dependencies
+                  command: cd server; npm install
+            - run:
+                  name: Install Client Dependencies
+                  command: cd client; npm install --force
 
-        - save_cache:
-            paths:
-                - server/node_modules
-            key: v1-dependencies-{{ checksum "server/package.json" }}
-        - save_cache:
-            paths:
-                - client/node_modules
-            key: v1-dependencies-{{ checksum "client/package.json" }}
+            - save_cache:
+                  paths:
+                      - server/node_modules
+                  key: v1-dependencies-{{ checksum "server/package.json" }}
+            - save_cache:
+                  paths:
+                      - client/node_modules
+                  key: v1-dependencies-{{ checksum "client/package.json" }}
 
-        # BUILD: SERVER
-        - run:
-            name: Generate Public APIDOC
-            command: cd server; npm run apidoc:public
+            # BUILD: SERVER
+            - run:
+                  name: Generate Public APIDOC
+                  command: cd server; npm run apidoc:public
 
-        - run:
-            name: Test Server API
-            command: cd server; npm run test; npm run test:sendcoverage
-        - store_test_results:
-            path: server/reports
-        - store_artifacts:
-            path: server/reports
+            - run:
+                  name: Test Server API
+                  command: cd server; npm run test; npm run test:sendcoverage
+            - store_test_results:
+                  path: server/reports
+            - store_artifacts:
+                  path: server/reports
 
-        - run:
-            name: Install Server Dependencies Prod
-            command: |
-                rm -rf server/node_modules
-                cd server; npm install --production
+            - run:
+                  name: Install Server Dependencies Prod
+                  command: |
+                      rm -rf server/node_modules
+                      cd server; npm install --production
 
-        # BUILD: CLIENT
-        - run:
-            name: Build Angular Application
-            command: cd client; npm run build:prod
-        - run:
-            name: Run Client Lint
-            command: cd client; npm run lint
+            # BUILD: CLIENT
+            - run:
+                  name: Build Angular Application
+                  command: cd client; npm run build:prod
+            - run:
+                  name: Run Client Lint
+                  command: cd client; npm run lint
 
-        # BUILD: DOCKER
-        - setup_remote_docker
-        - run:
-            name: Run Docker Build
-            command: |
-                VERSION=$(node -p -e "require('./server/package.json').version")
-                # pack application
-                rm -rf server/public; mv ./client/dist/stjorna ./server/public
-                cd server && tar -czf ../stjorna-$VERSION.tar.gz *
-                docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
-                cd ../ && docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION -t docker.io/secanis/stjorna:latest -t docker.io/secanis/stjorna:dev-${CIRCLE_BRANCH/\//-} .
-                # copy file to store it in circle ci
-                cp stjorna-$VERSION.tar.gz stjorna.tar.gz
-                # docker build: if RELEASE then push it
-                if [ -n "$RELEASE" ]; then
-                    # docker push
-                    docker push docker.io/secanis/stjorna:$VERSION
-                    docker push docker.io/secanis/stjorna:latest
-                    # github tagging / create release
-                    API_JSON=$(printf '{"tag_name": "v%s","target_commitish": "master","name": "%s","body": "Release of version %s","draft": false,"prerelease": false}' $VERSION $VERSION $VERSION)
-                    curl --data "$API_JSON" https://api.github.com/repos/secanis/stjorna/releases?access_token=$GITHUB_KEY >> ./release.json
-                    # github upload assets
-                    RELID=$(node -p -e "require('./release.json').id")
-                    echo "got release id from github $RELID"
-                    curl --user "$GITHUB_USERNAME:$GITHUB_KEY" -H "Authorization: token $GITHUB_KEY" -H "Content-Type: $(file -b --mime-type stjorna-${VERSION}.tar.gz)" --data-binary @stjorna-${VERSION}.tar.gz https://uploads.github.com/repos/secanis/stjorna/releases/${RELID}/assets?name=stjorna-${VERSION}.tar.gz
-                fi
-                # otherwise publish the current branch build
-                docker push docker.io/secanis/stjorna:dev-${CIRCLE_BRANCH/\//-}
+            # BUILD: DOCKER
+            - setup_remote_docker
+            - run:
+                  name: Run Docker Build
+                  command: |
+                      VERSION=$(node -p -e "require('./server/package.json').version")
+                      # pack application
+                      rm -rf server/public; mv ./client/dist/stjorna ./server/public
+                      cd server && tar -czf ../stjorna-$VERSION.tar.gz *
+                      docker login -u ${DOCKER_USER} -p ${DOCKER_PASS} docker.io
+                      cd ../ && docker build --pull --build-arg VERSION=$VERSION -t docker.io/secanis/stjorna:$VERSION -t docker.io/secanis/stjorna:latest -t docker.io/secanis/stjorna:dev-${CIRCLE_BRANCH/\//-} .
+                      # copy file to store it in circle ci
+                      cp stjorna-$VERSION.tar.gz stjorna.tar.gz
+                      # docker build: if RELEASE then push it
+                      if [ -n "$RELEASE" ]; then
+                          # docker push
+                          docker push docker.io/secanis/stjorna:$VERSION
+                          docker push docker.io/secanis/stjorna:latest
+                          # github tagging / create release
+                          API_JSON=$(printf '{"tag_name": "v%s","target_commitish": "master","name": "%s","body": "Release of version %s","draft": false,"prerelease": false}' $VERSION $VERSION $VERSION)
+                          curl --data "$API_JSON" https://api.github.com/repos/secanis/stjorna/releases?access_token=$GITHUB_KEY >> ./release.json
+                          # github upload assets
+                          RELID=$(node -p -e "require('./release.json').id")
+                          echo "got release id from github $RELID"
+                          curl --user "$GITHUB_USERNAME:$GITHUB_KEY" -H "Authorization: token $GITHUB_KEY" -H "Content-Type: $(file -b --mime-type stjorna-${VERSION}.tar.gz)" --data-binary @stjorna-${VERSION}.tar.gz https://uploads.github.com/repos/secanis/stjorna/releases/${RELID}/assets?name=stjorna-${VERSION}.tar.gz
+                      fi
+                      # otherwise publish the current branch build
+                      docker push docker.io/secanis/stjorna:dev-${CIRCLE_BRANCH/\//-}
 
-        - store_artifacts:
-            path: stjorna.tar.gz
+            - store_artifacts:
+                  path: stjorna.tar.gz

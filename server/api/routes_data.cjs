@@ -1,6 +1,6 @@
-const logger = require('../lib/logging_helper.js').logger;
-const fileHelper = require('../lib/file_helper.js');
-const trackingHelper = require('../lib/tracking_helper.js');
+const logger = require('../lib/logging_helper.cjs').logger;
+const fileHelper = require('../lib/file_helper.cjs');
+const trackingHelper = require('../lib/tracking_helper.cjs');
 
 module.exports = (router) => {
     router
@@ -53,7 +53,7 @@ module.exports = (router) => {
                     message: 'no permissions for this ressource.',
                     status: 'error',
                 });
-            } 
+            }
         });
 
     router
