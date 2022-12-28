@@ -67,7 +67,7 @@ module.exports = {
             const pathExists = fs.existsSync(targetWebpPath);
             const pathThumbnailExists = fs.existsSync(targetThumnailWebpPath);
 
-            if (!pathExists && c) await sharp(`${basePath}/${file.name}`).resize(c.image.width, c.image.height).toFile(targetWebpPath);
+            if (!pathExists && c) await sharp(`${basePath}/${file.name}`).resize(c.image.width - 0, c.image.height - 0).toFile(targetWebpPath);
             if (!pathThumbnailExists) await sharp(`${basePath}/${file.name}`).resize(100, 100).toFile(targetThumnailWebpPath);
         });
     },
