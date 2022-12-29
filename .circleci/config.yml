@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 orbs:
     coverage-reporter: codacy/coverage-reporter@13.11.16
