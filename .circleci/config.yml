@@ -41,7 +41,7 @@ jobs:
 
             - run:
                   name: Test Server API
-                  command: cd server; npm run test
+                  command: cd server; npm run test; sed -i 's/.cjs/.js/g' reports/coverage/lcov.info
             - store_test_results:
                   path: server/reports
             - store_artifacts:
