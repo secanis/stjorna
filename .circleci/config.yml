@@ -3,6 +3,11 @@ version: 2.1
 orbs:
     coverage-reporter: codacy/coverage-reporter@13.11.16
 
+parameters:
+    release:
+        type: boolean
+        default: false
+
 jobs:
     build:
         docker:
@@ -79,6 +84,7 @@ jobs:
                       # copy file to store it in circle ci
                       cp stjorna-$VERSION.tar.gz stjorna.tar.gz
                       # docker build: if RELEASE then push it
+                      RELEASE=<< pipeline.parameters.release >>
                       if [ -n "$RELEASE" ]; then
                           # docker push
                           docker push docker.io/secanis/stjorna:$VERSION
