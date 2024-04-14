@@ -28,7 +28,7 @@
         "extract-zip": "^2.0.1",
         "formidable": "^3.2.4",
         "fs-temp": "^1.2.1",
-        "jimp": "^0.16.2",
+        "jimp": "^0.22.0",
         "jsonwebtoken": "^9.0.0",
         "lowdb": "^1.0.0",
         "matomo-tracker": "^2.2.4",
