@@ -17,7 +17,7 @@
         "@angular/compiler": "~12.1.4",
         "@angular/core": "~12.1.4",
         "@angular/forms": "~12.1.4",
-        "@angular/localize": "^12.1.4",
+        "@angular/localize": "^16.0.6",
         "@angular/platform-browser": "~12.1.4",
         "@angular/platform-browser-dynamic": "~12.1.4",
         "@angular/router": "~12.1.4",
