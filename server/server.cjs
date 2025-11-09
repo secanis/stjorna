@@ -37,6 +37,7 @@ require('./api/routes_services.cjs')(router);
 require('./api/routes_data.cjs')(router);
 require('./api/routes_info.cjs')(router);
 require('./api/routes_settings.cjs')(router);
+require('./api/routes_image_generator.cjs')(router);
 
 // static routes
 app.use('/api', router);
