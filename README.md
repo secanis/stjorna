@@ -22,6 +22,7 @@ The implementation on the client side is very easy and do not require much effor
 -   Possibility to export all your data as a JSON, Excel or complete backup as a ZIP file - No vendor lock!
 -   Open Source software - hosted on Github
 -   Optional Matomo Tracking over the REST API to monitor loading activity on categories and products
+-   **Image Generation API** - Create placeholder images programmatically for products and categories
 
 ![Screenshot Stjorna](https://stjorna.secanis.ch/docs/images/stjorna_dashboard.png)
 
