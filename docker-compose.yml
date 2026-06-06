@@ -1,6 +1,38 @@
-version: '3.3'
+version: '3.8'
+
 services:
-  stjorna:
-    image: secanis/stjorna:latest
+  pocketbase:
+    build:
+      context: ./pocketbase
+      dockerfile: ../docker/Dockerfile.pocketbase
     ports:
-      - 8080:3000
+      - "8090:8090"
+    volumes:
+      - ./pocketbase/pb_data:/app/pb_data
+      - ./pocketbase/pb_hooks:/app/pb_hooks
+    environment:
+      - PB_SECRET=${PB_SECRET:-$(openssl rand -hex 32)}
+      - S3_BUCKET=${S3_BUCKET:-}
+      - S3_REGION=${S3_REGION:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  client:
+    build:
+      context: ./client
+      dockerfile: ../docker/Dockerfile.client
+    ports:
+      - "3000:8080"
+    depends_on:
+      - pocketbase
+    restart: unless-stopped
+
+networks:
+  default:
+    name: stjorna-network

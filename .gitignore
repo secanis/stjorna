@@ -10,3 +10,4 @@ reports/
 stjorna.iml
 **/coverage
 **/.nyc_output
+docs/REWRITE_PLAN.md
