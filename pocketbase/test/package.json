@@ -7,7 +7,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:sequential": "podman volume rm -f stjorna-test-data 2>/dev/null; podman volume create stjorna-test-data 2>/dev/null; for f in auth.test.ts multitenant.test.ts webhooks.test.ts collections/categories.test.ts collections/media.test.ts collections/products.test.ts collections/tenants.test.ts; do echo \"Running $f\" && npx vitest run \"$f\" || exit 1; done"
+    "test:sequential": "podman volume rm -f stjorna-test-data 2>/dev/null; podman volume create stjorna-test-data 2>/dev/null; for f in auth.test.ts multitenant.test.ts webhooks.test.ts collections/categories.test.ts collections/media.test.ts collections/products.test.ts collections/tenants.test.ts; do echo \"Running $f\" && podman ps -q --format \"{{.ID}}\" | xargs -r podman stop 2>/dev/null; npx vitest run \"$f\" || exit 1; done"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

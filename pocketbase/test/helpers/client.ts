@@ -8,14 +8,15 @@ export async function createAdminClient(): Promise<PocketBase> {
   return pb;
 }
 
-export async function createTenantClient(tenantId: string): Promise<PocketBase> {
-  const pb = getPb();
+export async function createTenantUser(
+  tenantId: string,
+  role: string = 'admin',
+  uniqueSuffix: string = ''
+): Promise<{ pb: PocketBase; email: string; password: string }> {
   const adminClient = await createAdminClient();
 
-  const result = await adminClient.collection('tenants').getList(1, 1);
-  const tenant = result.items[0];
-
-  const email = `user-${tenantId}@stjorna.test`;
+  const suffix = uniqueSuffix || Date.now().toString(36);
+  const email = `user-${suffix}-${tenantId}@stjorna.test`;
   const password = 'testpassword123456';
 
   try {
@@ -24,13 +25,20 @@ export async function createTenantClient(tenantId: string): Promise<PocketBase> 
       password,
       passwordConfirm: password,
       tenant: tenantId,
-      name: `Test User for ${tenantId}`,
+      name: `User for tenant ${tenantId}`,
+      role,
     });
   } catch {
   }
 
+  const pb = new PocketBase(getPb().baseUrl);
   await pb.collection('users').authWithPassword(email, password);
 
+  return { pb, email, password };
+}
+
+export async function createTenantClient(tenantId: string): Promise<PocketBase> {
+  const { pb } = await createTenantUser(tenantId);
   return pb;
 }
 

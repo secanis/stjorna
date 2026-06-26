@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase';
-import { afterAll, beforeAll, beforeEach } from 'vitest';
+import { afterAll, beforeAll } from 'vitest';
 
 const PB_PORT = 8090;
 const PB_URL = `http://localhost:${PB_PORT}`;
@@ -14,17 +14,32 @@ export async function startPocketBase(): Promise<PocketBase> {
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
 
-  try {
-    const checkPb = new PocketBase(PB_URL);
+  const ensureAdminAuth = async (pb: PocketBase): Promise<boolean> => {
     try {
-      await checkPb.health.check();
-      pbInstance = checkPb;
-      const { email, password } = getTestAdminCredentials();
-      await pbInstance.admins.authWithPassword(email, password);
-      await setupCollections(pbInstance);
-      return pbInstance;
+      await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+    } catch (e: any) {
+      if (e.status === 401 || e.message?.includes('fetch failed')) {
+
+        return false;
+      }
+      if (e.status !== 400) throw e;
+    }
+    return true;
+  };
+
+  const tryConnect = async (): Promise<PocketBase | null> => {
+    const pb = new PocketBase(PB_URL);
+    try {
+      await pb.health.check();
+      const canAuth = await ensureAdminAuth(pb);
+      if (canAuth) return pb;
     } catch {
     }
+    return null;
+  };
+
+  const startContainer = async (): Promise<PocketBase> => {
+    await cleanup();
 
     const { stdout } = await execAsync(
       `podman run -d --rm --network=host -v stjorna-test-data:/app/pb_data localhost/stjorna-pocketbase:test`,
@@ -32,7 +47,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     );
     containerId = stdout.trim();
 
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
 
     let pb: PocketBase;
     let retries = 30;
@@ -40,37 +55,37 @@ export async function startPocketBase(): Promise<PocketBase> {
       pb = new PocketBase(PB_URL);
       try {
         await pb.health.check();
+        try {
+          await pb.admins.create({
+            email: ADMIN_EMAIL,
+            password: ADMIN_PASSWORD,
+            passwordConfirm: ADMIN_PASSWORD,
+          });
+        } catch {
+        }
+        await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
         pbInstance = pb;
-        break;
+        await setupCollections(pbInstance);
+        return pbInstance;
       } catch {
         await new Promise(resolve => setTimeout(resolve, 1000));
         retries--;
       }
     }
 
-    if (!pbInstance) {
-      throw new Error('Failed to start PocketBase');
+    throw new Error('Failed to start PocketBase');
+  };
+
+  try {
+    const existingPb = await tryConnect();
+    if (existingPb) {
+      pbInstance = existingPb;
+      return pbInstance;
     }
-
-    try {
-      await pbInstance.admins.create({
-        email: ADMIN_EMAIL,
-        password: ADMIN_PASSWORD,
-        passwordConfirm: ADMIN_PASSWORD,
-      });
-    } catch (e: any) {
-      if (e.status !== 400) throw e;
-    }
-
-    const authData = await pbInstance.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-
-    await setupCollections(pbInstance);
-
-    return pbInstance;
-  } catch (error) {
-    await cleanup();
-    throw error;
+  } catch {
   }
+
+  return await startContainer();
 }
 
 async function setupCollections(pb: PocketBase): Promise<void> {
@@ -85,6 +100,11 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'custom_domain', type: 'text' },
         { name: 'theme_config', type: 'json', options: { maxSize: 2000000 } },
       ],
+      listRule: null,
+      viewRule: null,
+      createRule: null,
+      updateRule: null,
+      deleteRule: null,
     },
     {
       name: 'categories',
@@ -97,6 +117,11 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'active', type: 'bool' },
         { name: 'sort_order', type: 'number' },
       ],
+      listRule: '@request.auth.tenant = tenant',
+      viewRule: '@request.auth.tenant = tenant',
+      createRule: '@request.auth.tenant = tenant',
+      updateRule: '@request.auth.tenant = tenant',
+      deleteRule: '@request.auth.tenant = tenant',
     },
     {
       name: 'products',
@@ -113,6 +138,11 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'sort_order', type: 'number' },
         { name: 'custom_fields', type: 'json', options: { maxSize: 2000000 } },
       ],
+      listRule: '@request.auth.tenant = tenant',
+      viewRule: '@request.auth.tenant = tenant',
+      createRule: '@request.auth.tenant = tenant',
+      updateRule: '@request.auth.tenant = tenant',
+      deleteRule: '@request.auth.tenant = tenant',
     },
     {
       name: 'media',
@@ -131,6 +161,11 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'usage_count', type: 'number' },
         { name: 'createdUser', type: 'text' },
       ],
+      listRule: '@request.auth.tenant = tenant',
+      viewRule: '@request.auth.tenant = tenant',
+      createRule: '@request.auth.tenant = tenant',
+      updateRule: '@request.auth.tenant = tenant',
+      deleteRule: '@request.auth.tenant = tenant',
     },
     {
       name: 'product_media',
@@ -141,6 +176,11 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'media', type: 'text', required: true },
         { name: 'sort_order', type: 'number' },
       ],
+      listRule: '@request.auth.tenant = tenant',
+      viewRule: '@request.auth.tenant = tenant',
+      createRule: '@request.auth.tenant = tenant',
+      updateRule: '@request.auth.tenant = tenant',
+      deleteRule: '@request.auth.tenant = tenant',
     },
     {
       name: 'embed_configs',
@@ -193,6 +233,22 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       ],
     },
     {
+      name: 'users',
+      type: 'base',
+      schema: [
+        { name: 'tenant', type: 'text', required: true },
+        { name: 'name', type: 'text', required: true },
+        { name: 'email', type: 'email', required: true },
+        { name: 'password', type: 'text', required: true },
+        { name: 'role', type: 'select', options: { values: ['viewer', 'editor', 'admin'], maxSelect: 1 } },
+      ],
+      listRule: '@request.auth.tenant = tenant',
+      viewRule: '@request.auth.tenant = tenant',
+      createRule: null,
+      updateRule: '@request.auth.id = id || @request.auth.tenant = tenant',
+      deleteRule: '@request.auth.tenant = tenant',
+    },
+    {
       name: 'settings',
       type: 'base',
       schema: [
@@ -203,11 +259,15 @@ async function setupCollections(pb: PocketBase): Promise<void> {
   ];
 
   const existing = await pb.collections.getFullList({ perPage: 200 });
-  const existingNames = existing.map(c => c.name);
+  const existingNames = existing.map(c => c.name.toLowerCase());
 
   for (const col of collections) {
-    if (!existingNames.includes(col.name)) {
-      await pb.collections.create(col);
+    if (!existingNames.includes(col.name.toLowerCase())) {
+      try {
+        await pb.collections.create(col);
+      } catch (e: any) {
+        if (e.status !== 400) throw e;
+      }
     }
   }
 }
@@ -223,10 +283,6 @@ export async function cleanup(): Promise<void> {
     } catch {}
     containerId = null;
   }
-
-  try {
-    await execAsync('podman volume rm stjorna-test-data 2>/dev/null || true');
-  } catch {}
 
   pbInstance = null;
 }
@@ -252,7 +308,4 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await cleanup();
-});
-
-beforeEach(async () => {
 });
