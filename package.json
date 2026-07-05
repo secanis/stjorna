@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  },
+  "scripts": {
+    "test:e2e": "npm run build --prefix frontend && npx playwright test",
+    "test:e2e:fast": "npx playwright test"
+  },
+  "dependencies": {
+    "pocketbase": "^0.27.0"
+  }
+}
