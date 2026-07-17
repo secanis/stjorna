@@ -2,6 +2,8 @@ import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate, useParams, useLocation } from '@solidjs/router';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { sidebarStore } from '~/stores/sidebar';
+import { slugify } from '~/utils/slug';
 
 export default function CategoryEdit() {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ export default function CategoryEdit() {
     active: true,
     sort_order: 0,
   });
+  const [slugManuallyEdited, setSlugManuallyEdited] = createSignal(false);
   const [loading, setLoading] = createSignal(true);
   const [saving, setSaving] = createSignal(false);
   const [error, setError] = createSignal('');
@@ -53,12 +56,26 @@ export default function CategoryEdit() {
           active: category.active ?? true,
           sort_order: category.sort_order ?? 0,
         });
+        setSlugManuallyEdited(true);
       } catch (e: any) {
         setError(e.message || 'Failed to load category');
       }
     }
     setLoading(false);
   });
+
+  const handleNameChange = (name: string) => {
+    setFormData(d => ({
+      ...d,
+      name,
+      slug: slugManuallyEdited() ? d.slug : slugify(name),
+    }));
+  };
+
+  const handleSlugChange = (slug: string) => {
+    setSlugManuallyEdited(true);
+    setFormData(d => ({ ...d, slug: slugify(slug) }));
+  };
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
@@ -96,6 +113,7 @@ export default function CategoryEdit() {
       } else {
         await pb.collection('categories').update(params.id!, payload);
       }
+      sidebarStore.bump();
       setSuccess(true);
       setTimeout(() => navigate('/categories'), 1500);
     } catch (e: any) {
@@ -144,20 +162,25 @@ export default function CategoryEdit() {
               type="text"
               placeholder="Category name"
               value={formData().name}
-              onInput={(e) => setFormData(d => ({ ...d, name: e.currentTarget.value }))}
+              onInput={(e) => handleNameChange(e.currentTarget.value)}
               class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="cat-slug">Slug</label>
+            <label class="block text-sm font-medium text-gray-300 mb-1" for="cat-slug">
+              Slug
+              <Show when={!slugManuallyEdited()}>
+                <span class="ml-2 text-xs text-gray-500">(auto-generated from name)</span>
+              </Show>
+            </label>
             <input
               id="cat-slug"
               type="text"
               placeholder="category-slug"
               value={formData().slug}
-              onInput={(e) => setFormData(d => ({ ...d, slug: e.currentTarget.value.toLowerCase().replace(/\s+/g, '-') }))}
+              onInput={(e) => handleSlugChange(e.currentTarget.value)}
               class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
               required
             />

@@ -6,7 +6,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     timeout: 30000,
-    include: ['**/*.test.ts'],
+    include: ['**/*.test.ts', '../../frontend/src/utils/*.test.ts'],
   },
   resolve: {
     alias: {

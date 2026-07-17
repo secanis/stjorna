@@ -18,7 +18,21 @@ import { test, expect, getContext } from './helpers/test-context';
       await expect(rows).not.toHaveCount(0);
     });
 
-    test('create new category', async ({ page }) => {
+    test('+ Add Category button navigates to /categories/new', async ({ page }) => {
+      await page.goto(ctx.frontendUrl + '/categories');
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('h1:has-text("Categories")', { timeout: 15000 });
+
+      const addButton = page.locator('a:has-text("Add Category")');
+      await expect(addButton).toBeVisible();
+      await addButton.click();
+
+      await page.waitForURL(/\/categories\/new$/, { timeout: 10000 });
+      await expect(page.locator('h1:has-text("New Category")')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('#cat-name')).toBeVisible();
+    });
+
+    test('create new category via direct URL', async ({ page }) => {
       const uniqueSlug = `e2e-test-category-${Date.now()}`;
       await page.goto(ctx.frontendUrl + '/categories/new');
       await page.waitForSelector('#cat-name', { timeout: 15000 });
@@ -27,11 +41,70 @@ import { test, expect, getContext } from './helpers/test-context';
       await page.locator('#cat-name').fill('E2E Test Category');
       await page.locator('#cat-slug').fill(uniqueSlug);
       await page.locator('#cat-desc').fill('Created by E2E test');
-      
+
       await page.getByRole('button', { name: 'Save Category' }).click();
 
       await page.waitForURL(/\/categories$/, { timeout: 15000 });
       await expect(page.locator('text=E2E Test Category')).toBeVisible();
+    });
+
+    test('create new category via UI button', async ({ page }) => {
+      const uniqueSlug = `e2e-ui-category-${Date.now()}`;
+      await page.goto(ctx.frontendUrl + '/categories');
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('h1:has-text("Categories")', { timeout: 15000 });
+
+      await page.locator('a:has-text("Add Category")').click();
+      await page.waitForURL(/\/categories\/new$/, { timeout: 10000 });
+      await page.waitForSelector('#cat-name', { timeout: 10000 });
+
+      await page.locator('#cat-name').fill('UI Flow Category');
+      await page.locator('#cat-slug').fill(uniqueSlug);
+      await page.getByRole('button', { name: 'Save Category' }).click();
+
+      await page.waitForURL(/\/categories$/, { timeout: 15000 });
+      await expect(page.locator('text=UI Flow Category')).toBeVisible();
+    });
+
+    test('slug is auto-generated from name', async ({ page }) => {
+      await page.goto(ctx.frontendUrl + '/categories/new');
+      await page.waitForSelector('#cat-name', { timeout: 15000 });
+
+      await page.locator('#cat-name').fill('My Auto Slug Test');
+
+      const slugValue = await page.locator('#cat-slug').inputValue();
+      expect(slugValue).toBe('my-auto-slug-test');
+    });
+
+    test('slug is NOT overridden after user edits it manually', async ({ page }) => {
+      await page.goto(ctx.frontendUrl + '/categories/new');
+      await page.waitForSelector('#cat-name', { timeout: 15000 });
+
+      await page.locator('#cat-slug').fill('custom-slug');
+      await page.locator('#cat-name').fill('A Different Name');
+
+      const slugValue = await page.locator('#cat-slug').inputValue();
+      expect(slugValue).toBe('custom-slug');
+    });
+
+    test('manually edited slug gets normalized on input', async ({ page }) => {
+      await page.goto(ctx.frontendUrl + '/categories/new');
+      await page.waitForSelector('#cat-name', { timeout: 15000 });
+
+      await page.locator('#cat-slug').fill('My Custom Slug With Spaces');
+
+      const slugValue = await page.locator('#cat-slug').inputValue();
+      expect(slugValue).toBe('my-custom-slug-with-spaces');
+    });
+
+    test('product slug is auto-generated from name', async ({ page }) => {
+      await page.goto(ctx.frontendUrl + '/products/new');
+      await page.waitForSelector('#prod-name', { timeout: 15000 });
+
+      await page.locator('#prod-name').fill('My Product Name');
+
+      const slugValue = await page.locator('#prod-slug').inputValue();
+      expect(slugValue).toBe('my-product-name');
     });
 
     test('edit existing category', async ({ page }) => {

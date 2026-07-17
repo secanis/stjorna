@@ -2,12 +2,30 @@
 .idea
 **/node_modules
 **/dist
+**/.cache
+**/coverage
+**/.nyc_output
+**/*.tsbuildinfo
+
+# Test outputs
+**/test-results/
+playwright-report/
+test-output/
+playwright/.cache
+testdata/
+
+# Build artifacts
+.vite/
+.turbo/
+.next/
+.nuxt/
+out/
+
+# Misc
 server/data
 server/data_*
 server/apidoc*
 todo.md
 reports/
 stjorna.iml
-**/coverage
-**/.nyc_output
 docs/REWRITE_PLAN.md

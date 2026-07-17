@@ -70,42 +70,76 @@ async function fetchStats() {
   }
 }
 
+const getItemName = (item: any, type: string): string => {
+  if (type === 'tenant') return item.name;
+  if (type === 'user') return item.email;
+  if (type === 'product') return item.name;
+  if (type === 'media') return item.filename || item.original_name || '(no name)';
+  if (type === 'category') return item.name;
+  return '?';
+};
+
 async function fetchRecentActivity() {
   try {
-    if (authStore.isPBAdmin) {
-      const [tenants, users] = await Promise.all([
-        pb.collection('tenants').getList(1, 5, { sort: '-created' }),
-        pb.collection('users').getList(1, 5, { sort: '-created' }),
+    const items: any[] = [];
+
+    // Fetch each collection twice — once sorted by created, once by updated
+    // — and merge. A record that was created and never updated appears once
+    // (as 'created'); a record that was edited appears twice (one 'created'
+    // and one 'updated' event).
+    async function fetchCollection(
+      collection: string,
+      type: string,
+      filter?: string
+    ) {
+      const [byCreated, byUpdated] = await Promise.all([
+        pb.collection(collection).getList(1, 5, { filter, sort: '-created' }),
+        pb.collection(collection).getList(1, 5, { filter, sort: '-updated' }),
       ]);
-      const items: any[] = [];
-      tenants.items.forEach(t => items.push({ type: 'tenant', name: t.name, created: t.created }));
-      users.items.forEach(u => items.push({ type: 'user', name: u.email, created: u.created }));
-      items.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
-      return items.slice(0, 10);
+      byCreated.items.forEach((item: any) => {
+        items.push({
+          type,
+          action: 'created',
+          name: getItemName(item, type),
+          id: item.id,
+          at: item.created,
+        });
+      });
+      byUpdated.items.forEach((item: any) => {
+        if (item.updated && item.updated !== item.created) {
+          items.push({
+            type,
+            action: 'updated',
+            name: getItemName(item, type),
+            id: item.id,
+            at: item.updated,
+          });
+        }
+      });
     }
 
-    const filter = getCurrentTenant() ? `tenant = "${getCurrentTenant()}"` : '';
-    const [products, media, categories] = await Promise.all([
-      pb.collection('products').getList(1, 5, {
-        filter,
-        sort: '-created',
-      }),
-      pb.collection('media').getList(1, 5, {
-        filter,
-        sort: '-created',
-      }),
-      pb.collection('categories').getList(1, 5, {
-        filter,
-        sort: '-created',
-      }),
-    ]);
+    if (authStore.isPBAdmin) {
+      await fetchCollection('tenants', 'tenant');
+      await fetchCollection('users', 'user');
+    } else {
+      const filter = getCurrentTenant() ? `tenant = "${getCurrentTenant()}"` : '';
+      await fetchCollection('products', 'product', filter);
+      await fetchCollection('media', 'media', filter);
+      await fetchCollection('categories', 'category', filter);
+    }
 
-    const items: any[] = [];
-    products.items.forEach(p => items.push({ type: 'product', name: p.name, created: p.created }));
-    media.items.forEach(m => items.push({ type: 'media', name: m.filename, created: m.created }));
-    categories.items.forEach(c => items.push({ type: 'category', name: c.name, created: c.created }));
-    items.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
-    return items.slice(0, 10);
+    // Dedupe (same record, same action).
+    const seen = new Set<string>();
+    const deduped = items.filter((item) => {
+      const key = `${item.id}-${item.action}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    // Sort by event timestamp, newest first.
+    deduped.sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+    return deduped.slice(0, 10);
   } catch {
     return [];
   }
@@ -147,8 +181,19 @@ export default function Dashboard() {
         </span>
       ),
     },
+    {
+      key: 'action',
+      label: 'Action',
+      render: (v) => (
+        <span class={`px-2 py-1 rounded text-xs font-medium ${
+          v === 'created' ? 'bg-green-500/20 text-green-300' : 'bg-blue-500/20 text-blue-300'
+        }`}>
+          {v}
+        </span>
+      ),
+    },
     { key: 'name', label: 'Name' },
-    { key: 'created', label: 'Created', render: (v) => v ? new Date(v).toLocaleDateString() : '-' },
+    { key: 'at', label: 'When', render: (v) => v ? new Date(v).toLocaleString() : '-' },
   ];
 
   return (
@@ -203,7 +248,10 @@ export default function Dashboard() {
               columns={activityColumns}
               data={recentActivity() || []}
               onRowClick={(row) => {
-                if (row.type === 'media') window.location.href = `/media/${row.id}`;
+                if (row.type === 'media') navigate(`/media/${row.id}`);
+                else if (row.type === 'product') navigate(`/products/${row.id}`);
+                else if (row.type === 'category') navigate(`/categories/${row.id}`);
+                else if (row.type === 'tenant') navigate(`/tenants/${row.id}`);
               }}
               emptyMessage="No recent activity"
             />

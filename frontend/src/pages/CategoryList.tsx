@@ -4,6 +4,7 @@ import { Folder } from 'lucide-solid';
 import Table, { Column } from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { sidebarStore } from '~/stores/sidebar';
 
 async function fetchCategories() {
   const tenant = getCurrentTenant();
@@ -35,7 +36,7 @@ export default function CategoryList() {
 
   const [data, { refetch }] = createResource(
     () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir() }),
-    () => fetchCategories()
+    fetchCategories
   );
 
   const handleSort = (key: string, dir: 'asc' | 'desc') => {
@@ -47,6 +48,7 @@ export default function CategoryList() {
     if (!confirm('Delete this category?')) return;
     try {
       await pb.collection('categories').delete(id);
+      sidebarStore.bump();
       refetch();
     } catch (e: any) {
       alert(`Failed to delete: ${e.message}`);
@@ -56,6 +58,7 @@ export default function CategoryList() {
   const handleToggleActive = async (id: string, currentActive: boolean) => {
     try {
       await pb.collection('categories').update(id, { active: !currentActive });
+      sidebarStore.bump();
       refetch();
     } catch (e: any) {
       alert(`Failed to update: ${e.message}`);
@@ -122,7 +125,7 @@ export default function CategoryList() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-white">Categories</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/category/new" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+          <A href="/categories/new" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
             + Add Category
           </A>
         </Show>

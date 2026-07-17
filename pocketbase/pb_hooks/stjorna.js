@@ -101,6 +101,35 @@ pb.hook('media', 'create', (e) => {
     });
 });
 
+// Cleanup the underlying file when a media record is deleted.
+// Without this hook, PB v0.22.7 only removes the DB row — the file
+// stays in the storage backend (S3 bucket or local filesystem) as an
+// orphan. This iterates all `file` fields on the record and deletes
+// each one via the active storage backend. Errors are logged but do
+// not propagate (the record delete has already succeeded at this point).
+pb.hook('media', 'delete', (e) => {
+    const record = e.Record || e.record;
+    const collection = e.Collection || e.collection;
+    if (!record || !collection) return;
+
+    for (const field of collection.schema) {
+        if (field.type !== 'file') continue;
+        const value = record.get(field.name);
+        if (!value) continue;
+        const filenames = Array.isArray(value) ? value : [value];
+        for (const f of filenames) {
+            try {
+                const fsys = pb.dao.NewFilesystem();
+                const key = collection.id + '/' + record.id + '/' + f;
+                fsys.Delete(key);
+                console.log('[stjorna] Deleted file:', key);
+            } catch (err) {
+                console.log('[stjorna] Failed to delete file', f, 'for record', record.id, ':', err);
+            }
+        }
+    }
+});
+
 // S3 Presign routes (if enabled)
 if (s3Enabled) {
     console.log('STJÓRNA S3 hooks enabled');

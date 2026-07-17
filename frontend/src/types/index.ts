@@ -30,6 +30,7 @@ export interface Tenant {
 export interface Media {
   id: string;
   tenant: string;
+  file: string;
   filename: string;
   original_name: string;
   mime_type: string;
@@ -65,7 +66,7 @@ export interface Product {
   slug: string;
   price: number;
   description: string;
-  images: string[];
+  media: string[];
   active: boolean;
   sort_order: number;
   custom_fields: string;

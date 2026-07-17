@@ -6,14 +6,12 @@ services:
         ports:
             - '8090:8090'
         volumes:
+            # Mount a host directory to persist PocketBase data and storage.
+            # Without this, all data is lost when the container is removed.
             # - ./pocketbase/pb_data:/app/pb_data
             - ./pocketbase/pb_hooks:/app/pb_hooks
         environment:
             - PB_SECRET=${PB_SECRET:-$(openssl rand -hex 32)}
-            - S3_BUCKET=${S3_BUCKET:-}
-            - S3_REGION=${S3_REGION:-}
-            - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
-            - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
         restart: unless-stopped
         healthcheck:
             test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8090/api/health']

@@ -1,7 +1,8 @@
-import { createSignal, onMount, Show, For } from 'solid-js';
+import { createSignal, onMount, Show, For, createEffect } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
-import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package } from 'lucide-solid';
+import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
+import { sidebarStore } from '~/stores/sidebar';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 
 const navItems = [
@@ -9,6 +10,7 @@ const navItems = [
   { path: '/media', label: 'Media', icon: Image, showCount: true, roles: ['editor', 'admin'] as const },
   { path: '/categories', label: 'Categories', icon: Folder, showCount: true, roles: ['editor', 'admin'] as const },
   { path: '/products', label: 'Products', icon: Package, showCount: true, roles: ['editor', 'admin'] as const },
+  { path: '/api-docs', label: 'API Docs', icon: BookOpen, roles: ['editor', 'admin', 'pb_admin'] as const },
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/users', label: 'Users', icon: Users, roles: ['pb_admin'] as const, showCount: true },
   { path: '/tenants', label: 'Tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
@@ -22,7 +24,7 @@ export default function Sidebar() {
   const [productsCount, setProductsCount] = createSignal<number | null>(null);
   const [tenantsCount, setTenantsCount] = createSignal<number | null>(null);
 
-  onMount(async () => {
+  const fetchCounts = async () => {
     await authStore.init();
 
     const tenant = getCurrentTenant();
@@ -61,6 +63,15 @@ export default function Sidebar() {
         setUsersCount(ut.totalItems);
       } catch (e: any) { console.warn('[Sidebar] users count:', e?.message); }
     }
+  };
+
+  onMount(() => {
+    fetchCounts();
+  });
+
+  createEffect(() => {
+    sidebarStore.version;
+    fetchCounts();
   });
 
   const visibleItems = () => {

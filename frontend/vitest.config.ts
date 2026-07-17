@@ -1,4 +1,5 @@
-import { defineConfig } from 'vite';
+/// <reference types="vitest" />
+import { defineConfig } from 'vitest/config';
 import solid from 'vite-plugin-solid';
 import path from 'path';
 
@@ -9,13 +10,9 @@ export default defineConfig({
       '~': path.resolve(__dirname, './src'),
     },
   },
-  server: {
-    port: 3000,
-    proxy: {
-      '/api/': {
-        target: 'http://localhost:8090',
-        changeOrigin: true,
-      },
-    },
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
   },
 });

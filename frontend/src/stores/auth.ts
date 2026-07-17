@@ -143,14 +143,39 @@ export const authStore = {
       if (!userId) return;
       const result = await pb.collection('user_tenants').getList(1, 50, {
         filter: `user = "${userId}"`,
-        expand: 'tenant',
+        expand: 'tenant,role',
       });
-      const tenantList: UserTenant[] = result.items.map((r: any) => ({
-        id: r.id,
-        tenant: r.tenant,
-        tenantName: r.expand?.tenant?.name || r.expand?.tenant?.id || r.tenant,
-        role: r.role as Role,
+
+      const tenantList: UserTenant[] = await Promise.all(result.items.map(async (r: any) => {
+        let tenantName = r.expand?.tenant?.name;
+        let roleName = r.expand?.role?.name;
+
+        if (!tenantName && r.tenant) {
+          try {
+            const tenantRec = await pb.collection('tenants').getOne(r.tenant);
+            tenantName = tenantRec.name || r.tenant;
+          } catch {
+            tenantName = r.tenant;
+          }
+        }
+
+        if (!roleName && r.role) {
+          try {
+            const roleRec = await pb.collection('roles').getOne(r.role);
+            roleName = roleRec.name || 'viewer';
+          } catch {
+            roleName = 'viewer';
+          }
+        }
+
+        return {
+          id: r.id,
+          tenant: r.tenant,
+          tenantName: tenantName || r.tenant,
+          role: (roleName || 'viewer') as Role,
+        };
       }));
+
       setTenants(tenantList);
 
       let targetTenant: string | null = null;
@@ -256,10 +281,16 @@ export async function createTenant(name: string, slug: string) {
   return await pb.collection('tenants').create({ name, slug });
 }
 
-export async function linkUserToTenant(userId: string, tenantId: string, userRole: Role) {
+export async function linkUserToTenant(userId: string, tenantId: string, userRole: Role | string) {
+  let roleId = userRole;
+  if (!userRole.includes('-')) {
+    const roles = await pb.collection('roles').getList(1, 10);
+    const role = roles.items.find((r: any) => r.name === userRole);
+    roleId = role?.id || userRole;
+  }
   await pb.collection('user_tenants').create({
     user: userId,
     tenant: tenantId,
-    role: userRole,
+    role: roleId,
   });
 }

@@ -1,23 +1,22 @@
-import { createSignal, createResource, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, Show, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
-import { FileText } from 'lucide-solid';
+import { Package } from 'lucide-solid';
 import Table, { Column } from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
-import { getMediaFileUrl } from '~/utils/mediaUrl';
-import type { Media } from '~/types';
+import type { Product } from '~/types';
 
-async function fetchMedia() {
+async function fetchProducts() {
   const tenant = getCurrentTenant();
   const filter = tenant ? `tenant = "${tenant}"` : '';
-  return await pb.collection('media').getList<Media>(1, 50, {
+  return await pb.collection('products').getList<Product>(1, 50, {
     filter,
-    sort: '-created',
+    sort: 'sort_order,name',
   });
 }
 
-export default function MediaList() {
+export default function ProductList() {
   const navigate = useNavigate();
 
   onMount(async () => {
@@ -33,13 +32,12 @@ export default function MediaList() {
   });
 
   const [page, setPage] = createSignal(1);
-  const [sortKey, setSortKey] = createSignal('created');
-  const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('desc');
-  const [filterType, setFilterType] = createSignal('');
+  const [sortKey, setSortKey] = createSignal('sort_order');
+  const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('asc');
 
   const [data, { refetch }] = createResource(
-    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), filterType: filterType() }),
-    () => fetchMedia()
+    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir() }),
+    fetchProducts
   );
 
   const handleSort = (key: string, dir: 'asc' | 'desc') => {
@@ -48,9 +46,9 @@ export default function MediaList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this media item?')) return;
+    if (!confirm('Delete this product?')) return;
     try {
-      await pb.collection('media').delete(id);
+      await pb.collection('products').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
@@ -58,38 +56,54 @@ export default function MediaList() {
     }
   };
 
+  const handleToggleActive = async (id: string, currentActive: boolean) => {
+    try {
+      await pb.collection('products').update(id, { active: !currentActive });
+      sidebarStore.bump();
+      refetch();
+    } catch (e: any) {
+      alert(`Failed to update: ${e.message}`);
+    }
+  };
+
   const columns: Column[] = [
     {
-      key: 'file',
-      label: 'Preview',
+      key: 'name',
+      label: 'Name',
+      sortable: true,
+    },
+    { key: 'slug', label: 'Slug', sortable: true },
+    {
+      key: 'category',
+      label: 'Category',
+      render: (v) => v || '-',
+    },
+    {
+      key: 'price',
+      label: 'Price',
+      sortable: true,
+      render: (v) => v != null ? `${v.toFixed(2)}` : '-',
+    },
+    {
+      key: 'active',
+      label: 'Active',
+      sortable: true,
       render: (v, row) => (
-        <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center overflow-hidden">
-          <Show when={row.mime_type?.startsWith('image/') && v}>
-            <img
-              src={getMediaFileUrl(row.id, v, { thumb: '100x100' })}
-              alt={row.filename || ''}
-              class="w-full h-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          </Show>
-          <Show when={!row.mime_type?.startsWith('image/') || !v}>
-            <FileText size={16} class="text-gray-400" />
-          </Show>
-        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); handleToggleActive(row.id, v); }}
+          class={`px-2 py-1 rounded text-xs font-medium ${
+            v ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
+          }`}
+        >
+          {v ? 'Yes' : 'No'}
+        </button>
       ),
     },
-    { key: 'filename', label: 'Filename', sortable: true },
-    { key: 'mime_type', label: 'Type' },
     {
-      key: 'size',
-      label: 'Size',
+      key: 'sort_order',
+      label: 'Sort Order',
       sortable: true,
-      render: (v) => v ? `${(v / 1024).toFixed(1)} KB` : '-',
-    },
-    {
-      key: 'usage_count',
-      label: 'Usage',
-      sortable: true,
+      render: (v) => v ?? '-',
     },
     {
       key: 'created',
@@ -103,7 +117,7 @@ export default function MediaList() {
       render: (_, row) => (
         <div class="flex gap-2">
           <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/media/${row.id}`); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/products/${row.id}`); }}
             class="text-blue-400 hover:text-blue-300 text-sm"
           >
             Edit
@@ -124,29 +138,17 @@ export default function MediaList() {
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-white">Media</h1>
+        <h1 class="text-2xl font-bold text-white">Products</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/media/new" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
-            + Add Media
+          <A href="/products/new" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+            + Add Product
           </A>
         </Show>
       </div>
 
-      <div class="flex gap-4 items-center">
-        <select
-          value={filterType()}
-          onChange={(e) => setFilterType(e.currentTarget.value)}
-          class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
-        >
-          <option value="">All types</option>
-          <option value="image">Images</option>
-          <option value="video">Videos</option>
-        </select>
-      </div>
-
       <Show
         when={!data.loading}
-        fallback={<div class="text-gray-400">Loading media...</div>}
+        fallback={<div class="text-gray-400">Loading products...</div>}
       >
         <div class="bg-gray-800 rounded-lg overflow-hidden">
           <Table
@@ -155,8 +157,8 @@ export default function MediaList() {
             sortKey={sortKey()}
             sortDir={sortDir()}
             onSort={handleSort}
-            onRowClick={(row) => navigate(`/media/${row.id}`)}
-            emptyMessage="No media items yet"
+            onRowClick={(row) => navigate(`/products/${row.id}`)}
+            emptyMessage="No products yet"
           />
         </div>
 

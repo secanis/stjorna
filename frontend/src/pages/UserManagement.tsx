@@ -2,6 +2,7 @@ import { createSignal, createResource, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { sidebarStore } from '~/stores/sidebar';
 import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
 
@@ -10,7 +11,7 @@ async function fetchUsers() {
   try {
     if (authStore.isPBAdmin) {
       const userTenantsResult = await pb.collection('user_tenants').getList(1, 500, {
-        expand: 'user,tenant',
+        expand: 'user,tenant,role',
       });
       return userTenantsResult.items.map((ut: any) => ({
         ...ut,
@@ -19,13 +20,13 @@ async function fetchUsers() {
         email: ut.expand?.user?.email || '',
         tenantName: ut.expand?.tenant?.name || 'Unknown',
         userTenantId: ut.id,
-        userRole: ut.role,
+        userRole: ut.expand?.role?.name || ut.role,
       }));
     } else {
       const filter = tenant ? `tenant = "${tenant}"` : '';
       const userTenantsResult = await pb.collection('user_tenants').getList(1, 500, {
         filter,
-        expand: 'user,tenant',
+        expand: 'user,tenant,role',
       });
       return userTenantsResult.items.map((ut: any) => ({
         ...ut,
@@ -34,7 +35,7 @@ async function fetchUsers() {
         email: ut.expand?.user?.email || '',
         tenantName: ut.expand?.tenant?.name || '',
         userTenantId: ut.id,
-        userRole: ut.role,
+        userRole: ut.expand?.role?.name || ut.role,
       }));
     }
   } catch (e: any) {
@@ -70,6 +71,12 @@ export default function UserManagement() {
   const [error, setError] = createSignal('');
   const [inviting, setInviting] = createSignal(false);
 
+  const getRoleId = async (roleName: string): Promise<string> => {
+    const roles = await pb.collection('roles').getList(1, 10);
+    const role = roles.items.find((r: any) => r.name === roleName);
+    return role?.id || '';
+  };
+
   const handleInvite = async (e: Event) => {
     e.preventDefault();
     if (invitePassword() !== invitePasswordConfirm()) {
@@ -88,16 +95,18 @@ export default function UserManagement() {
         name: inviteName(),
         tenant,
       });
+      const roleId = await getRoleId(inviteRole());
       await pb.collection('user_tenants').create({
         user: newUser.id,
         tenant,
-        role: inviteRole(),
+        role: roleId,
       });
       setShowInvite(false);
       setInviteEmail('');
       setInviteName('');
       setInvitePassword('');
       setInvitePasswordConfirm('');
+      sidebarStore.bump();
       refetch();
     } catch (e: any) {
       setError(e.message || 'Failed to invite user');
@@ -108,7 +117,8 @@ export default function UserManagement() {
 
   const handleRoleChange = async (userTenantId: string, newRole: Role) => {
     try {
-      await pb.collection('user_tenants').update(userTenantId, { role: newRole });
+      const roleId = await getRoleId(newRole);
+      await pb.collection('user_tenants').update(userTenantId, { role: roleId });
       refetch();
     } catch (e: any) {
       alert(`Failed to update role: ${e.message}`);
@@ -119,6 +129,7 @@ export default function UserManagement() {
     if (!confirm('Remove this user from the tenant?')) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
+      sidebarStore.bump();
       refetch();
     } catch (e: any) {
       alert(`Failed to remove user: ${e.message}`);

@@ -83,6 +83,18 @@ async function setupCollections(pb: PocketBase): Promise<void> {
 
   const collections = [
     {
+      name: 'roles',
+      type: 'base' as const,
+      schema: [
+        { name: 'name', type: 'text' as const, required: true },
+      ],
+      listRule: '@request.auth.admin = true',
+      viewRule: '@request.auth.id != ""',
+      createRule: '@request.auth.admin = true',
+      updateRule: '@request.auth.admin = true',
+      deleteRule: '@request.auth.admin = true',
+    },
+    {
       name: 'tenants',
       type: 'base' as const,
       schema: [
@@ -91,12 +103,13 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'plan', type: 'select' as const, options: { values: ['free', 'starter', 'professional', 'enterprise'], maxSelect: 1 } },
         { name: 'custom_domain', type: 'text' as const },
         { name: 'theme_config', type: 'json' as const, options: { maxSize: 2000000 } },
+        { name: 'users', type: 'relation' as const, options: { collectionId: '_pb_users_auth_', maxSelect: 99, cascadeDelete: false } },
       ],
-      listRule: '@request.auth.admin = true || @request.auth.id != ""',
-      viewRule: '@request.auth.admin = true || @request.auth.id != ""',
-      createRule: null,
-      updateRule: '@request.auth.admin = true',
-      deleteRule: '@request.auth.admin = true',
+      listRule: '',
+      viewRule: '@request.auth.id != ""',
+      createRule: '',
+      updateRule: '',
+      deleteRule: '',
     },
     {
       name: 'categories',
@@ -109,11 +122,11 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'active', type: 'bool' as const },
         { name: 'sort_order', type: 'number' as const },
       ],
-      listRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      viewRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      createRule: '',
-      updateRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      deleteRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
+      listRule: '@request.auth.id != ""',
+      viewRule: '@request.auth.id != ""',
+      createRule: '@request.auth.id != ""',
+      updateRule: '@request.auth.id != "" || @request.auth.admin = true',
+      deleteRule: '@request.auth.id != "" || @request.auth.admin = true',
     },
     {
       name: 'products',
@@ -125,23 +138,24 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'slug', type: 'text' as const, required: true },
         { name: 'price', type: 'number' as const },
         { name: 'description', type: 'editor' as const },
-        { name: 'images', type: 'file' as const, options: { maxSelect: 99, maxSize: 10485760, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] } },
+        { name: 'media', type: 'relation' as const, options: { collectionId: '_MEDIA_ID_', maxSelect: 99, cascadeDelete: false } },
         { name: 'active', type: 'bool' as const },
         { name: 'sort_order', type: 'number' as const },
         { name: 'custom_fields', type: 'json' as const, options: { maxSize: 2000000 } },
       ],
-      listRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      viewRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      createRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      updateRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      deleteRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
+      listRule: '@request.auth.id != ""',
+      viewRule: '@request.auth.id != ""',
+      createRule: '@request.auth.id != ""',
+      updateRule: '@request.auth.admin = true',
+      deleteRule: '@request.auth.admin = true',
     },
     {
       name: 'media',
       type: 'base' as const,
       schema: [
         { name: 'tenant', type: 'relation' as const, options: { collectionId: '_TENANTS_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'filename', type: 'text' as const, required: true },
+        { name: 'file', type: 'file' as const, options: { maxSelect: 1, maxSize: 10485760, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
+        { name: 'filename', type: 'text' as const },
         { name: 'original_name', type: 'text' as const },
         { name: 'mime_type', type: 'text' as const },
         { name: 'size', type: 'number' as const },
@@ -153,11 +167,11 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'usage_count', type: 'number' as const },
         { name: 'createdUser', type: 'relation' as const, options: { collectionId: '_pb_users_auth_', maxSelect: 1, cascadeDelete: false } },
       ],
-      listRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      viewRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      createRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      updateRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
-      deleteRule: '@request.auth.admin = true || @request.auth.user_tenants.any(tenant.id = tenant.id)',
+      listRule: '@request.auth.id != ""',
+      viewRule: '@request.auth.id != ""',
+      createRule: '@request.auth.id != ""',
+      updateRule: '@request.auth.id != "" || @request.auth.admin = true',
+      deleteRule: '@request.auth.id != "" || @request.auth.admin = true',
     },
     {
       name: 'user_tenants',
@@ -165,13 +179,13 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       schema: [
         { name: 'user', type: 'relation' as const, options: { collectionId: '_pb_users_auth_', maxSelect: 1, cascadeDelete: false } },
         { name: 'tenant', type: 'relation' as const, options: { collectionId: '_TENANTS_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'role', type: 'select' as const, options: { values: ['viewer', 'editor', 'admin'], maxSelect: 1 } },
+        { name: 'role', type: 'relation' as const, options: { collectionId: '_ROLES_ID_', maxSelect: 1, cascadeDelete: false } },
       ],
       listRule: '@request.auth.admin = true || user.id = @request.auth.id',
-      viewRule: '@request.auth.admin = true || user.id = @request.auth.id',
-      createRule: null,
-      updateRule: '@request.auth.admin = true || (@request.auth.user_tenants.user.id = @request.auth.id && @request.auth.user_tenants.role = "admin")',
-      deleteRule: '@request.auth.admin = true || (@request.auth.user_tenants.user.id = @request.auth.id && @request.auth.user_tenants.role = "admin")',
+      viewRule: '@request.auth.id != ""',
+      createRule: '@request.auth.admin = true',
+      updateRule: '@request.auth.admin = true',
+      deleteRule: '@request.auth.admin = true',
     },
     {
       name: 'instance_settings',
@@ -182,6 +196,14 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'instance_logo_url', type: 'url' as const },
         { name: 'instance_tagline', type: 'text' as const },
         { name: 'setup_done', type: 'bool' as const },
+        { name: 'storage_type', type: 'text' as const },
+        { name: 's3_bucket', type: 'text' as const },
+        { name: 's3_region', type: 'text' as const },
+        { name: 's3_endpoint', type: 'text' as const },
+        { name: 's3_access_key', type: 'text' as const },
+        { name: 's3_secret_key', type: 'text' as const },
+        { name: 's3_force_path_style', type: 'bool' as const },
+        { name: 'storage_configured', type: 'bool' as const },
       ],
       listRule: null,
       viewRule: null,
@@ -191,25 +213,43 @@ async function setupCollections(pb: PocketBase): Promise<void> {
     },
   ];
 
-  const phase1 = ['tenants'];
-  const phase2 = ['categories', 'products', 'media', 'user_tenants'];
+  const phase1 = ['roles', 'tenants', 'media'];
+  const phase2 = ['categories', 'products', 'user_tenants'];
   const phase3 = ['instance_settings'];
 
   let tenantsId: string | null = null;
+  let rolesId: string | null = null;
+  let mediaId: string | null = null;
 
   for (const name of phase1) {
     if (!existingNames.has(name)) {
       const col = collections.find(c => c.name === name)!;
+      console.log(`[Setup] Creating collection: ${name}`);
       const created = await pb.collections.create(col);
       if (name === 'tenants') tenantsId = created.id;
+      if (name === 'roles') rolesId = created.id;
+      if (name === 'media') mediaId = created.id;
       console.log(`[Setup] Created collection: ${name}`);
     } else {
+      console.log(`[Setup] Collection ${name} already exists`);
       const col = await pb.collections.getFirstListItem(`name="${name}"`);
       if (name === 'tenants') tenantsId = col.id;
+      if (name === 'roles') rolesId = col.id;
+      if (name === 'media') mediaId = col.id;
     }
   }
 
+  if (!existingNames.has('roles')) {
+    console.log('[Setup] Creating default roles');
+    await pb.collection('roles').create({ name: 'viewer' });
+    await pb.collection('roles').create({ name: 'editor' });
+    await pb.collection('roles').create({ name: 'admin' });
+    console.log('[Setup] Created default roles');
+  }
+
   if (!tenantsId) throw new Error('Could not get tenants collection ID');
+  if (!rolesId) throw new Error('Could not get roles collection ID');
+  if (!mediaId) throw new Error('Could not get media collection ID');
   const usersId = (await pb.collections.getOne('_pb_users_auth_')).id;
 
   let categoriesId = tenantsId;
@@ -225,7 +265,9 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         let targetId = field.options.collectionId;
         if (targetId === '_TENANTS_ID_') targetId = tenantsId!;
         if (targetId === '_CATEGORIES_ID_') targetId = categoriesId;
+        if (targetId === '_MEDIA_ID_') targetId = mediaId;
         if (targetId === '_pb_users_auth_') targetId = usersId;
+        if (targetId === '_ROLES_ID_') targetId = rolesId!;
         return { ...field, options: { ...field.options, collectionId: targetId } };
       }
       return field;
@@ -234,17 +276,29 @@ async function setupCollections(pb: PocketBase): Promise<void> {
 
   for (const name of phase2) {
     if (!existingNames.has(name)) {
+      console.log(`[Setup] Creating collection: ${name}`);
       const colTemplate = collections.find(c => c.name === name)!;
-      await pb.collections.create(replaceIds(colTemplate));
+      const colToCreate = replaceIds(colTemplate);
+      delete colToCreate.listRule;
+      delete colToCreate.viewRule;
+      delete colToCreate.createRule;
+      delete colToCreate.updateRule;
+      delete colToCreate.deleteRule;
+      await pb.collections.create(colToCreate);
       console.log(`[Setup] Created collection: ${name}`);
+    } else {
+      console.log(`[Setup] Collection ${name} already exists`);
     }
   }
 
   for (const name of phase3) {
     if (!existingNames.has(name)) {
+      console.log(`[Setup] Creating collection: ${name}`);
       const col = collections.find(c => c.name === name)!;
       await pb.collections.create(col);
       console.log(`[Setup] Created collection: ${name}`);
+    } else {
+      console.log(`[Setup] Collection ${name} already exists`);
     }
   }
 
@@ -255,6 +309,27 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       schema: [...usersCol.schema, { name: 'last_tenant', type: 'text' }],
     });
     console.log('[Setup] Added last_tenant field to users');
+  }
+
+  const collectionsWithRules = ['categories', 'products', 'media', 'user_tenants', 'roles', 'tenants'];
+  for (const name of collectionsWithRules) {
+    const col = collections.find(c => c.name === name);
+    if (col) {
+      try {
+        const existingCol = await pb.collections.getFirstListItem(`name="${name}"`);
+        console.log(`[Setup] Updating rules for ${name} - current:`, existingCol.listRule, '-> new:', col.listRule);
+        await pb.collections.update(existingCol.id, {
+          listRule: col.listRule || null,
+          viewRule: col.viewRule || null,
+          createRule: col.createRule || null,
+          updateRule: col.updateRule || null,
+          deleteRule: col.deleteRule || null,
+        });
+        console.log(`[Setup] Updated rules for ${name}`);
+      } catch (e: any) {
+        console.warn(`[Setup] Failed to update rules for ${name}:`, e.status, e.message);
+      }
+    }
   }
 }
 
@@ -303,10 +378,12 @@ async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
   }
   testUserId = testUser.id;
 
+  const adminRole = await pb.collection('roles').getFirstListItem('name="admin"');
+
   await pb.collection('user_tenants').create({
     user: testUserId,
     tenant: testTenantId,
-    role: 'admin',
+    role: adminRole.id,
   });
 
   await pb.collection('categories').create({
@@ -318,14 +395,21 @@ async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
     sort_order: 1,
   });
 
-  await pb.collection('media').create({
-    tenant: testTenantId,
-    filename: 'test-image.jpg',
-    original_name: 'test-image.jpg',
-    mime_type: 'image/jpeg',
-    size: 12345,
-    usage_count: 0,
-  });
+  const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  const pngBuffer = Buffer.from(pngBase64, 'base64');
+  const testFile = new File([pngBuffer], 'test-image.png', { type: 'image/png' });
+  const form = new FormData();
+  form.append('file', testFile);
+  form.append('filename', 'test-image.png');
+  form.append('original_name', 'test-image.png');
+  form.append('mime_type', 'image/png');
+  form.append('size', String(pngBuffer.length));
+  form.append('width', '1');
+  form.append('height', '1');
+  form.append('usage_count', '0');
+  form.append('tenant', testTenantId);
+
+  await pb.collection('media').create(form);
 
   console.log('[Setup] Test tenant and user ready');
 }
