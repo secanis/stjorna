@@ -56,18 +56,30 @@ export async function startPocketBase(): Promise<PocketBase> {
   const startContainer = async (): Promise<PocketBase> => {
     await cleanup();
 
-    const { stdout } = await execAsync(
-      `${CONTAINER_CLI} run -d --rm --network=host -v ${PB_VOLUME}:/app/pb_data ${PB_IMAGE}`,
-      { encoding: 'utf8' }
-    );
+    let stdout: string;
+    try {
+      const result = await execAsync(
+        `${CONTAINER_CLI} run -d --rm --network=host -v ${PB_VOLUME}:/app/pb_data ${PB_IMAGE}`,
+        { encoding: 'utf8' }
+      );
+      stdout = result.stdout;
+    } catch (e: any) {
+      // Surface the actual container-runtime error instead of letting
+      // the 30s health-check loop exhaust with a generic message.
+      const stderr = e?.stderr?.toString?.() || e?.message || String(e);
+      throw new Error(`Failed to start ${PB_IMAGE} via ${CONTAINER_CLI}: ${stderr.trim()}`);
+    }
     containerId = stdout.trim();
+    // eslint-disable-next-line no-console
+    console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    let pb: PocketBase;
-    let retries = 30;
-    while (retries > 0) {
-      pb = new PocketBase(PB_URL);
+    // First-boot PocketBase can take a while (especially on CI runners
+    // with cold caches) to create the initial superuser, so give it
+    // up to 60s.
+    const deadline = Date.now() + 60_000;
+    let lastError: unknown = null;
+    while (Date.now() < deadline) {
+      const pb = new PocketBase(PB_URL);
       try {
         await pb.health.check();
         try {
@@ -82,13 +94,14 @@ export async function startPocketBase(): Promise<PocketBase> {
         pbInstance = pb;
         await setupCollections(pbInstance);
         return pbInstance;
-      } catch {
+      } catch (e) {
+        lastError = e;
         await new Promise(resolve => setTimeout(resolve, 1000));
-        retries--;
       }
     }
 
-    throw new Error('Failed to start PocketBase');
+    const detail = lastError instanceof Error ? lastError.message : String(lastError);
+    throw new Error(`Failed to start PocketBase: ${PB_URL} not healthy after 60s. Last error: ${detail}`);
   };
 
   try {
