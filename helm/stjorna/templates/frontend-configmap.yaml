@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "stjorna.frontend.fullname" . }}-nginx
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "stjorna.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+data:
+  default.conf: |-
+    server {
+        listen {{ .Values.frontend.service.port }};
+        server_name _;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        location /api/ {
+            {{- $pbHost := printf "%s.%s.svc.cluster.local" (include "stjorna.pocketbase.fullname" .) .Values.namespace.name }}
+            proxy_pass http://{{ $pbHost }}:{{ .Values.pocketbase.service.port }};
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    }

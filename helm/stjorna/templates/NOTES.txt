@@ -1,0 +1,30 @@
+STJÓRNA has been installed in namespace {{ .Values.namespace.name | default .Release.Namespace }}.
+
+1. The PocketBase backend is running at:
+{{- if .Values.ingress.enabled }}
+   https://{{ (index .Values.ingress.hosts 0).host }}/
+{{- else }}
+   {{ include "stjorna.pocketbase.fullname" . }}.{{ .Values.namespace.name | default .Release.Namespace }}.svc.cluster.local:{{ .Values.pocketbase.service.port }}
+{{- end }}
+
+2. First-run setup:
+{{- if .Values.ingress.enabled }}
+   - Open https://{{ (index .Values.ingress.hosts 0).host }}/_/  in your browser
+   - Create the initial PocketBase superuser
+{{- else }}
+   - Port-forward the service to access the admin UI:
+     kubectl port-forward -n {{ .Values.namespace.name | default .Release.Namespace }} svc/{{ include "stjorna.pocketbase.fullname" . }} 8090:{{ .Values.pocketbase.service.port }}
+   - Open http://localhost:8090/_/  and create the initial superuser
+{{- end }}
+
+3. PB_SECRET:
+{{- if .Values.pocketbase.secret.existingSecret }}
+   - Using existing Secret "{{ .Values.pocketbase.secret.existingSecret }}" (key: {{ .Values.pocketbase.secret.existingSecretKey }})
+{{- else }}
+   - Auto-generated Secret "{{ include "stjorna.pocketbase.secretName" . }}" — retrieve with:
+     kubectl get secret -n {{ .Values.namespace.name | default .Release.Namespace }} {{ include "stjorna.pocketbase.secretName" . }} -o jsonpath='{.data.PB_SECRET}' | base64 -d
+{{- end }}
+
+4. Data persistence:
+   - PVC "{{ include "stjorna.pocketbase.fullname" . }}" is created with reclaimPolicy: Retain
+   - Data survives `helm uninstall`; delete manually when truly done with it.

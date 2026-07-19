@@ -379,27 +379,80 @@ docker-compose up -d --build
 
 ## Helm Chart
 
+Production deployment: `helm/stjorna/` (chart 0.1.0, appVersion v2.0.0). Two separate Deployments (PB + frontend) for independent scaling/restarts, matching the docker-compose shape.
+
+### Structure
 ```
 helm/stjorna/
 ├── Chart.yaml
 ├── values.yaml
 ├── .helmignore
+├── README.md
 └── templates/
     ├── _helpers.tpl
-    ├── deployment.yaml       # PB + client containers
-    ├── service.yaml
-    ├── ingress.yaml
-    ├── pvc.yaml              # persistent PB data
-    ├── configmap.yaml        # PB settings
-    └── secret.yaml           # PB_SECRET, S3 creds
+    ├── NOTES.txt
+    ├── namespace.yaml         # idempotent: lookup-guarded render
+    ├── serviceaccount.yaml
+    ├── secret.yaml            # PB_SECRET auto-gen, pre-install hook
+    ├── pocketbase-configmap.yaml   # pb_hooks/*.pb.js
+    ├── pocketbase-pvc.yaml    # reclaimPolicy: Retain
+    ├── pocketbase-deployment.yaml
+    ├── pocketbase-service.yaml
+    ├── frontend-configmap.yaml     # nginx.conf with /api proxy to PB svc
+    ├── frontend-deployment.yaml
+    ├── frontend-service.yaml
+    ├── ingress.yaml           # Traefik + cert-manager
+    └── tests/
+        └── test-connection.yaml
 ```
 
-### values.yaml key fields
-- `image.pocketbaseTag: "0.22.7"`
-- `pocketbase.port: 8090`
-- `pocketbase.storage: "/app/pb_data"` (mounted from PVC)
-- `ingress.className: "traefik"` with cert-manager annotations
-- `s3.enabled: true` with bucket/region/secret refs
+### Key design decisions (locked in)
+
+| Decision | Choice | Why |
+|---|---|---|
+| Architecture | 2 separate Deployments + Services | mirrors docker-compose, independent scaling |
+| PocketBase object | Deployment + PVC (not StatefulSet) | no value at 1 replica; PVC binding works identically |
+| Hooks delivery | ConfigMap mount (default) | versioned with chart; no image rebuild on hook change |
+| PVC retention | `Retain` (not `Delete`) | data survives `helm uninstall`; manual cleanup |
+| Ingress | Traefik + cert-manager `letsencrypt` | matches target cluster's tooling |
+| Image registry | docker.io (public) by default | pull secrets empty |
+| `VITE_PB_URL` | build-time only | in-cluster, frontend proxies `/api/*` via nginx to PB service |
+| Image pull secrets | `[]` (none) | docker.io public images; user overrides for private registry |
+
+### values.yaml highlights
+
+- `pocketbase.image.repository: docker.io/secanis/stjorna-pocketbase`
+- `pocketbase.image.tag: v2.0.0` (follows STJÓRNA version)
+- `pocketbase.persistence.size: 5Gi`, `storageClass: longhorn`
+- `pocketbase.secret.existingSecret: ""` (empty ⇒ chart auto-generates; set to a Secret name to bring your own)
+- `ingress.className: traefik` with `cert-manager.io/cluster-issuer: letsencrypt`
+- `ingress.hosts[0].host: stjorna.example.com` (override at install)
+
+### Install
+
+```bash
+# Build and push images first
+podman build -t docker.io/secanis/stjorna-pocketbase:v2.0.0 -f docker/Dockerfile.pocketbase pocketbase
+podman push docker.io/secanis/stjorna-pocketbase:v2.0.0
+podman build -t docker.io/secanis/stjorna-frontend:v2.0.0 -f frontend/Dockerfile frontend
+podman push docker.io/secanis/stjorna-frontend:v2.0.0
+
+# Install (override host at minimum)
+helm install stjorna ./helm/stjorna \
+  --set ingress.hosts[0].host=stjorna.yourdomain.com
+```
+
+### Hooks iteration
+
+Hooks live as ConfigMap keys; `helm upgrade` re-renders them and PB's `HooksWatch` reloads changed files. **Caveat:** `HooksWatch` only re-loads CHANGED existing files. New files require `kubectl rollout restart deployment/stjorna-pocketbase -n stjorna`.
+
+### Out of scope (in this chart)
+
+- CI/CD pipeline (build & push is manual)
+- Prometheus / Grafana integration (no metrics scraping)
+- HA / clustering (PB is single-replica sqlite)
+- DNS automation (no external-dns in cluster — create A/CNAME manually)
+- HPA, PDB, NetworkPolicy, ExternalSecret (deferred; can be added as opt-in values)
 
 ---
 

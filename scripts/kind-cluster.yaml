@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: MIT
+# kind cluster config for the STJÓRNA helm chart test rig.
+# 1 control-plane + 3 workers; the 3 workers exist so a future garage
+# subchart test (replicaCount: 3) has somewhere to land.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: stjorna-test
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 8080
+        protocol: TCP
+      - containerPort: 443
+        hostPort: 8443
+        protocol: TCP
+  - role: worker
+  - role: worker
+  - role: worker
