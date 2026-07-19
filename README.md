@@ -1,4 +1,4 @@
-# STJÓRNA v2
+# STJÓRNA v3
 
 Multi-tenant product management built with SolidJS + PocketBase.
 
@@ -170,7 +170,7 @@ npm run test:unit
 
 ```
 .
-├── frontend/               # v2 SolidJS frontend
+├── frontend/               # v3 SolidJS frontend
 │   ├── src/
 │   │   ├── pages/          # Route components
 │   │   ├── components/     # Shared components
@@ -186,5 +186,78 @@ npm run test:unit
 │   ├── fix-pocketbase.ts   # One-time fix for orphaned data + missing rules
 │   └── test-api-rules.ts   # Standalone API rules verification
 ├── tests/e2e/              # Playwright e2e tests
+├── helm/stjorna/           # Helm chart for Kubernetes deployment
+├── .github/workflows/      # CI/CD (lint, test, build, release)
 └── docker-compose.yml
 ```
+
+## CI/CD
+
+Two GitHub Actions workflows under `.github/workflows/`:
+
+### `ci.yml` — runs on every push and PR
+
+| Job | What it does |
+|---|---|
+| `test-frontend` | `npm ci && npm run build` (catches TypeScript errors) + vitest |
+| `test-pb` | Vitest integration tests in `pocketbase/test/` |
+| `lint-helm` | `make lint-helm` (helm lint + template render check) |
+| `test-helm` | Full kind-based end-to-end test (`make test-helm`) — push only, ~3 min |
+| `build-images` | Build + push PB and frontend images to **ghcr.io** with branch-specific tags — push only |
+
+Image tags produced by `build-images`:
+- `feature-v3-abc123` (branch + short SHA) on every branch push
+- `latest` on the default branch
+
+### `release.yml` — runs on `v*` tag push (or manual dispatch)
+
+1. **Build + push images to Docker Hub** (`docker.io/secanis/`) with tags:
+   - `v3.0.0` (exact)
+   - `3.0.0`, `3.0`, `3` (semver expansion)
+   - `latest` (on the default branch only)
+2. **Package + publish the helm chart** to the `gh-pages` branch via [`helm/chart-releaser-action`](https://github.com/helm/chart-releaser-action):
+   - Updates `helm/stjorna/Chart.yaml`'s `version` and `appVersion` to match the tag
+   - Updates `helm/stjorna/values.yaml`'s `pocketbase.image.tag` and `frontend.image.tag` to match
+   - Creates a GitHub release with the chart `.tgz` attached
+   - Maintains `index.yaml` on `gh-pages` so the chart is installable via:
+     ```bash
+     helm repo add stjorna https://secanis.github.io/stjorna/
+     helm install stjorna stjorna/stjorna
+     ```
+3. **Notify Artifact Hub** (best-effort) so the chart is indexed promptly.
+
+### Required GitHub secrets
+
+| Secret | Required for | How to create |
+|---|---|---|
+| `DOCKERHUB_USERNAME` | release.yml | Your Docker Hub username (`secanis`) |
+| `DOCKERHUB_TOKEN` | release.yml | [Docker Hub → Account Settings → Security → New Access Token](https://hub.docker.com/settings/security) — scope: Read, Write, Delete |
+| `GITHUB_TOKEN` | all workflows | Auto-provided by GitHub Actions |
+
+### First-time setup
+
+1. **Add the secrets** above in the GitHub repo (`Settings → Secrets and variables → Actions`).
+2. **Enable GitHub Pages** on the `gh-pages` branch (`Settings → Pages → Source: gh-pages`).
+3. **(One-time) Register the chart on Artifact Hub** so it's discoverable from [artifacthub.io](https://artifacthub.io/):
+   - Open [https://artifacthub.io/control-panel/repositories?modal=helmRepository](https://artifacthub.io/control-panel/repositories?modal=helmRepository)
+   - Click **Add** → **Helm**
+   - Set **URL** to `https://secanis.github.io/stjorna/`
+   - Set **Display name** to "STJÓRNA"
+   - Click **Add** — Artifact Hub will start crawling the repo and indexing the chart
+
+### Cutting a release
+
+```bash
+# Tag the commit
+git tag v3.0.0
+git push origin v3.0.0
+
+# The release workflow will:
+#   1. Build + push images to docker.io/secanis/{stjorna-pocketbase,stjorna-frontend}:v3.0.0 (and 3.0.0, 3.0, 3)
+#   2. Package the helm chart with version=3.0.0, appVersion=v3.0.0
+#   3. Publish the chart to gh-pages
+#   4. Create a GitHub release
+#   5. Trigger Artifact Hub re-index
+```
+
+Or use the manual trigger from the GitHub Actions UI (Actions → Release → Run workflow → enter tag).

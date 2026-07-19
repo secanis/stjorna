@@ -143,7 +143,7 @@ test('user auth', async ({ page, request }) => {
 });
 ```
 
-## Schema (v2 — current)
+## Schema (v3 — current)
 
 Collections created by `global-setup.ts` in two phases:
 
@@ -340,7 +340,7 @@ cat > /path/to/file     # recreate as host user
 podman cp /path/to/file container:/app/path/  # copy to container
 ```
 
-## API Endpoints (v2)
+## API Endpoints (v3)
 
 ### PB's built-in
 - `GET /api/health` — health check

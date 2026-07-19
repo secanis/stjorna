@@ -1,0 +1,198 @@
+# SPDX-License-Identifier: MIT
+# Release for STJÓRNA — runs on push of tags matching v* (e.g. v3.0.0).
+#
+# Steps:
+#   1. Build and push PB + frontend images to docker.io/secanis (public):
+#      - <tag>               (exact: v3.0.0)
+#      - <semver>            (3.0.0, 3.0, 3)
+#      - latest              (on main only)
+#   2. Package and publish the helm chart to the gh-pages branch
+#      (gh-pages is served at https://secanis.github.io/stjorna/).
+#      Register this URL on https://artifacthub.io/ to index the chart.
+#
+# Required secrets:
+#   - DOCKERHUB_USERNAME   Docker Hub username
+#   - DOCKERHUB_TOKEN      Docker Hub access token (NOT the account password)
+#
+# Optional (for manual releases):
+#   - workflow_dispatch input `tag` (e.g. v3.0.0) to release without a tag push
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v3.0.0)'
+        required: true
+        default: ''
+
+# Don't cancel an in-progress release mid-flight
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  pages: write
+  id-token: write
+
+env:
+  DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+  REGISTRY_PB: docker.io/secanis/stjorna-pocketbase
+  REGISTRY_FE: docker.io/secanis/stjorna-frontend
+
+jobs:
+  # -------------------------------------------------------------------------
+  # 1. Build and push images to Docker Hub (public, for distribution)
+  # -------------------------------------------------------------------------
+  build-images:
+    name: Build and push image (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: pocketbase
+            context: pocketbase
+            dockerfile: ../docker/Dockerfile.pocketbase
+            registry: docker.io/secanis/stjorna-pocketbase
+          - name: frontend
+            context: frontend
+            dockerfile: Dockerfile
+            registry: docker.io/secanis/stjorna-frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Resolve release tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag resolved. Push a v* tag or pass 'tag' input."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ matrix.registry }}
+          tags: |
+            # The exact tag (e.g. v3.0.0)
+            type=raw,value=${{ steps.version.outputs.tag }}
+            # Semver expansion: 3.0.0, 3.0, 3
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            # latest on main only
+            type=raw,value=latest,enable={{is_default_branch}}
+          # Avoid double-`v` when semver and raw both produce "v3.0.0"
+          flavor: latest=auto
+      - uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=release-${{ matrix.name }}
+
+  # -------------------------------------------------------------------------
+  # 2. Package and publish the helm chart
+  # Uses chart-releaser-action which:
+  #   - packages helm/stjorna/ as a .tgz
+  #   - publishes to the gh-pages branch (with index.yaml)
+  #   - creates a GitHub release with the chart attached
+  # -------------------------------------------------------------------------
+  release-helm:
+    name: Package and publish helm chart
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.2
+      - name: Resolve release tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag resolved. Push a v* tag or pass 'tag' input."
+            exit 1
+          fi
+          # Strip the leading v for the chart version (semver)
+          CHART_VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
+      - name: Update Chart.yaml (version + appVersion)
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          CHART_VERSION="${{ steps.version.outputs.chart_version }}"
+          sed -i "s/^version: .*/version: $CHART_VERSION/" helm/stjorna/Chart.yaml
+          sed -i "s/^appVersion: \".*\"/appVersion: \"$TAG\"/" helm/stjorna/Chart.yaml
+          # Also sync values.yaml so `helm install` (without overrides) pulls
+          # the right images for this release.
+          sed -i "s|^\(\s*tag:\s*\).*|\1$TAG|" helm/stjorna/values.yaml
+          echo "Updated Chart.yaml:"
+          grep -E "^(version|appVersion):" helm/stjorna/Chart.yaml
+          echo "Updated image tags in values.yaml:"
+          grep -E "tag:" helm/stjorna/values.yaml
+      - name: Configure git (chart-releaser needs it)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - uses: helm/chart-releaser-action@v1
+        env:
+          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
+        with:
+          charts_dir: helm
+          # The chart's version is already set in Chart.yaml (above);
+          # don't let chart-releaser auto-bump it.
+          skip_packaging: false
+          # Mark this release as the latest
+          mark_as_latest: true
+          # Update gh-pages with the new chart + index.yaml
+          pages_branch: gh-pages
+          pages_index_path: index.yaml
+          # Skip the PR creation for changes; releases are direct
+          skip_existing_release: true
+
+  # -------------------------------------------------------------------------
+  # 3. Notify artifacthub.io (optional, but recommended)
+  # Artifact Hub auto-crawls Helm repos on a schedule, so this is just a
+  # nudge to re-index the chart immediately after publishing.
+  # -------------------------------------------------------------------------
+  notify-artifacthub:
+    name: Trigger Artifact Hub re-index (optional)
+    runs-on: ubuntu-latest
+    needs: release-helm
+    if: success()
+    continue-on-error: true   # don't fail the release if AH is unreachable
+    steps:
+      - name: Ping Artifact Hub
+        run: |
+          # Replace with the actual Helm repo URL once configured on AH
+          REPO="https://secanis.github.io/stjorna/"
+          echo "Notifying Artifact Hub to re-index $REPO"
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            "https://artifacthub.io/api/v1/repositories/reindex" \
+            -d "{\"url\":\"$REPO\"}" || true

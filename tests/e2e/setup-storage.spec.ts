@@ -226,12 +226,12 @@ test.describe('Setup wizard storage step', () => {
     ).toBeVisible({ timeout: 30000 });
     await expect(continueBtn).toBeDisabled();
 
-    await page.locator('#s3-bucket').fill('bucket-v2');
+    await page.locator('#s3-bucket').fill('bucket-v3');
     await expect(continueBtn).toBeDisabled();
 
     await testBtn.click();
     await expect(
-      page.locator('text=/bucket-v2/')
+      page.locator('text=/bucket-v3/')
     ).toBeVisible({ timeout: 30000 });
   });
 });

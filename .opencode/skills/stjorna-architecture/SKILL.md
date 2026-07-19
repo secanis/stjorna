@@ -21,7 +21,7 @@ STJÓRNA is a multi-tenant product/media management application with three API t
 - Optional Matomo tracking integration
 - Helm chart for Kubernetes deployment
 
-### Current Architecture (v2 - active)
+### Current Architecture (v3 - active)
 
 - **Backend:** PocketBase v0.22.7 (single binary, embedded SQLite, JS hooks)
 - **Frontend:** SolidJS + TypeScript + TailwindCSS (Vite dev server :3000, builds to static SPA)
@@ -90,7 +90,7 @@ STJÓRNA is a multi-tenant product/media management application with three API t
 
 ---
 
-## Data Model (PocketBase v2 Schema)
+## Data Model (PocketBase v3 Schema)
 
 ### Collections
 
@@ -379,7 +379,7 @@ docker-compose up -d --build
 
 ## Helm Chart
 
-Production deployment: `helm/stjorna/` (chart 0.1.0, appVersion v2.0.0). Two separate Deployments (PB + frontend) for independent scaling/restarts, matching the docker-compose shape.
+Production deployment: `helm/stjorna/` (chart 3.0.0-rc1, appVersion v3.0.0-rc1). Two separate Deployments (PB + frontend) for independent scaling/restarts, matching the docker-compose shape.
 
 ### Structure
 ```
@@ -422,7 +422,7 @@ helm/stjorna/
 ### values.yaml highlights
 
 - `pocketbase.image.repository: docker.io/secanis/stjorna-pocketbase`
-- `pocketbase.image.tag: v2.0.0` (follows STJÓRNA version)
+- `pocketbase.image.tag: v3.0.0-rc1` (follows STJÓRNA version; updated by release workflow)
 - `pocketbase.persistence.size: 5Gi`, `storageClass: longhorn`
 - `pocketbase.secret.existingSecret: ""` (empty ⇒ chart auto-generates; set to a Secret name to bring your own)
 - `ingress.className: traefik` with `cert-manager.io/cluster-issuer: letsencrypt`
@@ -432,10 +432,10 @@ helm/stjorna/
 
 ```bash
 # Build and push images first
-podman build -t docker.io/secanis/stjorna-pocketbase:v2.0.0 -f docker/Dockerfile.pocketbase pocketbase
-podman push docker.io/secanis/stjorna-pocketbase:v2.0.0
-podman build -t docker.io/secanis/stjorna-frontend:v2.0.0 -f frontend/Dockerfile frontend
-podman push docker.io/secanis/stjorna-frontend:v2.0.0
+podman build -t docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1 -f docker/Dockerfile.pocketbase pocketbase
+podman push docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1
+podman build -t docker.io/secanis/stjorna-frontend:v3.0.0-rc1 -f frontend/Dockerfile frontend
+podman push docker.io/secanis/stjorna-frontend:v3.0.0-rc1
 
 # Install (override host at minimum)
 helm install stjorna ./helm/stjorna \
@@ -448,11 +448,21 @@ Hooks live as ConfigMap keys; `helm upgrade` re-renders them and PB's `HooksWatc
 
 ### Out of scope (in this chart)
 
-- CI/CD pipeline (build & push is manual)
 - Prometheus / Grafana integration (no metrics scraping)
 - HA / clustering (PB is single-replica sqlite)
 - DNS automation (no external-dns in cluster — create A/CNAME manually)
 - HPA, PDB, NetworkPolicy, ExternalSecret (deferred; can be added as opt-in values)
+
+## CI/CD
+
+GitHub Actions workflows in `.github/workflows/`:
+
+- **`ci.yml`** — runs on every push to `main`/`feature/**` and on PRs. Jobs: `test-frontend` (build + vitest), `test-pb` (vitest), `lint-helm` (helm lint + render), `test-helm` (kind-based, push only), `build-images` (matrix: pocketbase + frontend, push to **ghcr.io** with branch-specific tags).
+- **`release.yml`** — runs on `v*` tag push. Jobs: `build-images` (push to **docker.io/secanis** with semver tags), `release-helm` (chart-releaser-action → gh-pages branch), `notify-artifacthub` (best-effort re-index).
+
+Chart is published to `https://secanis.github.io/stjorna/` and registered on [artifacthub.io](https://artifacthub.io/) for discoverability.
+
+Required secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (for release.yml).
 
 ---
 
@@ -538,7 +548,7 @@ PB_SECRET=your-generated-secret-32-chars-min
 
 1. **Add file cleanup hook**: a new `media.pb.js` hook with `onRecordAfterDeleteRequest` that calls `pb.dao().newFilesystem().Delete(originalName, record.id)` to actually remove files from PB storage on record delete.
 2. **Run full E2E suite**: `npx playwright test tests/e2e/api-docs.spec.ts` then full suite.
-3. **Add unit tests for pocketbase/test**: `pocketbase/test/setup.ts` and `vitest.config.ts` exist but tests are not yet written for v2 schema.
+3. **Add unit tests for pocketbase/test**: `pocketbase/test/setup.ts` and `vitest.config.ts` exist but tests are not yet written for v3 schema.
 4. **Verify Scaleway S3 upload+delete** with real bucket (currently uses `pbS3Valid` record-based test that mocks).
 5. **Add webhook dispatch** for product/category create/update events (when a real consumer needs it).
 6. **Add per-tenant user_tenants filter** to ensure PB admin only sees their tenant's data when in "tenant context" (currently PB admin sees all via `|| @request.auth.admin = true`).
