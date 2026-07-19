@@ -1,5 +1,4 @@
 import { defineConfig, devices } from '@playwright/test';
-import { globalTeardown } from './tests/e2e/helpers/global-setup';
 
 export default defineConfig({
   testDir: './tests/e2e',

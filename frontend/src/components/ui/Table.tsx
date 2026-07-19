@@ -7,7 +7,7 @@ export interface Column {
   render?: (value: any, row: any) => JSX.Element;
 }
 
-export interface TableProps {
+interface TableProps {
   columns: Column[];
   data: any[];
   onSort?: (key: string, dir: 'asc' | 'desc') => void;

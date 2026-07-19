@@ -41,11 +41,3 @@ export async function createTenantClient(tenantId: string): Promise<PocketBase> 
   const { pb } = await createTenantUser(tenantId);
   return pb;
 }
-
-export function getUnauthenticatedClient(): PocketBase {
-  return new PocketBase(getPb().baseUrl);
-}
-
-export function as<T extends PocketBase>(pb: T): T {
-  return pb;
-}

@@ -50,7 +50,6 @@ export default function UserManagement() {
 
   onMount(async () => {
     await authStore.init();
-    console.log('[Users] mounted, isPBAdmin:', authStore.isPBAdmin, 'user:', authStore.user);
     setInitialized(true);
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });

@@ -38,6 +38,7 @@ pocketbase/pb_hooks/stjorna.js
 pocketbase/pb_hooks/test.js
 pocketbase/pb_hooks/openapi.js
 ```
+(Real-world example: `openapi.pb.js` in `pocketbase/pb_hooks/` is the working pattern.)
 
 **Debug:** If your hook isn't running, check the PB container logs for a `Loaded hook` line. If absent, the file pattern didn't match.
 

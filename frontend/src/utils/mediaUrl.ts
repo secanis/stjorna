@@ -1,6 +1,6 @@
 import { pb } from '~/services/pocketbase';
 
-export interface MediaUrlOptions {
+interface MediaUrlOptions {
   thumb?: string;
 }
 

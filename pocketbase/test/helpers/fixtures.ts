@@ -1,5 +1,3 @@
-let counter = 0;
-
 function generateId(): string {
   return Math.random().toString(36).substring(2, 15);
 }
@@ -60,15 +58,6 @@ export interface WebhookFixture {
   secret?: string;
   active?: boolean;
 }
-
-export interface ApiKeyFixture {
-  tenant: string;
-  name: string;
-  key_hash: string;
-  permissions?: string[];
-}
-
-counter = Date.now();
 
 export function createTenantFixture(overrides?: Partial<TenantFixture>): TenantFixture {
   const id = generateId();
@@ -134,19 +123,4 @@ export function createWebhookFixture(tenantId: string, overrides?: Partial<Webho
     active: true,
     ...overrides,
   };
-}
-
-export function createApiKeyFixture(tenantId: string, overrides?: Partial<ApiKeyFixture>): ApiKeyFixture {
-  const id = generateId();
-  return {
-    tenant: tenantId,
-    name: `Test API Key ${id}`,
-    key_hash: generateId() + generateId(),
-    permissions: ['read'],
-    ...overrides,
-  };
-}
-
-export function createUniqueEmail(): string {
-  return `test-${generateId()}-${counter++}@stjorna.test`;
 }

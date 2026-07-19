@@ -1,6 +1,6 @@
 import { createSignal, createResource, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { Settings, Plus } from 'lucide-solid';
+import { Settings } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import Table, { Column } from '~/components/ui/Table';

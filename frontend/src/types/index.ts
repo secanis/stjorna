@@ -7,15 +7,6 @@ export interface UserTenant {
   role: Role;
 }
 
-export interface AuthState {
-  pbUrl: string;
-  user: Record<string, any> | null;
-  tenants: UserTenant[];
-  currentTenant: string | null;
-  role: Role | null;
-  isPBAdmin: boolean;
-}
-
 export interface Tenant {
   id: string;
   name: string;

@@ -2,7 +2,7 @@ import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
-import { Settings, Save } from 'lucide-solid';
+import { Save } from 'lucide-solid';
 
 interface InstanceSettings {
   id?: string;

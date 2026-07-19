@@ -170,8 +170,6 @@ npm run test:unit
 
 ```
 .
-├── client/                 # Legacy v1 (NodeJS) client — not used by v2
-├── server/                 # Legacy v1 (NodeJS) server — not used by v2
 ├── frontend/               # v2 SolidJS frontend
 │   ├── src/
 │   │   ├── pages/          # Route components
@@ -183,12 +181,10 @@ npm run test:unit
 │   └── package.json
 ├── pocketbase/             # PocketBase backend
 │   ├── pb_hooks/           # JS hooks loaded by PB at startup
-│   ├── pb_migrations/      # SQL migrations (v1)
 │   └── test/               # Vitest integration tests
 ├── scripts/                # Admin/maintenance scripts
 │   ├── fix-pocketbase.ts   # One-time fix for orphaned data + missing rules
-│   ├── test-api-rules.ts   # Standalone API rules verification
-│   └── apply-s3-config.ts  # Apply S3 config from instance_settings
+│   └── test-api-rules.ts   # Standalone API rules verification
 ├── tests/e2e/              # Playwright e2e tests
 └── docker-compose.yml
 ```

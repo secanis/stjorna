@@ -251,15 +251,6 @@ if (typeof window !== 'undefined') {
   (window as any).__authStore = authStore;
 }
 
-export async function checkPbInitialized(): Promise<boolean> {
-  try {
-    const health = await pb.health.check();
-    return health !== null;
-  } catch {
-    return false;
-  }
-}
-
 export async function checkHasAdmins(): Promise<boolean> {
   try {
     pb.authStore.clear();
@@ -271,26 +262,4 @@ export async function checkHasAdmins(): Promise<boolean> {
     if (e.status === 401) return false;
     return false;
   }
-}
-
-export async function createAdmin(email: string, password: string) {
-  await pb.admins.create({ email, password, passwordConfirm: password });
-}
-
-export async function createTenant(name: string, slug: string) {
-  return await pb.collection('tenants').create({ name, slug });
-}
-
-export async function linkUserToTenant(userId: string, tenantId: string, userRole: Role | string) {
-  let roleId = userRole;
-  if (!userRole.includes('-')) {
-    const roles = await pb.collection('roles').getList(1, 10);
-    const role = roles.items.find((r: any) => r.name === userRole);
-    roleId = role?.id || userRole;
-  }
-  await pb.collection('user_tenants').create({
-    user: userId,
-    tenant: tenantId,
-    role: roleId,
-  });
 }

@@ -30,14 +30,13 @@ Login, Setup (4-step wizard), Dashboard, Media (List/Edit), Categories (List/Edi
 - **Vite proxy**: must use `/api/` (with trailing slash), not `/api` — otherwise `/api-docs` route gets hijacked
 - **PB v0.22.7 has no `c.send()`**: use `c.string(200, preSerializedJson)` + manual Content-Type
 - **`c.response().write()` does NOT write**: returns 200 + empty body
-- **PB hook files must end in `.pb.js`**: `stjorna.js` is currently NOT loaded
+- **PB hook files must end in `.pb.js`**: anything else is silently ignored
 - **HooksWatch only re-loads CHANGED existing files**: new files need container restart
 - **`podman cp` files owned by uid 100999**: `rm` then `cat >` as host user
 
 ### Next Steps (priorities)
-1. Fix `stjorna.js` → `stjorna.pb.js` (rename + rewrite to v0.22.7 API; implement media file cleanup)
-2. Run full E2E suite to verify everything works
-3. Add Vitest unit tests for `pocketbase/test/`
-4. Extract reusable Table/Form UI components
-5. Add i18n (German/English)
-6. Migrate to PocketBase v0.23+ (optional, for env-var S3 + `c.send()`)
+1. Run full E2E suite to verify everything works
+2. Add Vitest unit tests for `pocketbase/test/`
+3. Extract reusable Table/Form UI components
+4. Add i18n (German/English)
+5. Migrate to PocketBase v0.23+ (optional, for env-var S3 + `c.send()`)

@@ -155,21 +155,17 @@ Frontend always sends `?filter=tenant = '{currentTenant}'` as primary filter; AP
 
 ### High Priority
 
-1. **Fix `stjorna.js` PB hook** — currently NOT loaded by PB v0.22.7 (uses outdated `pb.hook`/`pocketbase.router` API; lacks `.pb.js` extension)
-   - Rename `pocketbase/pb_hooks/stjorna.js` → `stjorna.pb.js`
-   - Rewrite to use v0.22.7+ API: `onRecordAfterDeleteRequest(collection, handler)`, `routerAdd(method, path, handler)`
-   - Implement media file cleanup: `pb.dao.NewFilesystem().Delete(originalName, recordId)` in `onRecordAfterDeleteRequest` for `media` collection
-   - This fixes orphan files in PB storage when media records are deleted
-
-2. **Run full E2E suite** to verify all features work end-to-end:
+1. **Run full E2E suite** to verify all features work end-to-end:
    ```bash
    npm run test:e2e
    ```
    Currently individual test files pass; need to confirm full suite runs without state leaks.
 
-3. **Add Vitest unit tests for pocketbase/test** — `pocketbase/test/setup.ts` and `pocketbase/test/vitest.config.ts` exist but no test files yet. Add unit tests for the schema, role assignment logic, etc.
+2. **Add Vitest unit tests for pocketbase/test** — `pocketbase/test/setup.ts` and `pocketbase/test/vitest.config.ts` exist but no test files yet. Add unit tests for the schema, role assignment logic, etc.
 
-4. **Migrate to PocketBase v0.23+** (optional) — gain env-var S3 config, `c.send()` method, better JSDoc types. Requires PB upgrade and re-testing all hooks.
+3. **Migrate to PocketBase v0.23+** (optional) — gain env-var S3 config, `c.send()` method, better JSDoc types. Requires PB upgrade and re-testing all hooks.
+
+4. **Add media file cleanup hook** — when there's a real need, create a `media.pb.js` hook with `onRecordAfterDeleteRequest` that calls `pb.dao().newFilesystem().Delete(originalName, recordId)` to clean orphan files from PB storage. (Removed legacy `stjorna.js`; rewrite the cleanup logic when needed.)
 
 ### Medium Priority
 
@@ -177,7 +173,7 @@ Frontend always sends `?filter=tenant = '{currentTenant}'` as primary filter; AP
 
 6. **Extract reusable Form components** — `components/ui/Input.tsx`, `Select.tsx`, `Modal.tsx`, `Button.tsx`; refactor edit pages to use them
 
-7. **Add webhook dispatch** for product/category create/update events (placeholder exists in `stjorna.js`)
+7. **Add webhook dispatch** for product/category create/update events (when a real consumer needs it)
 
 8. **Implement file upload progress** — currently the upload is blocking with no progress indicator
 
@@ -209,7 +205,7 @@ Frontend always sends `?filter=tenant = '{currentTenant}'` as primary filter; AP
 | Services | 1 (pocketbase) |
 | Utils | 2 (mediaUrl, slug) |
 | Types | 1 (index) |
-| PB Hooks | 1 (openapi.pb.js) + 1 (stjorna.js — needs rewrite) |
+| PB Hooks | 1 (openapi.pb.js) |
 | E2E Tests | 8 files |
 | **Total** | ~35 source files |
 

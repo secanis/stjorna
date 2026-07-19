@@ -33,7 +33,6 @@ STJÓRNA is a multi-tenant product/media management application with three API t
   stjorna/
   ├── pocketbase/
   │   ├── pb_hooks/                # JS hooks (must be *.pb.js or *.pb.ts)
-  │   ├── pb_migrations/           # SQL migrations
   │   ├── pb_data/                 # SQLite + uploaded files (gitignored)
   │   └── test/                    # Vitest unit tests for PB logic
   ├── frontend/                    # SolidJS app
@@ -484,16 +483,14 @@ PB_SECRET=your-generated-secret-32-chars-min
 
 ## Next Steps (Roadmap)
 
-1. **Fix stjorna.js hook**: rename `pocketbase/pb_hooks/stjorna.js` → `stjorna.pb.js`, rewrite to v0.22.7+ API (`onRecordAfterDeleteRequest`, `routerAdd`). Current version uses outdated `pb.hook`/`pocketbase.router` and is not loaded.
-2. **Add file cleanup hook**: in `onRecordAfterDeleteRequest` for `media` collection, call `pb.dao.NewFilesystem().Delete(originalName, record.id)` to actually remove the file from PB storage.
-3. **Run full E2E suite**: `npx playwright test tests/e2e/api-docs.spec.ts` then full suite.
-4. **Add unit tests for pocketbase/test**: `pocketbase/test/setup.ts` and `vitest.config.ts` exist but tests are not yet written for v2 schema.
-5. **Verify Scaleway S3 upload+delete** with real bucket (currently uses `pbS3Valid` record-based test that mocks).
-6. **Add webhook dispatch** for product/category create/update events (placeholder in `stjorna.js`).
-7. **Add per-tenant user_tenants filter** to ensure PB admin only sees their tenant's data when in "tenant context" (currently PB admin sees all via `|| @request.auth.admin = true`).
-8. **Migrate docker-compose to separate `pocketbase` and `frontend` containers** for production parity.
-9. **Add i18n** (German/English) — currently English-only.
-10. **Add Matomo tracking** — currently disabled.
+1. **Add file cleanup hook**: a new `media.pb.js` hook with `onRecordAfterDeleteRequest` that calls `pb.dao().newFilesystem().Delete(originalName, record.id)` to actually remove files from PB storage on record delete.
+2. **Run full E2E suite**: `npx playwright test tests/e2e/api-docs.spec.ts` then full suite.
+3. **Add unit tests for pocketbase/test**: `pocketbase/test/setup.ts` and `vitest.config.ts` exist but tests are not yet written for v2 schema.
+4. **Verify Scaleway S3 upload+delete** with real bucket (currently uses `pbS3Valid` record-based test that mocks).
+5. **Add webhook dispatch** for product/category create/update events (when a real consumer needs it).
+6. **Add per-tenant user_tenants filter** to ensure PB admin only sees their tenant's data when in "tenant context" (currently PB admin sees all via `|| @request.auth.admin = true`).
+7. **Add i18n** (German/English) — currently English-only.
+8. **Add Matomo tracking** — currently disabled.
 
 ---
 
