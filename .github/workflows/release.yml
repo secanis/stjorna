@@ -45,6 +45,11 @@ env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
   REGISTRY_PB: docker.io/secanis/stjorna-pocketbase
   REGISTRY_FE: docker.io/secanis/stjorna-frontend
+  # Suppress the Node.js 20 deprecation warning emitted by the runner
+  # when an action's package.json says it targets Node 20 (e.g. docker/
+  # build-push-action@v6, azure/setup-helm@v4). See ci.yml for the
+  # long version of this comment and the upstream doc link.
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
 
 jobs:
   # -------------------------------------------------------------------------
