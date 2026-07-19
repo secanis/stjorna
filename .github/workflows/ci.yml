@@ -57,8 +57,7 @@ jobs:
         run: npm run build
       - name: Unit tests
         working-directory: frontend
-        run: npm test --workspaces=false || npx vitest run src/utils/ --root .
-        # `npm test` may not exist; fall back to direct vitest on utils
+        run: npm test --workspaces=false
 
   # -------------------------------------------------------------------------
   # PocketBase: vitest integration tests (need a running PB)
@@ -76,6 +75,17 @@ jobs:
       - name: Install dependencies
         working-directory: pocketbase/test
         run: npm install --no-audit --no-fund
+      - name: Build PocketBase image
+        # Tests spin up a real PB container via setup.ts; the image must
+        # exist locally as `localhost/stjorna-pocketbase:test` before
+        # the suite starts. We use buildx with --load to put it in the
+        # local docker daemon.
+        run: |
+          docker buildx build \
+            --tag localhost/stjorna-pocketbase:test \
+            --load \
+            --file docker/Dockerfile.pocketbase \
+            pocketbase
       - name: Run tests
         working-directory: pocketbase/test
         run: npx vitest run
@@ -83,9 +93,10 @@ jobs:
           PB_URL: http://localhost:8090
           ADMIN_EMAIL: admin@test.stjorna.local
           ADMIN_PASSWORD: admin12345678
-        # NOTE: tests assume a PB instance is already running. In CI, the
-        # collection tests skip when no PB is reachable (see setup.ts).
-        # For a full integration test, run `make test-helm` locally.
+        # NOTE: setup.ts auto-detects docker (preferred) or podman, and
+        # starts a PB container from `localhost/stjorna-pocketbase:test`.
+        # The `Build PocketBase image` step above ensures that image is
+        # in the local docker daemon.
 
   # -------------------------------------------------------------------------
   # Helm chart: lint + template render
@@ -143,10 +154,10 @@ jobs:
         include:
           - name: pocketbase
             context: pocketbase
-            dockerfile: ../docker/Dockerfile.pocketbase
+            dockerfile: docker/Dockerfile.pocketbase
           - name: frontend
             context: frontend
-            dockerfile: Dockerfile
+            dockerfile: frontend/Dockerfile
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3

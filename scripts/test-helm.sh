@@ -70,9 +70,20 @@ esac
 # --- Bootstrap ---------------------------------------------------------
 require helm
 require kubectl
-require podman
 require curl
 require python3
+
+# Pick a container runtime. Prefer docker (works on GitHub Actions and
+# most Linux desktops), fall back to podman (the historical default).
+# Sets CONTAINER_CLI to the chosen binary name.
+if command -v docker >/dev/null 2>&1; then
+  CONTAINER_CLI=docker
+elif command -v podman >/dev/null 2>&1; then
+  CONTAINER_CLI=podman
+else
+  fail "missing dependency: neither docker nor podman found (install one)"
+fi
+log "container runtime: $CONTAINER_CLI"
 
 log "STJÓRNA helm chart test rig"
 log "  mode:   $MODE"
@@ -158,12 +169,12 @@ resolve_chart() {
 # --- Image build -------------------------------------------------------
 build_image_if_missing() {
   local image=$1 dockerfile=$2 context=$3
-  if podman image exists "$image" 2>/dev/null; then
+  if "$CONTAINER_CLI" image exists "$image" >/dev/null 2>&1; then
     log "image $image already present, skipping build"
     return
   fi
   log "building $image ..."
-  (cd "$context" && podman build -t "$image" -f "$dockerfile" .) \
+  (cd "$context" && "$CONTAINER_CLI" build -t "$image" -f "$dockerfile" .) \
     || fail "failed to build $image"
   ok "built $image"
 }

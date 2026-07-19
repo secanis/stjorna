@@ -5,6 +5,21 @@ const PB_PORT = 8090;
 const PB_URL = `http://localhost:${PB_PORT}`;
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
+const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
+const PB_VOLUME = 'stjorna-test-data';
+
+// Pick the container runtime. Prefer docker (works on GitHub Actions
+// and most Linux desktops); fall back to podman. The integration tests
+// spin up a real PocketBase container before the suite runs.
+const CONTAINER_CLI = (() => {
+  const { execSync } = require('child_process') as typeof import('child_process');
+  try {
+    execSync('command -v docker', { stdio: 'ignore' });
+    return 'docker';
+  } catch {
+    return 'podman';
+  }
+})();
 
 let pbInstance: PocketBase | null = null;
 let containerId: string | null = null;
@@ -42,7 +57,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     await cleanup();
 
     const { stdout } = await execAsync(
-      `podman run -d --rm --network=host -v stjorna-test-data:/app/pb_data localhost/stjorna-pocketbase:test`,
+      `${CONTAINER_CLI} run -d --rm --network=host -v ${PB_VOLUME}:/app/pb_data ${PB_IMAGE}`,
       { encoding: 'utf8' }
     );
     containerId = stdout.trim();
@@ -299,7 +314,7 @@ export async function cleanup(): Promise<void> {
 
   if (containerId) {
     try {
-      await execAsync(`podman stop ${containerId} 2>/dev/null || true`);
+      await execAsync(`${CONTAINER_CLI} stop ${containerId} 2>/dev/null || true`);
     } catch {}
     containerId = null;
   }
