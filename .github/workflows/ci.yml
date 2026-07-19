@@ -192,7 +192,13 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          push: true
+          # Don't push to ghcr.io on CI: the default GITHUB_TOKEN can't
+          # create org-owned packages, and the release workflow handles
+          # the public Docker Hub push. We still build (and cache layers
+          # via cache-to: type=gha) to catch build errors and warm the
+          # cache for the next run.
+          push: false
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
