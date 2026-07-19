@@ -34,17 +34,11 @@ permissions:
 env:
   PB_IMAGE: ghcr.io/${{ github.repository_owner }}/stjorna-pocketbase
   FE_IMAGE: ghcr.io/${{ github.repository_owner }}/stjorna-frontend
-  # Suppress the Node.js 20 deprecation warning emitted by the runner
-  # when an action's package.json says it targets Node 20 (e.g. docker/
-  # build-push-action@v6, azure/setup-helm@v4). Without this, the
-  # runner force-migrates those actions to Node 24 and prints a
-  # '##[warning]' on every job that uses them. With it, the action
-  # uses its native Node 20 runtime and the warning is suppressed.
-  # Documented workaround at
-  # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
-  # Long-term: replace these actions with Node 24-native versions
-  # (no v7 for docker/build-push-action or v5 for azure/setup-helm yet).
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: "true"
+  # Force the runner to run JS actions on Node 24 even if the action
+  # pins its engines.node to "20". Required for docker/build-push-action@v6
+  # and azure/setup-helm@v4 which still declare Node 20. Once they
+  # release Node 24-native versions, this env var can be removed.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   # -------------------------------------------------------------------------
