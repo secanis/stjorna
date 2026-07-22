@@ -1,6 +1,6 @@
-import { createSignal, Show } from 'solid-js';
+import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate, useSearchParams } from '@solidjs/router';
-import { authStore, checkHasAdmins } from '~/stores/auth';
+import { authStore, checkHasAdmins, checkSetupDone } from '~/stores/auth';
 import { recreatePb } from '~/services/pocketbase';
 
 export default function Login() {
@@ -51,6 +51,14 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  onMount(async () => {
+    recreatePb(pbUrlInput());
+    const done = await checkSetupDone();
+    if (!done) {
+      navigate('/setup');
+    }
+  });
 
   return (
     <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">

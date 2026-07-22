@@ -79,6 +79,12 @@ export const authStore = {
       }
 
       await this.loadTenants();
+    } else {
+      const setupDone = await checkSetupDone();
+      if (!setupDone) {
+        window.location.href = '/setup';
+        return;
+      }
     }
   },
 
@@ -260,6 +266,18 @@ export async function checkHasAdmins(): Promise<boolean> {
   } catch (e: any) {
     if (e.status === 404) return false;
     if (e.status === 401) return false;
+    return false;
+  }
+}
+
+export async function checkSetupDone(): Promise<boolean> {
+  try {
+    const settings = await pb.collection('instance_settings').getList(1, 1);
+    if (settings.items && settings.items.length > 0) {
+      return settings.items[0].setup_done === true;
+    }
+    return false;
+  } catch {
     return false;
   }
 }
