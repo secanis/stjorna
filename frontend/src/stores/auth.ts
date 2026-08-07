@@ -79,13 +79,10 @@ export const authStore = {
       }
 
       await this.loadTenants();
-    } else {
-      const setupDone = await checkSetupDone();
-      if (!setupDone) {
-        window.location.href = '/setup';
-        return;
-      }
     }
+    // No auth: do not redirect here. Each page checks isAuthenticated()
+    // and navigates to /login; the Login page decides whether /setup is
+    // needed. This avoids loops when PB is unreachable.
   },
 
   async login(email: string, password: string) {
@@ -270,14 +267,22 @@ export async function checkHasAdmins(): Promise<boolean> {
   }
 }
 
-export async function checkSetupDone(): Promise<boolean> {
+export async function checkSetupDone(): Promise<boolean | null> {
   try {
     const settings = await pb.collection('instance_settings').getList(1, 1);
     if (settings.items && settings.items.length > 0) {
       return settings.items[0].setup_done === true;
     }
     return false;
-  } catch {
+  } catch (e: any) {
+    // Network error / PB unreachable: report null so callers don't
+    // push the user into the setup flow when the real problem is
+    // that the backend is down.
+    if (!e || e.status === 0 || e.isAbort || e.message?.includes('fetch')) {
+      return null;
+    }
+    // 404 on the collection is also "not set up" — treat as false.
+    if (e.status === 404) return false;
     return false;
   }
 }

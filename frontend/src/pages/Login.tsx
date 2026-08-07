@@ -54,10 +54,10 @@ export default function Login() {
 
   onMount(async () => {
     recreatePb(pbUrlInput());
-    const done = await checkSetupDone();
-    if (!done) {
-      navigate('/setup');
-    }
+    // No auto-redirect to /setup. The "First-time setup?" button below
+    // is the explicit way to enter the setup wizard. After a logout the
+    // user must land back on /login, not be re-pushed into the setup
+    // flow when the instance happens to have setup_done === false.
   });
 
   return (

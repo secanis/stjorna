@@ -155,6 +155,41 @@ var SPEC = {
         "/collections/user_tenants/records": {
             get: { tags: ["Admin"], summary: "List user-tenant assignments (admin only)", security: [{ bearerAuth: [] }], responses: { "200": { description: "Paginated list of user_tenants", content: { "application/json": { schema: { type: "object", properties: { items: { type: "array", items: { $ref: "#/components/schemas/UserTenant" } }, meta: { $ref: "#/components/schemas/ListMeta" } } } } } }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" } } },
             post: { tags: ["Admin"], summary: "Assign user to tenant (admin only)", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/UserTenant" } } } }, responses: { "200": { description: "Assignment created", content: { "application/json": { schema: { $ref: "#/components/schemas/UserTenant" } } } }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" } } }
+        },
+        "/api/backup/json": {
+            get: {
+                tags: ["Admin"], summary: "Download full backup as JSON manifest (admin only)", security: [{ bearerAuth: [] }],
+                responses: {
+                    "200": { description: "Backup manifest as JSON", content: { "application/json": { schema: { type: "object", properties: { version: { type: "string" }, kind: { type: "string" }, schema_version: { type: "integer" }, exported_at: { type: "string", format: "date-time" }, collections: { type: "object" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/backup/zip": {
+            get: {
+                tags: ["Admin"], summary: "Download full backup as ZIP (manifest + media files, admin only)", security: [{ bearerAuth: [] }],
+                responses: {
+                    "200": { description: "Backup ZIP archive", content: { "application/zip": { schema: { type: "string", format: "binary" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/backup/import": {
+            post: {
+                tags: ["Admin"], summary: "Import a backup file (JSON or ZIP) into a target tenant. tenant admin OR pb_admin. Source = 'v1' (legacy STJÓRNA) or 'v3' (current).", security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "tenant", in: "query", required: true, schema: { type: "string" }, description: "Target tenant id" },
+                    { name: "source", in: "query", required: false, schema: { type: "string", enum: ["v1", "v3"], default: "v3" }, description: "Backup source format" }
+                ],
+                requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["tenant", "data_base64"], properties: { tenant: { type: "string" }, source: { type: "string", enum: ["v1", "v3"] }, filename: { type: "string" }, data_base64: { type: "string", description: "Base64-encoded file content (JSON manifest or ZIP)" } } } } } },
+                responses: {
+                    "200": { description: "Import result", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" }, stats: { type: "object", properties: { imported: { type: "object" }, skipped: { type: "object" }, warnings: { type: "array", items: { type: "string" } } } } } } }}},
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            }
         }
     }
 };

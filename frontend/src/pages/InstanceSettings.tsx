@@ -2,7 +2,8 @@ import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
-import { Save } from 'lucide-solid';
+import { Save, Download } from 'lucide-solid';
+import { downloadBackup } from '~/services/backup';
 
 interface InstanceSettings {
   id?: string;
@@ -25,6 +26,20 @@ export default function InstanceSettings() {
   const [saving, setSaving] = createSignal(false);
   const [error, setError] = createSignal('');
   const [success, setSuccess] = createSignal(false);
+  const [downloading, setDownloading] = createSignal<'json' | 'zip' | null>(null);
+  const [downloadError, setDownloadError] = createSignal('');
+
+  const handleDownload = async (format: 'json' | 'zip') => {
+    setDownloading(format);
+    setDownloadError('');
+    try {
+      await downloadBackup(format);
+    } catch (err: any) {
+      setDownloadError(err.message || 'Download failed');
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   onMount(async () => {
     await authStore.init();
@@ -80,6 +95,39 @@ export default function InstanceSettings() {
   return (
     <div class="space-y-6 max-w-2xl">
       <h1 class="text-2xl font-bold text-white">Instance Settings</h1>
+
+      <div class="bg-gray-800 rounded-lg p-6 space-y-4">
+        <div>
+          <h2 class="text-lg font-semibold text-white">Backup</h2>
+          <p class="text-sm text-gray-400 mt-1">
+            Download a full backup of all tenants, users, products, categories and media.
+            JSON is the manifest only; ZIP includes media files.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            disabled={downloading() !== null}
+            onClick={() => handleDownload('json')}
+            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
+          >
+            <Download size={14} />
+            {downloading() === 'json' ? 'Downloading…' : 'Download JSON'}
+          </button>
+          <button
+            type="button"
+            disabled={downloading() !== null}
+            onClick={() => handleDownload('zip')}
+            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
+          >
+            <Download size={14} />
+            {downloading() === 'zip' ? 'Downloading…' : 'Download ZIP (with media)'}
+          </button>
+        </div>
+        <Show when={downloadError()}>
+          <p class="text-red-400 text-sm">{downloadError()}</p>
+        </Show>
+      </div>
 
       <Show when={loading()}>
         <div class="text-gray-400">Loading...</div>

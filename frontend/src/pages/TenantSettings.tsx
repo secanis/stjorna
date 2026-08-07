@@ -5,6 +5,7 @@ import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import type { Tenant } from '~/types';
 import { ArrowLeft, Save, UserPlus, X } from 'lucide-solid';
+import BackupSection from '~/components/backup/BackupSection';
 
 interface TenantUser {
   id: string;
@@ -316,6 +317,10 @@ export default function TenantSettings() {
             {saving() ? 'Saving...' : 'Save Settings'}
           </button>
         </form>
+      </Show>
+
+      <Show when={!loading() && !notFound()}>
+        <BackupSection tenantId={tenantId()!} />
       </Show>
 
       <Show when={!loading() && !notFound()}>
