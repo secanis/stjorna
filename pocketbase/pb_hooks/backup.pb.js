@@ -91,6 +91,32 @@ var STR_TO_BYTES_FN =
         "for(var i=0;i<s.length;i++)b[i]=s.charCodeAt(i)&0xFF;" +
         "return b;" +
     "}" +
+    // UTF-8 encode a JS string (UTF-16) to bytes. Inverse of _bytesToUtf8.
+    "function _strToUtf8Bytes(s){" +
+        "var b=[];" +
+        "for(var i=0;i<s.length;i++){" +
+            "var c=s.charCodeAt(i);" +
+            "if(c>=0xD800&&c<=0xDBFF&&i+1<s.length){" +
+                "var c2=s.charCodeAt(i+1);" +
+                "if(c2>=0xDC00&&c2<=0xDFFF){" +
+                    "c=0x10000+((c&0x3FF)<<10)+(c2&0x3FF);" +
+                    "i=i+1;" +
+                "}" +
+            "}" +
+            "if(c<0x80){b.push(c);}" +
+            "else if(c<0x800){b.push(0xC0|(c>>6));b.push(0x80|(c&0x3F));}" +
+            "else if(c<0x10000){b.push(0xE0|(c>>12));b.push(0x80|((c>>6)&0x3F));b.push(0x80|(c&0x3F));}" +
+            "else{" +
+                // c is the full codepoint (U+10000..U+10FFFF).
+                // Split 21 bits as: 3 (top) + 6 + 6 + 6 from MSB to LSB.
+                "b.push(0xF0|((c>>18)&0x07));" +
+                "b.push(0x80|((c>>12)&0x3F));" +
+                "b.push(0x80|((c>>6)&0x3F));" +
+                "b.push(0x80|(c&0x3F));" +
+            "}" +
+        "}" +
+        "return b;" +
+    "}" +
     "function _w32(a,o,v){a[o]=v&0xFF;a[o+1]=(v>>>8)&0xFF;a[o+2]=(v>>>16)&0xFF;a[o+3]=(v>>>24)&0xFF;}" +
     "function _w16(a,o,v){a[o]=v&0xFF;a[o+1]=(v>>>8)&0xFF;}";
 
@@ -188,7 +214,7 @@ var ZIP_BODY = "" +
     "var _entries=[];" +
     // 1. manifest.json
     "(function(){" +
-        "var _b=_strToBytes(manifestStr);" +
+        "var _b=_strToUtf8Bytes(manifestStr);" +
         "var _c=_crc32(_b,0,_b.length);" +
         "_entries.push({name:'manifest.json',data:_b,crc:_c,size:_b.length});" +
     "})();" +
@@ -218,7 +244,7 @@ var ZIP_BODY = "" +
         "var _localOffset=0;" +
         "for(var _ei=0;_ei<_entries.length;_ei++){" +
             "var _e=_entries[_ei];" +
-            "var _nameBytes=_strToBytes(_e.name);" +
+            "var _nameBytes=_strToUtf8Bytes(_e.name);" +
             "var _nameLen=_nameBytes.length;" +
             "var _lfh=new Array(30+_nameLen);" +
             "_w32(_lfh,0,0x04034b50);" +

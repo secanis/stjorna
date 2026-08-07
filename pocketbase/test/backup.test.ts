@@ -157,6 +157,73 @@ describe('Backup Hook', () => {
     expect(newProds.items.some((p) => p.slug === 'widget')).toBe(true);
   });
 
+  it('GET /api/backup/zip embeds UTF-8 manifest correctly (regression)', async () => {
+    const { email, password } = await import('./setup.ts').then((m) => m.getTestAdminCredentials());
+    await pbAdmin.admins.authWithPassword(email, password);
+
+    // Create a category with German umlauts + emoji
+    const tenant = await pbAdmin.collection('tenants').create(
+      createTenantFixture({ name: 'UTF8 ZIP', slug: 'utf8-zip' }),
+    );
+    await pbAdmin.collection('categories').create({
+      tenant: tenant.id,
+      name: 'Bänkli für Blumen',
+      slug: 'bankli',
+      description: 'Größe 42cm 🚀 Details',
+      active: true,
+    });
+
+    // Download ZIP and read manifest.json
+    const res = await fetchWithAuth(pbAdmin, '/api/backup/zip');
+    expect(res.status).toBe(200);
+    const buf = new Uint8Array(await res.arrayBuffer());
+
+    // Find PK\x05\x06 (EOCD) in last 64KiB
+    const eocdSig = [0x50, 0x4b, 0x05, 0x06];
+    let eocdOff = -1;
+    for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65557); i--) {
+      if (buf[i] === eocdSig[0] && buf[i + 1] === eocdSig[1] &&
+          buf[i + 2] === eocdSig[2] && buf[i + 3] === eocdSig[3]) {
+        eocdOff = i;
+        break;
+      }
+    }
+    expect(eocdOff).toBeGreaterThan(-1);
+    const cdOff = buf[eocdOff + 16] | (buf[eocdOff + 17] << 8) |
+                  (buf[eocdOff + 18] << 16) | (buf[eocdOff + 19] << 24);
+    const cdCount = buf[eocdOff + 10] | (buf[eocdOff + 11] << 8);
+    expect(cdCount).toBeGreaterThan(0);
+
+    // First CD entry — find manifest.json
+    const nameLen = buf[cdOff + 28] | (buf[cdOff + 29] << 8);
+    const extraLen = buf[cdOff + 30] | (buf[cdOff + 31] << 8);
+    const commentLen = buf[cdOff + 32] | (buf[cdOff + 33] << 8);
+    const localOff = buf[cdOff + 42] | (buf[cdOff + 43] << 8) |
+                     (buf[cdOff + 44] << 16) | (buf[cdOff + 45] << 24);
+    const nameBytes = buf.subarray(cdOff + 46, cdOff + 46 + nameLen);
+    const name = new TextDecoder('utf-8').decode(nameBytes);
+    expect(name).toBe('manifest.json');
+
+    // Read local file header to get file size + name
+    const localNameLen = buf[localOff + 26] | (buf[localOff + 27] << 8);
+    const localExtraLen = buf[localOff + 28] | (buf[localOff + 29] << 8);
+    const fileSize = buf[localOff + 18] | (buf[localOff + 19] << 8) |
+                     (buf[localOff + 20] << 16) | (buf[localOff + 21] << 24);
+    const fileData = buf.subarray(
+      localOff + 30 + localNameLen + localExtraLen,
+      localOff + 30 + localNameLen + localExtraLen + fileSize,
+    );
+
+    // The critical check: manifest.json is valid UTF-8
+    const manifestText = new TextDecoder('utf-8').decode(fileData);
+    const manifest = JSON.parse(manifestText);
+    const cat = manifest.collections.categories.find((c: any) => c.slug === 'bankli');
+    expect(cat).toBeDefined();
+    expect(cat.name).toBe('Bänkli für Blumen');
+    expect(cat.description).toBe('Größe 42cm 🚀 Details');
+    expect(cat.name).not.toContain('Ã');
+  });
+
   it('POST /api/backup/import v3 skips existing records (additive)', async () => {
     const { email, password } = await import('./setup.ts').then((m) => m.getTestAdminCredentials());
     await pbAdmin.admins.authWithPassword(email, password);
