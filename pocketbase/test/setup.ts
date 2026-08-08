@@ -144,6 +144,9 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'description', type: 'text' },
         { name: 'active', type: 'bool' },
         { name: 'sort_order', type: 'number' },
+        // The `media` relation is added by resolveRelationPlaceholders() below,
+        // after the `media` collection exists. Declaring it here with a real
+        // collectionId would fail on first run because `media` is defined later.
       ],
       listRule: '@request.auth.tenant = tenant',
       viewRule: '@request.auth.tenant = tenant',
@@ -316,6 +319,54 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       } catch (e: any) {
         if (e.status !== 400) throw e;
       }
+    } else {
+      // Collection exists — patch in any new fields it doesn't have yet.
+      // This keeps the test setup idempotent as the schema evolves.
+      try {
+        const existingCol = await pb.collections.getFirstListItem(`name="${col.name}"`);
+        const existingFieldNames = new Set(existingCol.schema.map((f: any) => f.name));
+        const newFields = col.schema.filter((f: any) => !existingFieldNames.has(f.name));
+        if (newFields.length > 0) {
+          await pb.collections.update(existingCol.id, {
+            schema: [...existingCol.schema, ...newFields],
+          });
+        }
+      } catch {
+        // best-effort: don't fail the test on patch errors
+      }
+    }
+  }
+
+  // Second pass: resolve `_COLLECTION_ID_` placeholders in relation fields.
+  // The first pass may have failed to create a relation because the target
+  // collection didn't exist yet (e.g. `categories.media` → `media`).
+  await resolveRelationPlaceholders(pb);
+}
+
+// Add the `media` relation field to categories after both collections exist.
+// Categories couldn't declare it inline because the `media` collection is
+// declared later in the array and PB rejects relations to non-existent targets.
+async function resolveRelationPlaceholders(pb: PocketBase): Promise<void> {
+  const all = await pb.collections.getFullList({ perPage: 200 });
+  const byName = new Map<string, string>();
+  for (const c of all) byName.set(c.name, c.id);
+
+  // 1. Add `media` to categories if it isn't there yet
+  const categories = byName.get('categories');
+  const media = byName.get('media');
+  if (categories && media) {
+    try {
+      const cat = all.find((c) => c.name === 'categories')!;
+      if (!cat.schema.some((f: any) => f.name === 'media')) {
+        await pb.collections.update(cat.id, {
+          schema: [
+            ...cat.schema,
+            { name: 'media', type: 'relation', options: { collectionId: media, maxSelect: 1, cascadeDelete: false } },
+          ],
+        });
+      }
+    } catch {
+      // best-effort
     }
   }
 }

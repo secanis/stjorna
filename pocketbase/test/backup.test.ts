@@ -414,7 +414,7 @@ describe('Backup Hook', () => {
     expect(result.stats.imported.categories).toBe(3);
     expect(result.stats.imported.products).toBe(4);
     expect(result.stats.imported.media).toBe(0);
-    expect(result.stats.warnings.some((w: string) => w.includes('v1 category images'))).toBe(true);
+    expect(result.stats.warnings.some((w: string) => w.includes('v1 category image'))).toBe(true);
 
     const cats = await pbAdmin.collection('categories').getList(1, 50, {
       filter: `tenant = "${targetTenant.id}"`,

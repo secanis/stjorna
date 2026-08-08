@@ -453,7 +453,7 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "_prec.set('custom_fields',{});" +
             "try{$app.dao().saveRecord(_prec);_stats.imported.products++;}catch(_pse){_stats.warnings.push('product failed: '+(_vp.name||'?')+' ('+_pse.message+')');}" +
         "}" +
-        "if(_v1Cats.some(function(c){return c.image;}))_stats.warnings.push('v1 category images were dropped (v3 has no category image field)');" +
+        "if(_v1Cats.some(function(c){return c.image;}))_stats.warnings.push('v1 category image references ignored (v1 JSON contains filenames only, not the file bytes — re-upload via the v3 admin UI to attach a media record)');" +
     "}else{" +
         "var _vcats=(_manifest.collections&&_manifest.collections.categories)||_manifest.categories||[];" +
         "var _vprods=(_manifest.collections&&_manifest.collections.products)||_manifest.products||[];" +
@@ -540,7 +540,11 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
         "c.string(500,_resp);" +
     "}";
 
-routerAdd("POST", "/api/backup/import", new Function("c", IMPORT_BODY));
+// 500MB body limit — v1 backups with many images can exceed the 32MB default.
+// Only applies to the import route; other routes keep the default.
+routerAdd("POST", "/api/backup/import",
+    new Function("c", IMPORT_BODY),
+    $apis.bodyLimit(500 * 1024 * 1024));
 console.log("[stjorna-backup] registered POST /api/backup/import");
 
 console.log("[stjorna-backup] all routes registered");
