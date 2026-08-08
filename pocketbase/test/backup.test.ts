@@ -256,6 +256,138 @@ describe('Backup Hook', () => {
     expect(secondResult.stats.skipped.categories).toBeGreaterThan(0);
   });
 
+  it('POST /api/backup/import v3 preserves nested custom_fields (objects, arrays)', async () => {
+    const { email, password } = await import('./setup.ts').then((m) => m.getTestAdminCredentials());
+    await pbAdmin.admins.authWithPassword(email, password);
+
+    const nestedFields = {
+      color: 'red',
+      size: 42,
+      list: [1, 2, 3],
+      meta: { ok: true, tags: ['a', 'b'], nested: { deep: 'value' } },
+    };
+
+    const targetTenant = await pbAdmin.collection('tenants').create(
+      createTenantFixture({ name: 'CFN Target', slug: 'cfn-target' }),
+    );
+    const v3 = {
+      version: '3.0.0',
+      kind: 'stjorna-backup',
+      schema_version: 1,
+      exported_at: new Date().toISOString(),
+      collections: {
+        tenants: [{ id: targetTenant.id, name: 'CFN Target', slug: 'cfn-target' }],
+        categories: [],
+        products: [
+          { id: 'cfn1', name: 'Nested', slug: 'nested', price: 0, custom_fields: nestedFields },
+        ],
+        media: [],
+      },
+    };
+    const dataBase64 = arrayBufferToBase64(
+      new TextEncoder().encode(JSON.stringify(v3)).buffer as ArrayBuffer,
+    );
+
+    const res = await fetchWithAuth(pbAdmin, '/api/backup/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant: targetTenant.id, source: 'v3', data_base64: dataBase64 }),
+    });
+    expect(res.status).toBe(200);
+    const result = await res.json();
+    expect(result.success).toBe(true);
+    expect(result.stats.imported.products).toBe(1);
+
+    const prods = await pbAdmin.collection('products').getList(1, 50, {
+      filter: `tenant = "${targetTenant.id}"`,
+    });
+    const prod = prods.items.find((p) => p.slug === 'nested');
+    expect(prod).toBeDefined();
+    expect(prod.custom_fields).toEqual(nestedFields);
+    expect(prod.custom_fields).not.toBe('[object Object]');
+    expect(prod.custom_fields.meta.nested.deep).toBe('value');
+    expect(prod.custom_fields.list).toEqual([1, 2, 3]);
+  });
+
+  it('POST /api/backup/import v3 without custom_fields defaults to empty object', async () => {
+    const { email, password } = await import('./setup.ts').then((m) => m.getTestAdminCredentials());
+    await pbAdmin.admins.authWithPassword(email, password);
+
+    const targetTenant = await pbAdmin.collection('tenants').create(
+      createTenantFixture({ name: 'NoCF', slug: 'nocf' }),
+    );
+    const v3 = {
+      version: '3.0.0',
+      kind: 'stjorna-backup',
+      schema_version: 1,
+      exported_at: new Date().toISOString(),
+      collections: {
+        tenants: [{ id: targetTenant.id, name: 'NoCF', slug: 'nocf' }],
+        categories: [],
+        products: [{ id: 'u1', name: 'No', slug: 'no' }],
+        media: [],
+      },
+    };
+    const dataBase64 = arrayBufferToBase64(
+      new TextEncoder().encode(JSON.stringify(v3)).buffer as ArrayBuffer,
+    );
+
+    const res = await fetchWithAuth(pbAdmin, '/api/backup/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant: targetTenant.id, source: 'v3', data_base64: dataBase64 }),
+    });
+    expect(res.status).toBe(200);
+
+    const prods = await pbAdmin.collection('products').getList(1, 50, {
+      filter: `tenant = "${targetTenant.id}"`,
+    });
+    expect(prods.items[0].custom_fields).toEqual({});
+  });
+
+  it('POST /api/backup/import v3 handles custom_fields already encoded as a JSON string', async () => {
+    const { email, password } = await import('./setup.ts').then((m) => m.getTestAdminCredentials());
+    await pbAdmin.admins.authWithPassword(email, password);
+
+    const targetTenant = await pbAdmin.collection('tenants').create(
+      createTenantFixture({ name: 'StrCF', slug: 'strcf' }),
+    );
+    const v3 = {
+      version: '3.0.0',
+      kind: 'stjorna-backup',
+      schema_version: 1,
+      exported_at: new Date().toISOString(),
+      collections: {
+        tenants: [{ id: targetTenant.id, name: 'StrCF', slug: 'strcf' }],
+        categories: [],
+        products: [
+          {
+            id: 's1',
+            name: 'Str',
+            slug: 'str',
+            custom_fields: '{"color":"red"}',
+          },
+        ],
+        media: [],
+      },
+    };
+    const dataBase64 = arrayBufferToBase64(
+      new TextEncoder().encode(JSON.stringify(v3)).buffer as ArrayBuffer,
+    );
+
+    const res = await fetchWithAuth(pbAdmin, '/api/backup/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenant: targetTenant.id, source: 'v3', data_base64: dataBase64 }),
+    });
+    expect(res.status).toBe(200);
+
+    const prods = await pbAdmin.collection('products').getList(1, 50, {
+      filter: `tenant = "${targetTenant.id}"`,
+    });
+    expect(prods.items[0].custom_fields).toEqual({ color: 'red' });
+  });
+
   it('POST /api/backup/import v1 imports categories + products, drops users/services', async () => {
     const { email, password } = await import('./setup.ts').then((m) => m.getTestAdminCredentials());
     await pbAdmin.admins.authWithPassword(email, password);

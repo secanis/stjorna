@@ -85,6 +85,13 @@ var UTF8_DECODE_FN =
         "return out;" +
     "}";
 
+var JSON_HELPER_FN =
+    "function J(v){" +
+        "if(v===undefined||v===null)return '{}';" +
+        "if(typeof v==='string')return v;" +
+        "return JSON.stringify(v);" +
+    "}";
+
 var STR_TO_BYTES_FN =
     "function _strToBytes(s){" +
         "var b=new Array(s.length);" +
@@ -118,7 +125,18 @@ var STR_TO_BYTES_FN =
         "return b;" +
     "}" +
     "function _w32(a,o,v){a[o]=v&0xFF;a[o+1]=(v>>>8)&0xFF;a[o+2]=(v>>>16)&0xFF;a[o+3]=(v>>>24)&0xFF;}" +
-    "function _w16(a,o,v){a[o]=v&0xFF;a[o+1]=(v>>>8)&0xFF;}";
+    "function _w16(a,o,v){a[o]=v&0xFF;a[o+1]=(v>>>8)&0xFF;}" +
+    // JSON-encode a value for PB's json-typed fields (custom_fields).
+    //   - undefined/null  -> '{}' (fallback to empty)
+    //   - string          -> pass through (PB's JsonMap unmarshals JSON strings)
+    //   - object/array    -> JSON.stringify (the defensive case: prevents
+    //                         goja's implicit toString() fallback that would
+    //                         store the literal "[object Object]" in the column)
+    "function J(v){" +
+        "if(v===undefined||v===null)return '{}';" +
+        "if(typeof v==='string')return v;" +
+        "return JSON.stringify(v);" +
+    "}";
 
 // auth snippet: reads Authorization header, decodes JWT, sets `authType`.
 // If type is not in allowedTypes, returns 401 and stops execution (uses `return;`).
@@ -312,7 +330,7 @@ console.log("[stjorna-backup] registered GET /api/backup/zip");
 // Request body: JSON
 //   { tenant: "<id>", source: "v1"|"v3", filename: "...", data_base64: "..." }
 
-var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN + "try{" +
+var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN + JSON_HELPER_FN + "try{" +
     "var _rawBody='';" +
     "try{_rawBody=readerToString(c.request().body,64*1024*1024);}catch(_be){c.string(400,'{\"error\":\"read body failed\"}');return;}" +
     "var _req=null;" +
@@ -474,7 +492,7 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "_prec2.set('category',_newCatId2);" +
             "_prec2.set('active',_vp2.active!==false);" +
             "_prec2.set('sort_order',_vp2.sort_order||0);" +
-            "_prec2.set('custom_fields',_vp2.custom_fields||{});" +
+            "_prec2.set('custom_fields',J(_vp2.custom_fields));" +
             "try{$app.dao().saveRecord(_prec2);_stats.imported.products++;}catch(_pse2){_stats.warnings.push('product failed: '+(_vp2.name||'?')+' ('+_pse2.message+')');}" +
         "}" +
         "var _hasMediaFiles=Object.keys(_zipFiles).length>0;" +
