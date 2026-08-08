@@ -1,0 +1,207 @@
+# Default values for stjorna.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# -- Override the chart name (used in resource naming).
+nameOverride: ""
+# -- Override the fully-qualified app name (used in resource naming).
+fullnameOverride: ""
+
+# -- Namespace the chart installs into. The chart can optionally create it.
+namespace:
+  # -- Whether to create the namespace. When true, the chart uses a `lookup`
+  # expression so re-running on an existing namespace is a no-op.
+  create: true
+  # -- Name of the namespace to install into.
+  name: stjorna
+
+image:
+  # -- Image pull secrets (referenced by name). Empty list for docker.io public
+  # images. Set this if you push to a private registry.
+  pullSecrets: []
+  # -- Image pull policy applied to both containers.
+  pullPolicy: IfNotPresent
+
+# -- ServiceAccount configuration. Both pods reference this SA; no RBAC is
+# attached today, but the SA is created explicitly so future hooks (or
+# external-secrets operators) can bind roles to it.
+serviceAccount:
+  # -- Whether to create a ServiceAccount.
+  create: true
+  # -- ServiceAccount name. If empty, the chart uses the fullname.
+  name: ""
+
+# -- PocketBase backend (single replica; sqlite is not HA-capable).
+pocketbase:
+  replicaCount: 1
+  image:
+    # -- PocketBase image repository.
+    repository: docker.io/secanis/stjorna-pocketbase
+    # -- PocketBase image tag. Should match the STJÓRNA release (e.g. v3.0.0-rc1).
+    tag: v3.0.0-rc1
+    pullPolicy: ""
+  service:
+    # -- Kubernetes service type for PocketBase.
+    type: ClusterIP
+    # -- Port exposed by the PocketBase service.
+    port: 8090
+  # ┌─────────────────────────────────────────────────────────────────────┐
+  # │ PVC size depends on whether you use S3 storage for media.          │
+  # │                                                                     │
+  # │ PB's /app/pb_data contains:                                         │
+  # │   - data.db   (sqlite, KB-MB; rarely grows)                         │
+  # │   - storage/  (media uploads, can grow to GBs/TBs)                  │
+  # │                                                                     │
+  # │ If you plan to use S3 storage (recommended):                        │
+  # │   - Configure S3 in the setup wizard (or via the optional Garage   │
+  # │     subchart; see `garage:` below)                                  │
+  # │   - PB writes uploads to S3 instead of storage/                     │
+  # │   - PVC only needs to hold data.db → 1-2Gi is plenty               │
+  # │                                                                     │
+  # │ If you don't use S3 (local storage):                                │
+  # │   - PB writes uploads to storage/ inside the PVC                    │
+  # │   - Size the PVC to fit your expected media library                 │
+  # │   - Longhorn supports volume expansion; resize is non-disruptive    │
+  # └─────────────────────────────────────────────────────────────────────┘
+  persistence:
+    # -- Whether to create a PVC for the PB data directory.
+    enabled: true
+    # -- PVC size. See the block above for sizing guidance.
+    # --   With S3 (recommended): 1-2Gi is plenty
+    # --   Without S3 (local only): size to fit your media library
+    size: 5Gi
+    # -- Storage class name. `longhorn` is the default on the target cluster.
+    storageClass: longhorn
+    # -- PVC access modes.
+    accessModes:
+      - ReadWriteOnce
+    # -- Set to Retain so the PVC (and your data) survives `helm uninstall`.
+    reclaimPolicy: Retain
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  # -- Health check path (PB exposes /api/health).
+  healthcheck:
+    path: /api/health
+  # -- Hooks delivery: ConfigMap mount (recommended) or baked into the image.
+  hooks:
+    mountFromConfigMap: true
+  # -- PB_SECRET source. EITHER supply an existing Secret (name + key),
+  # OR leave both empty and the chart will auto-generate a Secret on install.
+  secret:
+    # -- Name of an existing Kubernetes Secret containing PB_SECRET. If empty,
+    # the chart auto-generates one (pre-install hook).
+    existingSecret: ""
+    # -- Key inside `existingSecret` that holds the PB_SECRET value.
+    existingSecretKey: PB_SECRET
+  podSecurityContext:
+    # -- Run PB as the `pocketbase` user (uid 1000 in the image).
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+    fsGroup: 1000
+
+# -- SolidJS frontend served by nginx.
+frontend:
+  replicaCount: 2
+  image:
+    # -- Frontend image repository.
+    repository: docker.io/secanis/stjorna-frontend
+    # -- Frontend image tag. Should match the STJÓRNA release.
+    tag: v3.0.0-rc1
+    pullPolicy: ""
+  service:
+    # -- Kubernetes service type for the frontend.
+    type: ClusterIP
+    # -- Port exposed by the frontend service.
+    # --   Default 8080: the nginx-unprivileged image listens on 8080
+    # --   (designed to run as non-root). Use 80 only if you switch to
+    # --   the standard nginx image and grant NET_BIND_SERVICE.
+    port: 8080
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 101   # `nginx` user in nginxinc/nginx-unprivileged
+
+# ┌─────────────────────────────────────────────────────────────────────┐
+# │ Optional self-hosted S3 storage via the [Garage](https://garagehq.  │
+# │ deuxfleurs.fr/) subchart.                                            │
+# │                                                                     │
+# │ When `garage.enabled: true`, the garage chart is installed in the   │
+# │ same release (same namespace) as the rest of STJÓRNA. PB can then   │
+# │ be configured to use Garage for media uploads in the setup wizard.  │
+# │                                                                     │
+# │ Usage: --set garage.enabled=true  +  helm dep build (see README)    │
+# └─────────────────────────────────────────────────────────────────────┘
+garage:
+  # -- Whether to install the Garage S3 subchart.
+  enabled: false
+
+  # -- Replica count for the Garage StatefulSet. Garage is a distributed
+  # system — 3 is the minimum for production. Use 1 only for dev/test.
+  replicaCount: 3
+
+  # -- Storage configuration (passed through to the garage subchart).
+  persistence:
+    meta:
+      # -- Size of Garage's metadata PVC (per replica).
+      size: 1Gi
+      # -- Storage class for Garage's metadata PVC.
+      storageClass: longhorn
+    data:
+      # -- Size of Garage's data PVC (per replica). This is where media
+      # uploads land when S3 is enabled. Plan for your total media size
+      # divided by (replicaCount - 1) since Garage replicates.
+      size: 10Gi
+      # -- Storage class for Garage's data PVC.
+      storageClass: longhorn
+
+  # -- Optional Ingress for the S3 API (passed through to the garage
+  # subchart). Disable to access Garage only via the in-cluster service.
+  ingress:
+    s3:
+      api:
+        enabled: false
+        className: traefik
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt
+        hosts:
+          - host: s3.example.com
+            paths:
+              - path: /
+                pathType: Prefix
+        tls:
+          - hosts:
+              - s3.example.com
+            secretName: garage-tls
+
+# -- Ingress configuration. Defaults to Traefik + cert-manager.
+ingress:
+  # -- Whether to create an Ingress resource.
+  enabled: true
+  # -- IngressClass name. `traefik` is the cluster's default.
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+  # -- Ingress hosts. Override the `host` field at install time.
+  hosts:
+    - host: stjorna.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration. The cert-manager annotation above issues the cert.
+  tls:
+    - hosts:
+        - stjorna.example.com
+      secretName: stjorna-tls

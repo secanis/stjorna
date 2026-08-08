@@ -1,0 +1,19 @@
+{{- /*
+Render the Namespace only if:
+  - namespace.create is true, AND
+  - the namespace does not already exist in the cluster (via lookup).
+This makes the chart idempotent for both `install` and `upgrade`.
+
+NOTE: When using `helm install --create-namespace`, set
+`namespace.create: false` so this template does not race with the
+namespace that Helm itself creates.
+*/ -}}
+{{- if and .Values.namespace.create (not (lookup "v1" "Namespace" "" .Values.namespace.name)) -}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace.name }}
+  labels:
+    {{- include "stjorna.labels" . | nindent 4 }}
+    app.kubernetes.io/component: namespace
+{{- end -}}

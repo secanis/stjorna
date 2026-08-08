@@ -1,0 +1,217 @@
+# SPDX-License-Identifier: MIT
+# CI for STJÓRNA — runs on PRs and pushes to main / feature/**.
+#
+# Jobs:
+#   - lint-frontend: type-check + build the SolidJS frontend
+#   - test-frontend: vitest unit tests in frontend/src/utils
+#   - test-pb:      vitest integration tests in pocketbase/test
+#   - lint-helm:     helm lint + template render check
+#   - test-helm:     full kind-based end-to-end test (slower, only on push)
+#   - build-images:  build PB + frontend images, push to ghcr.io for caching
+#                    (only on push, not on PRs from forks)
+#
+# Required secrets: none (uses GITHUB_TOKEN for ghcr.io login)
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+# Cancel in-progress runs of the same workflow when a new commit lands
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PB_IMAGE: ghcr.io/${{ github.repository_owner }}/stjorna-pocketbase
+  FE_IMAGE: ghcr.io/${{ github.repository_owner }}/stjorna-frontend
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Frontend: type-check via build + unit tests
+  # -------------------------------------------------------------------------
+  test-frontend:
+    name: Frontend (build + unit tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Build (also runs TypeScript type-check)
+        working-directory: frontend
+        run: npm run build
+      - name: Unit tests
+        working-directory: frontend
+        run: npm test --workspaces=false
+
+  # -------------------------------------------------------------------------
+  # PocketBase: vitest integration tests (need a running PB)
+  # -------------------------------------------------------------------------
+  test-pb:
+    name: PocketBase (vitest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: pocketbase/test/package.json
+      - name: Install dependencies
+        working-directory: pocketbase/test
+        run: npm install --no-audit --no-fund
+      - name: Build PocketBase image
+        # Tests spin up a real PB container via setup.ts; the image must
+        # exist locally as `localhost/stjorna-pocketbase:test` before
+        # the suite starts. We use buildx with --load to put it in the
+        # local docker daemon.
+        run: |
+          docker buildx build \
+            --tag localhost/stjorna-pocketbase:test \
+            --load \
+            --file docker/Dockerfile.pocketbase \
+            pocketbase
+      - name: Pre-create PB data volume
+        # Docker creates the named volume lazily, but on a fresh runner
+        # it gets root-owned; PB runs as uid 1000 (pocketbase) and can't
+        # write. Pre-creating + chowning avoids the permission trap.
+        run: |
+          docker volume create stjorna-test-data
+          # Run a throwaway container to chown the volume to uid 1000
+          # (the pocketbase user in the PB image).
+          docker run --rm \
+            -v stjorna-test-data:/pb_data \
+            docker.io/alpine:3.19 \
+            chown -R 1000:1000 /pb_data
+      - name: Run tests
+        working-directory: pocketbase/test
+        run: npx vitest run
+        env:
+          PB_URL: http://localhost:8090
+          ADMIN_EMAIL: admin@test.stjorna.local
+          ADMIN_PASSWORD: admin12345678
+        # NOTE: setup.ts auto-detects docker (preferred) or podman, and
+        # starts a PB container from `localhost/stjorna-pocketbase:test`.
+        # The `Build PocketBase image` step above ensures that image is
+        # in the local docker daemon.
+
+  # -------------------------------------------------------------------------
+  # Helm chart: lint + template render
+  # -------------------------------------------------------------------------
+  lint-helm:
+    name: Helm chart (lint + render)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.2
+      - name: Run lint
+        run: make lint-helm
+
+  # -------------------------------------------------------------------------
+  # Helm chart: full kind-based integration test
+  # Slower (~3 min). Only runs on push, not on PRs, to keep PR feedback fast.
+  # -------------------------------------------------------------------------
+  test-helm:
+    name: Helm chart (kind integration test)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - uses: azure/setup-helm@v5
+        with:
+          version: v4.2.2
+      - name: Install kind
+        run: |
+          curl -fsSL -o /tmp/kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+          sudo install /tmp/kind /usr/local/bin/kind
+      - name: Run test rig
+        run: make test-helm
+        env:
+          # Use Docker (default on GitHub runners; the script auto-detects)
+          KIND_EXPERIMENTAL_PROVIDER: ''
+
+  # -------------------------------------------------------------------------
+  # Build images: PB + frontend
+  # Matrix: 2 entries (pocketbase, frontend)
+  # Tags:    branch-specific (e.g. feature-v3-abc123) + latest on main
+  # Push:    to ghcr.io for cross-job caching; not for public distribution
+  # -------------------------------------------------------------------------
+  build-images:
+    name: Build image (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: pocketbase
+            context: pocketbase
+            dockerfile: docker/Dockerfile.pocketbase
+          - name: frontend
+            context: frontend
+            dockerfile: frontend/Dockerfile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set image name
+        id: image
+        run: |
+          if [ "${{ matrix.name }}" = "pocketbase" ]; then
+            echo "name=${{ env.PB_IMAGE }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${{ env.FE_IMAGE }}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: ${{ steps.image.outputs.name }}
+          tags: |
+            # Branch name (with / replaced by -): feature-v3
+            type=ref,event=branch
+            # Short SHA suffix: feature-v3-abc123
+            type=sha,format=short
+            # latest on main, edge otherwise
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=edge,enable={{is_default_branch}}
+          # Strip the leading slash docker adds for branch refs
+          flavor: latest=auto
+      - uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          # Don't push to ghcr.io on CI: the default GITHUB_TOKEN can't
+          # create org-owned packages, and the release workflow handles
+          # the public Docker Hub push. We still build (and cache layers
+          # via cache-to: type=gha) to catch build errors and warm the
+          # cache for the next run.
+          push: false
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

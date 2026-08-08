@@ -1,704 +1,562 @@
 ---
 name: stjorna-architecture
-description: Provides architecture guidance for STJÓRNA product management application rewrites. Use when discussing STJÓRNA redesign, PocketBase migration, SolidJS frontend, or Helm/Kubernetes deployment for STJÓRNA.
+description: Provides architecture guidance for STJÓRNA product management application. Use when discussing STJÓRNA redesign, PocketBase collection design, SolidJS frontend, multi-tenant role model, S3 file storage, OpenAPI docs, or Helm/Kubernetes deployment for STJÓRNA.
 ---
 
 # STJÓRNA Architecture Skill
 
 ## Overview
 
-STJÓRNA is a product/service management application with a public REST API for third-party access. The name means "manage" or "store stuff" in Icelandic.
+STJÓRNA is a multi-tenant product/media management application with three API tiers (Public, Private, Admin), S3-backed media storage, and a built-in OpenAPI/Swagger UI. The name means "manage" or "store stuff" in Icelandic.
 
 ### Core Features
-- Product, Category, and Service management with image uploads
-- Public read-only REST API for websites/third-party apps
-- Export data as JSON/Excel or full backup as ZIP
+- Product, Category, and Media management with multi-image per product
+- Multi-tenant with role-based access (viewer/editor/admin/pb_admin)
+- Public read-only REST API (no auth) for storefronts/third-party apps
+- Private authenticated user CRUD
+- Admin endpoints for tenant + user management
+- S3-compatible media storage (Scaleway/AWS/any S3)
+- Auto-generated OpenAPI 3.0.3 spec served at `/api/openapi.json` + Swagger UI at `/api-docs`
 - Multi-language support (German/English)
 - Optional Matomo tracking integration
-- Easy setup and configuration
+- Helm chart for Kubernetes deployment
 
-### Current Architecture (Legacy)
-- **Backend:** Node.js + Express + lowdb (JSON file-based)
-- **Frontend:** Angular 12 + Bootstrap
-- **Database:** lowdb (JSON files on filesystem)
-- **Image Processing:** Jimp
-- **Export:** archiver (ZIP), excel4node (Excel)
+### Current Architecture (v3 - active)
+
+- **Backend:** PocketBase v0.22.7 (single binary, embedded SQLite, JS hooks)
+- **Frontend:** SolidJS + TypeScript + TailwindCSS (Vite dev server :3000, builds to static SPA)
+- **Storage:** S3-compatible object storage (Scaleway/AWS/MinIO) for media files; local PB filesystem as fallback
+- **Tests:** Playwright E2E (fresh Podman container per run) + Vitest unit tests
+- **Deployment:** Docker Compose for dev, Helm chart for k8s
+- **Repo layout:**
+  ```
+  stjorna/
+  ├── pocketbase/
+  │   ├── pb_hooks/                # JS hooks (must be *.pb.js or *.pb.ts)
+  │   ├── pb_data/                 # SQLite + uploaded files (gitignored)
+  │   └── test/                    # Vitest unit tests for PB logic
+  ├── frontend/                    # SolidJS app
+  │   ├── src/
+  │   │   ├── components/          # Reusable UI + layout
+  │   │   ├── pages/               # Route pages
+  │   │   ├── services/            # pocketbase.ts singleton
+  │   │   ├── stores/              # auth.ts, sidebar.ts
+  │   │   ├── types/               # TypeScript interfaces
+  │   │   └── utils/               # mediaUrl, slug helpers
+  │   ├── .env                     # VITE_PB_URL=http://localhost:8090
+  │   └── vite.config.ts           # proxies /api/ → PB
+  ├── tests/
+  │   ├── e2e/                     # Playwright E2E
+  │   └── unit/                    # Vitest unit tests
+  ├── scripts/                     # fix-pocketbase.ts etc.
+  ├── docker/                      # Dockerfiles
+  ├── helm/stjorna/                # Helm chart
+  └── .opencode/                   # Skills + plans for AI agents
+  ```
 
 ---
 
-## Technology Stack for Rewrite
+## Technology Stack
 
-### Backend: PocketBase
-- All-in-one solution with embedded SQLite database
-- Built-in authentication system (JWT-based)
-- REST API with SDKs for multiple languages
-- Admin UI for data management
-- Runs as a single binary
-- Supports S3 file storage via external provider hook
+### Backend: PocketBase v0.22.7
+- All-in-one: SQLite + REST API + auth + admin UI in one binary
+- Built-in JWT auth, no custom implementation
+- Admin UI at `/_/`
+- S3 file storage via Settings API (not env vars in v0.22.x)
+- JS hooks via `pb_hooks/*.pb.js` for custom endpoints + record lifecycle
 
 **Why PocketBase?**
-- Perfect fit for STJÓRNA's data model (products, categories, services, users)
-- No separate database setup required
-- Built-in auth eliminates custom JWT implementation
-- Scales well for SaaS multi-tenant deployment
-- S3 sync capability for backup/portability
+- Perfect fit for STJÓRNA's data model (multi-tenant products, categories, media, users, roles)
+- No separate database setup
+- Built-in auth + admin UI
+- JS hooks enable custom endpoints (e.g., OpenAPI spec) without separate service
 
-**PocketBase Collections:**
-1. `users` - Built-in auth collection (extends base user with role)
-2. `categories` - Product categories
-3. `products` - Products linked to categories
-4. `services` - Services linked to categories
-5. `settings` - Application configuration
-6. `cronjobs` - Scheduled job state tracking
-
-### Frontend: SolidJS + T3-inspired Stack
-- SolidJS for reactive UI (no virtual DOM, fine-grained reactivity)
-- @tanstack/solid-query for server state management
+### Frontend: SolidJS + TailwindCSS
+- SolidJS for fine-grained reactivity (no VDOM)
 - @solidjs/router for routing
-- TypeScript for type safety
+- @tanstack/solid-query (installed but mostly used directly with `pb.collection()`)
 - TailwindCSS for styling
+- Vite for dev server (port 3000) and build
 
 **Why SolidJS?**
-- Faster than React with less memory usage
-- Smaller bundle size
-- Native TypeScript support
-- Great fit for SPA architecture
+- Fast, small bundle, native TS
+- Better fit for SPA than React when no VDOM overhead is needed
 
 ### Infrastructure
-- Docker for containerization
-- Helm Chart for Kubernetes deployment
-- S3-compatible storage for file backup/sync
+- Docker Compose for local dev (PB + frontend on host network)
+- Helm chart for k8s deployment
+- S3-compatible storage for media backup/sync (Scaleway used in production)
+- Caddy/nginx in front of PB for HTTPS termination
 
 ---
 
-## Directory Structure
+## Data Model (PocketBase v3 Schema)
 
+### Collections
+
+#### `users` (built-in auth collection, extended)
+- Standard PocketBase auth fields (email, password, verified, etc.)
+- `last_tenant` (text, optional) — remembers last selected tenant per user
+
+#### `roles` (singleton lookup)
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | text | `viewer`, `editor`, `admin` (per-tenant role) |
+| `description` | text | Human-readable |
+
+Note: `pb_admin` is NOT in this collection — it's a PocketBase admin user, separate from collection users.
+
+#### `tenants`
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | text | required |
+| `slug` | text | URL-friendly identifier |
+| `description` | text | |
+| `users` | relation → users | multi-select (max 99), back-ref only |
+
+#### `user_tenants` (junction)
+| Field | Type | Notes |
+|-------|------|-------|
+| `user` | relation → users | required |
+| `tenant` | relation → tenants | required |
+| `role` | relation → roles | required (not text select) |
+
+#### `categories`
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | text | required |
+| `slug` | text | required, URL-friendly |
+| `description` | text | |
+| `tenant` | relation → tenants | required |
+
+#### `products`
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | text | required |
+| `slug` | text | required |
+| `description` | text | |
+| `price` | number | |
+| `sku` | text | |
+| `tenant` | relation → tenants | required |
+| `category` | relation → categories | required |
+| `media` | relation → media | maxSelect 99, cascadeDelete false |
+
+#### `media` (file collection)
+| Field | Type | Notes |
+|-------|------|-------|
+| `name` | text | required, display name |
+| `original_name` | text | readOnly after upload (set on upload) |
+| `file` | file | required, the actual file (PB-managed storage) |
+| `mime_type` | text | auto-set by PB |
+| `size` | number | auto-set by PB |
+| `s3_url` | text | canonical URL after S3 upload (set by hook) |
+| `thumbnail_url` | text | S3 thumb URL with `?thumb=200x200` |
+| `tenant` | relation → tenants | required |
+
+#### `instance_settings` (singleton)
+| Field | Type | Notes |
+|-------|------|-------|
+| `s3_bucket` | text | |
+| `s3_region` | text | |
+| `s3_endpoint` | text | auto-filled `https://s3.${region}.amazonaws.com` |
+| `s3_access_key` | text | |
+| `s3_secret_key` | text | |
+
+### API Rules (Guardrails)
+
+Frontend always sends `?filter=tenant = '{currentTenant}'` as primary mechanism.
+API rules are the safety net.
+
+```javascript
+// categories / products / media (tenant-scoped)
+listRule:   '@request.auth.id != "" || @request.auth.admin = true'
+viewRule:   '@request.auth.id != "" || @request.auth.admin = true'
+createRule: '@request.auth.id != "" || @request.auth.admin = true'
+updateRule: '@request.auth.id != "" || @request.auth.admin = true'
+deleteRule: '@request.auth.id != "" || @request.auth.admin = true'
+
+// users
+listRule:   '@request.auth.id != "" || @request.auth.admin = true'  // PB admin lists all
+viewRule:   '@request.auth.id = id || @request.auth.admin = true'
+
+// user_tenants
+listRule:   '@request.auth.id != "" || @request.auth.admin = true'
+
+// instance_settings
+listRule:   '@request.auth.admin = true'  // PB admin only
+viewRule:   '@request.auth.admin = true'
 ```
-stjorna/
-├── docker/
-│   └── Dockerfile               # Multi-stage build for PocketBase
-├── helm/
-│   └── stjorna/
-│       ├── Chart.yaml
-│       ├── values.yaml
-│       └── templates/
-├── pocketbase/
-│   ├── pb_migrations/          # PocketBase migrations
-│   └── pb_data/                # SQLite + uploaded files
-├── client/                      # SolidJS frontend
-│   ├── src/
-│   │   ├── components/         # Reusable UI components
-│   │   ├── pages/              # Route pages
-│   │   ├── services/           # API and business logic
-│   │   ├── stores/             # Client-side state
-│   │   └── types/              # TypeScript interfaces
-│   ├── index.html
-│   └── package.json
-├── s3-sync/                     # S3 backup synchronization
-│   └── sync.ts
-└── docker-compose.yml           # Local development stack
-```
 
----
-
-## Backend (PocketBase)
-
-### Collection Schemas
-
-#### Categories
-```typescript
-{
-  id: string;           // Auto-generated
-  name: string;
-  description: string;
-  image: string;        // File (single)
-  active: boolean;
-  created: number;      // Unix timestamp
-  updated: number;
-}
-```
-
-#### Products
-```typescript
-{
-  id: string;
-  name: string;
-  category: string;     // Relation to Categories
-  price: number;
-  description: string;
-  image: string;        // File (single)
-  active: boolean;
-  created: number;
-  updated: number;
-  createdUser: string;  // Relation to users
-  updatedUser: string;  // Relation to users
-}
-```
-
-#### Services
-```typescript
-{
-  id: string;
-  name: string;
-  category: string;     // Relation to Categories
-  price: number;
-  description: string;
-  image: string;        // File (single)
-  active: boolean;
-  created: number;
-  updated: number;
-  createdUser: string;
-  updatedUser: string;
-}
-```
-
-### API Rules
-
-**Public API (read-only, requires API key):**
-- `GET /api/collections/products/records?filter=active=true`
-- `GET /api/collections/categories/records?filter=active=true`
-- `GET /api/collections/services/records?filter=active=true`
-- `GET /api/collections/products/records/:id`
-- `GET /api/collections/categories/records/:id`
-- `GET /api/collections/services/records/:id`
-
-**Admin API (authenticated):**
-- Full CRUD on all collections
-- Settings management
-- User management
+Public read of categories/products via `listRule = ""` (empty) is NOT used; instead the frontend uses an `expand` query via user auth. The OpenAPI spec marks public GETs as `Public` tier (no `security`), but the actual rule check is done by PB.
 
 ### Authentication Flow
-1. User submits username/password to `/api/collections/users/auth-with-password`
-2. PocketBase returns JWT token + user record
-3. Token included in `Authorization: Bearer <token>` header
-4. For public API: Use API key in `X-API-Key` header
+1. User submits `identity` + `password` to `POST /api/collections/users/auth-with-password`
+2. PocketBase returns `{ token, record }`
+3. Token included in `Authorization: <token>` header (PB expects raw token, not "Bearer ")
+4. `pb.authStore.token` is read in frontend, injected into Swagger UI via `requestInterceptor`
+5. PB admin users log in separately via `POST /api/admins/auth-with-password`, set `pb.authStore.isAdmin = true`
 
-### Image Handling
-- PocketBase handles file uploads natively
-- Images stored in `pb_data/storage/`
-- Thumbnails generated via PocketBase's built-in image transformation
-- URL pattern: `/api/files/{collection}/{record_id}/{filename}?thumb=100x100`
+### Image / Media Handling
+- Local: PB stores files in `pb_data/storage/{collection}/{record_id}/`
+- S3: PB can sync to S3 via Settings; use `?thumb=100x100` query for thumbnails (PB generates them)
+- `getMediaFileUrl(record, file, { thumb: '100x100' })` helper in frontend adds PB token for private files
+- File deletion: PB v0.22.7 does NOT auto-delete files when record is deleted — needs `onRecordAfterDeleteRequest` hook with `pb.dao.NewFilesystem().Delete(...)`
 
 ### S3 Sync Implementation
+
+PB v0.22.7 has no env-var S3 config (added in v0.23+). Use Settings API:
+
 ```typescript
-// s3-sync/sync.ts
-import { PockBase } from 'pocketbase';
-import { S3Client, PutObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
-
-export class S3Sync {
-  private pb: PocketBase;
-  private s3: S3Client;
-  private bucket: string;
-
-  async backupDatabase() {
-    // Export PocketBase data as JSON
-    const exportData = {
-      categories: await this.pb.collections.categories.getFullList(),
-      products: await this.pb.collections.products.getFullList(),
-      services: await this.pb.collections.services.getFullList(),
-      settings: await this.pb.collections.settings.getFullList(),
-      exportedAt: new Date().toISOString()
-    };
-
-    // Upload to S3
-    await this.s3.send(new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: `backups/${Date.now()}/data.json`,
-      Body: JSON.stringify(exportData)
-    }));
+// In Setup.tsx
+await pb.settings.update({
+  s3: {
+    enabled: true,
+    bucket: 'stjorna-media',
+    region: 'eu-central-1',
+    endpoint: 'https://s3.eu-central-1.amazonaws.com',  // auto-filled
+    accessKey: '...',
+    secret: '...',
+    forcePathStyle: false,  // true for MinIO/Scaleway
   }
-
-  async syncFiles() {
-    // Sync uploaded files to S3
-    const files = await this.listLocalFiles('pb_data/storage/');
-    for (const file of files) {
-      await this.uploadToS3(file);
-    }
-  }
-}
+});
 ```
+
+**S3 testing gotcha:** PB's built-in `testS3` endpoint fails on Scaleway because it uses `DeletePrefix` (ListObjectsV2-based) which Scaleway rejects. Test S3 by uploading a real media record instead — if upload + fetch + delete works, S3 is correctly configured.
+
+---
+
+## OpenAPI / Swagger UI
+
+### Endpoint
+- `GET /api/openapi.json` and `GET /api/openapi` — serve OpenAPI 3.0.3 spec (16KB)
+- Spec has 3 tags: `Public`, `Private`, `Admin`
+- 14 paths / 27 operations / 11 schemas
+
+### Implementation
+- `pocketbase/pb_hooks/openapi.pb.js` — PB JS hook that registers the routes
+- Uses `routerAdd('GET', '/api/openapi.json', handler)`
+- Handler is created via `new Function("c", "c.response().header().set(...); c.string(200, " + JSON.stringify(JSON_SPEC) + ");")` to inline the pre-serialized spec
+- Why `new Function(...)`? See pocketbase-jsvm-hooks skill — values from loader VM don't reach handler VM
+
+### Frontend
+- `frontend/src/pages/ApiDocs.tsx` — lazy-loads `swagger-ui-dist@5` via dynamic import
+- Renders in `[data-testid="swagger-ui"]` div
+- `requestInterceptor` adds `Authorization: <token>` from `pb.authStore.token`
+- Sidebar link: `BookOpen` icon → `/api-docs`, visible to editor+
+- Route: `frontend/src/App.tsx` `<Route path="/api-docs" component={ApiDocs} />`
+- **Vite proxy gotcha:** proxy must be `/api/` (with trailing slash), not `/api` — otherwise Vite matches `/api-docs` too and 404s the SPA route
 
 ---
 
 ## Frontend (SolidJS)
 
-### Project Setup
-```bash
-npm create solid@latest client
-# Select: TypeScript, SolidJS App
-
-cd client
-npm install @tanstack/solid-query @solidjs/router tailwindcss
+### Project Structure (actual)
 ```
-
-### Key Components Structure
-
-```
-src/
+frontend/src/
+├── App.tsx                     # Router definition
 ├── components/
-│   ├── ui/                     # Base UI components
-│   │   ├── Button.tsx
-│   │   ├── Card.tsx
-│   │   ├── Input.tsx
-│   │   └── Modal.tsx
-│   ├── product/
-│   │   ├── ProductForm.tsx
-│   │   ├── ProductList.tsx
-│   │   └── ProductCard.tsx
-│   ├── category/
-│   │   ├── CategoryForm.tsx
-│   │   └── CategoryList.tsx
-│   ├── image/
-│   │   └── ImageUpload.tsx
-│   └── layout/
-│       ├── Header.tsx
-│       ├── Sidebar.tsx
-│       └── Footer.tsx
+│   ├── layout/
+│   │   ├── Layout.tsx          # Sidebar + Header + main
+│   │   ├── Sidebar.tsx         # Nav items + role gates + counts
+│   │   └── Header.tsx
+│   ├── media/
+│   │   └── (none — all in pages)
+│   └── ui/                     # (planned, not yet implemented)
 ├── pages/
-│   ├── Login.tsx
-│   ├── Dashboard.tsx
-│   ├── Products.tsx
-│   ├── Categories.tsx
-│   ├── Services.tsx
+│   ├── Login.tsx               # Unified login (admin or user mode)
+│   ├── Setup.tsx               # First-run wizard (4 steps)
+│   ├── Dashboard.tsx           # Stats cards + recent activity
+│   ├── MediaList.tsx           # Table with thumbnails
+│   ├── MediaEdit.tsx           # Create/Edit media
+│   ├── CategoryList.tsx
+│   ├── CategoryEdit.tsx
+│   ├── ProductList.tsx
+│   ├── ProductEdit.tsx         # Media picker with drag-drop reorder
 │   ├── Settings.tsx
-│   └── Setup.tsx
+│   ├── InstanceSettings.tsx
+│   ├── UserManagement.tsx
+│   ├── TenantList.tsx
+│   ├── TenantSettings.tsx
+│   └── ApiDocs.tsx             # Swagger UI
 ├── services/
-│   ├── api.ts                  # PocketBase SDK wrapper
-│   ├── auth.ts                 # Authentication service
-│   └── export.ts               # Export functionality
+│   └── pocketbase.ts           # PB client singleton
 ├── stores/
-│   └── auth.ts                 # Auth state management
+│   ├── auth.ts                 # loadTenants, role, currentTenant
+│   └── sidebar.ts              # bump() signal for count refresh
 ├── types/
-│   └── index.ts                # TypeScript interfaces
-└── App.tsx
+│   └── index.ts                # Role, UserTenant, AuthState
+└── utils/
+    ├── mediaUrl.ts             # getMediaFileUrl(id, file, { thumb })
+    └── slug.ts                 # slugify for category/product slugs
 ```
 
-### API Integration
+### Routing (App.tsx actual)
 ```typescript
-// services/api.ts
-import PocketBase from 'pocketbase';
-import { QueryClient } from '@tanstack/solid-query';
-
-const pb = new PocketBase('http://localhost:8090');
-const queryClient = new QueryClient();
-
-// Products
-export const getProducts = () => 
-  createQuery(() => ({
-    queryKey: ['products'],
-    queryFn: () => pb.collections.products.getFullList()
-  }));
-
-export const getProduct = (id: string) =>
-  createQuery(() => ({
-    queryKey: ['products', id],
-    queryFn: () => pb.collections.products.getOne(id)
-  }));
-
-export const createProduct = async (data) => {
-  const record = await pb.collections.products.create(data);
-  queryClient.invalidateQueries(['products']);
-  return record;
-};
+<Route path="/setup" component={Setup} />
+<Route path="/login" component={Login} />
+<Route path="/" component={Layout}>
+  <Route path="/" component={Dashboard} />
+  <Route path="/media/new" component={MediaEdit} />
+  <Route path="/media/:id" component={MediaEdit} />
+  <Route path="/media" component={MediaList} />
+  <Route path="/categories" component={CategoryList} />
+  <Route path="/categories/new" component={CategoryEdit} />
+  <Route path="/categories/:id" component={CategoryEdit} />
+  <Route path="/products/new" component={ProductEdit} />
+  <Route path="/products/:id" component={ProductEdit} />
+  <Route path="/products" component={ProductList} />
+  <Route path="/settings" component={Settings} />
+  <Route path="/settings/instance" component={InstanceSettings} />
+  <Route path="/users" component={UserManagement} />
+  <Route path="/tenants" component={TenantList} />
+  <Route path="/tenants/:id" component={TenantSettings} />
+  <Route path="/api-docs" component={ApiDocs} />
+</Route>
 ```
 
-### Routing
+### Vite Config (gotcha)
 ```typescript
-// App.tsx
-import { Router, Route } from '@solidjs/router';
-import { lazy } from 'solid-js';
-
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Products = lazy(() => import('./pages/Products'));
-const Login = lazy(() => import('./pages/Login'));
-
-export default function App() {
-  return (
-    <Router>
-      <Route path="/" component={Layout}>
-        <Route path="/" component={Dashboard} />
-        <Route path="/products" component={Products} />
-        <Route path="/products/new" component={ProductForm} />
-        <Route path="/products/:id" component={ProductEdit} />
-        <Route path="/categories" component={Categories} />
-        <Route path="/services" component={Services} />
-        <Route path="/settings" component={Settings} />
-      </Route>
-      <Route path="/login" component={Login} />
-    </Router>
-  );
-}
+// vite.config.ts
+proxy: {
+  '/api/': {  // NOTE: trailing slash — without it, /api-docs matches!
+    target: 'http://localhost:8090',
+    changeOrigin: true,
+  },
+},
 ```
+
+### PB URL Configuration
+- Stored in `localStorage` as `stjorna_pb_url` (NOT in env var at runtime)
+- Login page reads/writes this key
+- Vite dev uses `VITE_PB_URL=http://localhost:8090` for initial build-time default
+- Multi-environment: same frontend build can talk to any PB instance
+
+### Auth Store
+- `authStore.user` — current user record (or null)
+- `authStore.tenants` — list of `UserTenant` with expanded `tenant` and `role`
+- `authStore.currentTenant` — ID of currently selected tenant
+- `authStore.role` — current role name ('viewer'/'editor'/'admin'/null)
+- `authStore.isPBAdmin` — true if logged in via admins auth
+- `authStore.isEditorOrAbove()` — memoized check including PB admin override
+
+### Role Model
+| Role | Description |
+|------|-------------|
+| `viewer` | Read-only access within their tenant |
+| `editor` | Full CRUD on content (products, categories, media) within their tenant |
+| `admin` | Tenant admin — manages users + content within their tenant |
+| `pb_admin` | PocketBase system admin — manages all tenants + users |
+
+A user belongs to one or more tenants via `user_tenants` junction. Each assignment has its own role (can be editor in Tenant A, viewer in Tenant B).
 
 ---
 
 ## Docker Setup
 
-### Dockerfile (Backend)
-```dockerfile
-# pocketbase/Dockerfile
-FROM alpine:latest
-
-RUN apk add --no-cache \
-    unzip \
-    wget \
-    ca-certificates
-
-WORKDIR /app
-
-# Download PocketBase
-ARG PB_VERSION=0.22.0
-RUN wget https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip && \
-    unzip pocketbase_${PB_VERSION}_linux_amd64.zip && \
-    rm pocketbase_${PB_VERSION}_linux_amd64.zip
-
-EXPOSE 8090
-
-VOLUME ["/app/pb_data"]
-
-CMD ["./pocketbase", "serve", "--http", "0.0.0.0:8090", "--dir", "/app/pb_data"]
-```
-
-### Dockerfile (Frontend)
-```dockerfile
-# client/Dockerfile
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-
-FROM nginx:alpine
-COPY --from=builder /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-### docker-compose.yml
+### docker-compose.yml (actual)
 ```yaml
-version: '3.8'
-
 services:
   pocketbase:
-    build:
-      context: ./pocketbase
-      dockerfile: ../docker/Dockerfile
-    ports:
-      - "8090:8090"
-    volumes:
-      - ./pocketbase/pb_data:/app/pb_data
-    environment:
-      - PB_SECRET=<generated-secret>
-    restart: unless-stopped
+    build: ./pocketbase
+    ports: ["8090:8090"]
+    volumes: ["./pocketbase/pb_data:/app/pb_data"]
+    environment: ["PB_SECRET=<generated>"]
+    network_mode: host  # for test framework to access
+```
 
-  client:
-    build:
-      context: ./client
-      dockerfile: ../docker/Dockerfile
-    ports:
-      - "3000:80"
-    depends_on:
-      - pocketbase
-    restart: unless-stopped
+### Build & Run
+```bash
+# Local dev (hot reload)
+cd frontend && npm run dev    # http://localhost:3000
+podman run -d --rm --network=host -v $(pwd)/pocketbase/pb_data:/app/pb_data \
+  --name stjorna-pocketbase-1 localhost/stjorna-pocketbase:test
 
-  s3-sync:
-    build:
-      context: ./s3-sync
-      dockerfile: ../docker/Dockerfile
-    environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - S3_BUCKET=${S3_BUCKET}
-      - PB_URL=http://pocketbase:8090
-    depends_on:
-      - pocketbase
-    restart: unless-stopped
+# Production
+docker-compose up -d --build
 ```
 
 ---
 
 ## Helm Chart
 
-### Chart Structure
+Production deployment: `helm/stjorna/` (chart 3.0.0-rc1, appVersion v3.0.0-rc1). Two separate Deployments (PB + frontend) for independent scaling/restarts, matching the docker-compose shape.
+
+### Structure
 ```
 helm/stjorna/
 ├── Chart.yaml
 ├── values.yaml
 ├── .helmignore
+├── README.md
 └── templates/
     ├── _helpers.tpl
-    ├── deployment.yaml
-    ├── service.yaml
-    ├── ingress.yaml
-    ├── pvc.yaml
-    ├── configmap.yaml
-    └── secret.yaml
+    ├── NOTES.txt
+    ├── namespace.yaml         # idempotent: lookup-guarded render
+    ├── serviceaccount.yaml
+    ├── secret.yaml            # PB_SECRET auto-gen, pre-install hook
+    ├── pocketbase-configmap.yaml   # pb_hooks/*.pb.js
+    ├── pocketbase-pvc.yaml    # reclaimPolicy: Retain
+    ├── pocketbase-deployment.yaml
+    ├── pocketbase-service.yaml
+    ├── frontend-configmap.yaml     # nginx.conf with /api proxy to PB svc
+    ├── frontend-deployment.yaml
+    ├── frontend-service.yaml
+    ├── ingress.yaml           # Traefik + cert-manager
+    └── tests/
+        └── test-connection.yaml
 ```
 
-### values.yaml
-```yaml
-replicaCount: 1
+### Key design decisions (locked in)
 
-image:
-  repository: secanis/stjorna
-  pullPolicy: IfNotPresent
-  pocketbaseTag: "0.22.0"
-  clientTag: "latest"
+| Decision | Choice | Why |
+|---|---|---|
+| Architecture | 2 separate Deployments + Services | mirrors docker-compose, independent scaling |
+| PocketBase object | Deployment + PVC (not StatefulSet) | no value at 1 replica; PVC binding works identically |
+| Hooks delivery | ConfigMap mount (default) | versioned with chart; no image rebuild on hook change |
+| PVC retention | `Retain` (not `Delete`) | data survives `helm uninstall`; manual cleanup |
+| Ingress | Traefik + cert-manager `letsencrypt` | matches target cluster's tooling |
+| Image registry | docker.io (public) by default | pull secrets empty |
+| `VITE_PB_URL` | build-time only | in-cluster, frontend proxies `/api/*` via nginx to PB service |
+| Image pull secrets | `[]` (none) | docker.io public images; user overrides for private registry |
 
-pocketbase:
-  storage: "/app/pb_data"
-  secret: ""  # Set via secret
-  port: 8090
+### values.yaml highlights
 
-client:
-  port: 80
+- `pocketbase.image.repository: docker.io/secanis/stjorna-pocketbase`
+- `pocketbase.image.tag: v3.0.0-rc1` (follows STJÓRNA version; updated by release workflow)
+- `pocketbase.persistence.size: 5Gi`, `storageClass: longhorn`
+- `pocketbase.secret.existingSecret: ""` (empty ⇒ chart auto-generates; set to a Secret name to bring your own)
+- `ingress.className: traefik` with `cert-manager.io/cluster-issuer: letsencrypt`
+- `ingress.hosts[0].host: stjorna.example.com` (override at install)
 
-ingress:
-  enabled: true
-  className: "traefik"
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  hosts:
-    - host: stjorna.example.com
-      paths:
-        - path: /
-          pathType: Prefix
+### Install
 
-persistence:
-  enabled: true
-  size: 5Gi
-  storageClass: "standard"
-  accessMode: ReadWriteOnce
+```bash
+# Build and push images first
+podman build -t docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1 -f docker/Dockerfile.pocketbase pocketbase
+podman push docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1
+podman build -t docker.io/secanis/stjorna-frontend:v3.0.0-rc1 -f frontend/Dockerfile frontend
+podman push docker.io/secanis/stjorna-frontend:v3.0.0-rc1
 
-s3:
-  enabled: true
-  bucket: "stjorna-backups"
-  region: "eu-central-1"
-  syncInterval: "0 3 * * *"  # Daily at 3 AM
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+# Install (override host at minimum)
+helm install stjorna ./helm/stjorna \
+  --set ingress.hosts[0].host=stjorna.yourdomain.com
 ```
 
-### Deployment Template
-```yaml
-# templates/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{ include "stjorna.fullname" . }}
-  labels:
-    {{- include "stjorna.labels" . | nindent 4 }}
-spec:
-  replicas: {{ .Values.replicaCount }}
-  selector:
-    matchLabels:
-      {{- include "stjorna.selectorLabels" . | nindent 6 }}
-  template:
-    metadata:
-      labels:
-        {{- include "stjorna.selectorLabels" . | nindent 8 }}
-    spec:
-      containers:
-        - name: pocketbase
-          image: "{{ .Values.image.repository }}:pocketbase-{{ .Values.image.pocketbaseTag }}"
-          ports:
-            - containerPort: {{ .Values.pocketbase.port }}
-          volumeMounts:
-            - name: pb-data
-              mountPath: {{ .Values.pocketbase.storage }}
-          env:
-            - name: PB_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "stjorna.fullname" . }}
-                  key: pocketbase-secret
+### Hooks iteration
 
-        - name: client
-          image: "{{ .Values.image.repository }}:client-{{ .Values.image.clientTag }}"
-          ports:
-            - containerPort: {{ .Values.client.port }}
-          livenessProbe:
-            httpGet:
-              path: /
-              port: {{ .Values.client.port }}
-          readinessProbe:
-            httpGet:
-              path: /
-              port: {{ .Values.client.port }}
-```
+Hooks live as ConfigMap keys; `helm upgrade` re-renders them and PB's `HooksWatch` reloads changed files. **Caveat:** `HooksWatch` only re-loads CHANGED existing files. New files require `kubectl rollout restart deployment/stjorna-pocketbase -n stjorna`.
+
+### Out of scope (in this chart)
+
+- Prometheus / Grafana integration (no metrics scraping)
+- HA / clustering (PB is single-replica sqlite)
+- DNS automation (no external-dns in cluster — create A/CNAME manually)
+- HPA, PDB, NetworkPolicy, ExternalSecret (deferred; can be added as opt-in values)
+
+## CI/CD
+
+GitHub Actions workflows in `.github/workflows/`:
+
+- **`ci.yml`** — runs on every push to `main`/`feature/**` and on PRs. Jobs: `test-frontend` (build + vitest), `test-pb` (vitest), `lint-helm` (helm lint + render), `test-helm` (kind-based, push only), `build-images` (matrix: pocketbase + frontend, push to **ghcr.io** with branch-specific tags).
+- **`release.yml`** — runs on `v*` tag push. Jobs: `build-images` (push to **docker.io/secanis** with semver tags), `release-helm` (chart-releaser-action → gh-pages branch), `notify-artifacthub` (best-effort re-index).
+
+Chart is published to `https://secanis.github.io/stjorna/` and registered on [artifacthub.io](https://artifacthub.io/) for discoverability.
+
+Required secrets: `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` (for release.yml).
 
 ---
 
-## Migration Considerations
-
-### From lowdb to PocketBase
-1. Export all data from current JSON database
-2. Create PocketBase collections with same schema
-3. Import data via PocketBase Admin API or direct SQLite insertion
-4. Update frontend API calls to use PocketBase SDK
-
-### Data Export Script
-```javascript
-// migration/export.js
-const lowdb = require('lowdb');
-const FileAsync = require('lowdb/adapters/FileAsync');
-const fs = require('fs');
-
-async function exportCurrentData() {
-  const adapter = new FileAsync('./data/database.json');
-  const db = await lowdb(adapter);
-
-  const exportData = {
-    categories: db.get('categories').value(),
-    products: db.get('products').value(),
-    services: db.get('services').value(),
-    users: db.get('users').value(),
-    exportedAt: new Date().toISOString()
-  };
-
-  fs.writeFileSync('export.json', JSON.stringify(exportData, null, 2));
-  console.log('Exported data:', exportData);
-}
-
-exportCurrentData();
-```
-
-### Import to PocketBase
-```javascript
-// migration/import.js
-import PocketBase from 'pocketbase';
-
-const pb = new PocketBase('http://localhost:8090');
-const fs = require('fs');
-
-async function importData() {
-  // Login as admin
-  await pb.admins.authWithPassword('admin@stjorna.ch', 'password');
-
-  const data = JSON.parse(fs.readFileSync('export.json'));
-
-  // Import categories
-  for (const cat of data.categories) {
-    await pb.collections.categories.create(cat);
-  }
-
-  // Import products
-  for (const prod of data.products) {
-    await pb.collections.products.create(prod);
-  }
-
-  console.log('Import complete');
-}
-
-importData();
-```
-
----
-
-## Development Workflow
+## Local Development Workflow
 
 ### Prerequisites
 - Node.js 20+
-- Docker & Docker Compose
-- S3-compatible storage account
+- Podman (or Docker)
+- S3-compatible storage account (optional, falls back to local)
 
-### Local Development
+### One-time setup
 ```bash
-# Start infrastructure
-docker-compose up -d pocketbase
-
-# Start frontend with hot reload
-cd client && npm run dev
-
-# Initialize admin account
-# Visit http://localhost:8090/_/ and create admin account
+cd pocketbase && ./pocketbase serve  # creates admin at first run
+# Visit http://localhost:8090/_/ to create admin
+cd ../frontend && npm install
+cp .env.example .env  # contains VITE_PB_URL
 ```
+
+### Dev loop
+```bash
+# Terminal 1: PB
+podman run -d --rm --network=host -v $(pwd)/pocketbase/pb_data:/app/pb_data \
+  --name stjorna-pocketbase-1 localhost/stjorna-pocketbase:test
+
+# Terminal 2: Vite
+cd frontend && npm run dev
+
+# Open http://localhost:3000 → first visit redirects to /setup
+```
+
+### Hot-reload PB hooks
+- PB watches `pb_hooks/` for changes to existing files
+- New files require container restart
+- File ownership: `podman cp` creates files owned by uid 100999 (pocketbase user)
+  - Workaround: `rm` the file (host user owns the dir), then `cat > file` to recreate
 
 ### Environment Variables
 ```env
-# Client (.env)
+# frontend/.env
 VITE_PB_URL=http://localhost:8090
 
-# PocketBase (env file)
-PB_SECRET=your-generated-secret
-
-# S3 Sync
-AWS_ACCESS_KEY_ID=xxx
-AWS_SECRET_ACCESS_KEY=xxx
-AWS_REGION=eu-central-1
-S3_BUCKET=stjorna-backups
-```
-
-### Key Commands
-```bash
-# Backend
-cd pocketbase && ./pocketbase serve
-
-# Frontend
-cd client && npm run dev
-
-# Build production
-cd client && npm run build
-
-# Docker build
-docker-compose build
-
-# Helm deploy
-helm upgrade --install stjorna ./helm/stjorna -f ./helm/stjorna/values.yaml
+# PocketBase env
+PB_SECRET=your-generated-secret-32-chars-min
 ```
 
 ---
 
-## API Reference for Rewrite
+## Key Gotchas (Quick Reference)
 
-### PocketBase REST API
+### PocketBase v0.22.7 JS Hooks
+- **Files must end in `.pb.js` or `.pb.ts`** (default `HooksFilesPattern`)
+- **Hook handler runs in a separate VM from the file loader** — top-level `let`/`var`/`globalThis.X` are NOT visible in handler scope. Use `new Function("c", "...")` to inline values, or define handler inline with literal values
+- **`c.json()` fails on complex nested objects** with generic 400 — use `c.string(200, preSerializedJson)` after `c.response().header().set('Content-Type', 'application/json; charset=utf-8')`
+- **`c.response().write(str)` exists but does NOT write** (returns 200 with empty body) — use `c.string()` or `c.blob()` instead
+- **`c.send()` does NOT exist in v0.22.7** (added in v0.23+)
+- **HooksWatch only re-loads CHANGED existing files**, not new files
+- See `pocketbase-jsvm-hooks` skill for full details
 
-**Authentication:**
-```http
-POST /api/collections/users/auth-with-password
-Content-Type: application/json
+### Vite Proxy
+- Use `/api/` (with trailing slash), not `/api` — otherwise `/api-docs` route is hijacked
 
-{"identity": "user@example.com", "password": "password"}
-```
+### File Deletion
+- `pb.collection('media').delete(id)` only removes DB row, NOT the file
+- Need `onRecordAfterDeleteRequest` hook + `pb.dao.NewFilesystem().Delete(...)`
 
-**Products:**
-```http
-GET /api/collections/products/records
-GET /api/collections/products/records/:id
-POST /api/collections/products/records
-PUT /api/collections/products/records/:id
-DELETE /api/collections/products/records/:id
-```
+### S3
+- PB v0.22.7 has no env-var S3 — use Settings API
+- `testS3` endpoint fails on Scaleway — test via real upload+fetch+delete instead
 
-**Files:**
-```http
-GET /api/files/{collection}/{record_id}/{filename}
-GET /api/files/{collection}/{record_id}/{filename}?thumb=100x100
-```
+### Auth
+- PB expects raw token in `Authorization` header (NOT `Bearer <token>`)
+- PB admin login uses separate `/api/admins/auth-with-password` endpoint
+- PB admin users have `pb.authStore.isAdmin = true` but no `role` field — must check `isPBAdmin()` explicitly
 
-**Export:**
-```http
-GET /api/collections/products/records?export=json
-GET /api/collections/products/records?export=csv
-```
+### File Permissions (podman)
+- `podman cp` creates files owned by uid 100999
+- Host user (matth) can't modify them
+- Workaround: `rm` (host owns dir) + `cat > file` or `podman cp` again
 
 ---
 
-## Notes for SaaS Deployment
+## Next Steps (Roadmap)
 
-1. **Multi-tenancy:** PocketBase supports separate databases per tenant or shared database with tenant filtering
-2. **S3 Sync:** Regular backup of database and files to S3 for disaster recovery
-3. **Rate Limiting:** Implement in front of PocketBase (Traefik middleware or dedicated service)
-4. **SSL:** Always run behind HTTPS-terminating reverse proxy (Traefik, nginx)
-5. **Scaling:** PocketBase is single-instance; for high load, consider read replicas or moving to managed PostgreSQL with Supabase
+1. **Add file cleanup hook**: a new `media.pb.js` hook with `onRecordAfterDeleteRequest` that calls `pb.dao().newFilesystem().Delete(originalName, record.id)` to actually remove files from PB storage on record delete.
+2. **Run full E2E suite**: `npx playwright test tests/e2e/api-docs.spec.ts` then full suite.
+3. **Add unit tests for pocketbase/test**: `pocketbase/test/setup.ts` and `vitest.config.ts` exist but tests are not yet written for v3 schema.
+4. **Verify Scaleway S3 upload+delete** with real bucket (currently uses `pbS3Valid` record-based test that mocks).
+5. **Add webhook dispatch** for product/category create/update events (when a real consumer needs it).
+6. **Add per-tenant user_tenants filter** to ensure PB admin only sees their tenant's data when in "tenant context" (currently PB admin sees all via `|| @request.auth.admin = true`).
+7. **Add i18n** (German/English) — currently English-only.
+8. **Add Matomo tracking** — currently disabled.
+
+---
+
+## Related Skills
+- `pocketbase-jsvm-hooks` — PocketBase v0.22.7 JS hook gotchas (loader/executor VM, response writing, file patterns)
+- `stjorna-e2e-testing` — Playwright E2E test setup, schema, patterns, debugging

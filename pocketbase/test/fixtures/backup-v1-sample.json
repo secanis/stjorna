@@ -1,0 +1,133 @@
+{
+  "categories": [
+    {
+      "_id": "cat001",
+      "name": "Hardware",
+      "description": "Physical tools and machines",
+      "active": true,
+      "image": "hardware_thumb.webp",
+      "imageUrl": "/uploads/admin/hardware_thumb.webp",
+      "created": "2020-01-15T10:00:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-01-15T10:00:00.000Z",
+      "updatedUser": "admin"
+    },
+    {
+      "_id": "cat002",
+      "name": "Software",
+      "description": "Applications and digital products",
+      "active": true,
+      "image": "",
+      "imageUrl": "",
+      "created": "2020-02-01T08:30:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-02-01T08:30:00.000Z",
+      "updatedUser": "admin"
+    },
+    {
+      "_id": "cat003",
+      "name": "Specials",
+      "description": "Seasonal offerings",
+      "active": false,
+      "image": "",
+      "imageUrl": "",
+      "created": "2020-03-10T12:00:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-03-10T12:00:00.000Z",
+      "updatedUser": "admin"
+    }
+  ],
+  "products": [
+    {
+      "_id": "prd001",
+      "name": "Hammer",
+      "category": "cat001",
+      "price": 12.5,
+      "description": "Standard claw hammer",
+      "active": true,
+      "image": "hammer.jpg",
+      "imageUrl": "/uploads/admin/hammer.jpg",
+      "created": "2020-01-20T10:00:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-01-20T10:00:00.000Z",
+      "updatedUser": "admin"
+    },
+    {
+      "_id": "prd002",
+      "name": "Screwdriver Set",
+      "category": "cat001",
+      "price": 24.99,
+      "description": "10-piece screwdriver set",
+      "active": true,
+      "image": "",
+      "imageUrl": "",
+      "created": "2020-01-25T10:00:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-01-25T10:00:00.000Z",
+      "updatedUser": "admin"
+    },
+    {
+      "_id": "prd003",
+      "name": "Antivirus License",
+      "category": "cat002",
+      "price": 49.0,
+      "description": "1-year license",
+      "active": true,
+      "image": "antivirus.png",
+      "imageUrl": "/uploads/admin/antivirus.png",
+      "created": "2020-02-15T10:00:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-02-15T10:00:00.000Z",
+      "updatedUser": "admin"
+    },
+    {
+      "_id": "prd004",
+      "name": "Holiday Bundle",
+      "category": "cat003",
+      "price": 99.0,
+      "description": "Limited time offer",
+      "active": true,
+      "image": "",
+      "imageUrl": "",
+      "created": "2020-03-20T10:00:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-03-20T10:00:00.000Z",
+      "updatedUser": "admin"
+    }
+  ],
+  "services": [
+    {
+      "_id": "svc001",
+      "name": "Consulting Hour",
+      "category": "cat002",
+      "price": 150.0,
+      "description": "Senior consultant, 1 hour",
+      "active": true,
+      "image": "",
+      "imageUrl": "",
+      "created": "2020-02-20T10:00:00.000Z",
+      "createdUser": "admin",
+      "updated": "2020-02-20T10:00:00.000Z",
+      "updatedUser": "admin"
+    }
+  ],
+  "users": [
+    {
+      "_id": "usr001",
+      "email": "admin@old.stjorna.test",
+      "username": "admin",
+      "password": "$2a$10$oldbcrypthashthatwontbeused",
+      "token": "ignored",
+      "language": "en"
+    }
+  ],
+  "cronjobs": [
+    {
+      "_id": "cron001",
+      "name": "cleanup_uploads",
+      "expression": "0 0 * * *",
+      "lastRun": "2020-05-01T00:00:00.000Z",
+      "nextRun": "2020-05-02T00:00:00.000Z"
+    }
+  ]
+}

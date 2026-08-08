@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "stjorna.pocketbase.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "stjorna.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pocketbase
+spec:
+  replicas: {{ .Values.pocketbase.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "stjorna.pocketbase.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "stjorna.pocketbase.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "stjorna.serviceAccountName" . }}
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.pocketbase.podSecurityContext | nindent 8 }}
+      containers:
+        - name: pocketbase
+          image: "{{ .Values.pocketbase.image.repository }}:{{ .Values.pocketbase.image.tag }}"
+          imagePullPolicy: {{ .Values.pocketbase.image.pullPolicy | default .Values.image.pullPolicy }}
+          args:
+            - serve
+            - --http=0.0.0.0:{{ .Values.pocketbase.service.port }}
+            - --dir=/app/pb_data
+            - --hooksDir=/app/pb_hooks
+          ports:
+            - name: http
+              containerPort: {{ .Values.pocketbase.service.port }}
+              protocol: TCP
+          env:
+            - name: PB_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "stjorna.pocketbase.secretName" . }}
+                  key: {{ .Values.pocketbase.secret.existingSecretKey | default "PB_SECRET" }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.pocketbase.healthcheck.path }}
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.pocketbase.healthcheck.path }}
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.pocketbase.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /app/pb_data
+            {{- if .Values.pocketbase.hooks.mountFromConfigMap }}
+            - name: hooks
+              mountPath: /app/pb_hooks
+            {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.pocketbase.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "stjorna.pocketbase.fullname" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        {{- if .Values.pocketbase.hooks.mountFromConfigMap }}
+        - name: hooks
+          configMap:
+            name: {{ include "stjorna.pocketbase.fullname" . }}-hooks
+            defaultMode: 0755
+        {{- end }}

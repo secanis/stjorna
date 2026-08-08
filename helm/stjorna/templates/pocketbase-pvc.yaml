@@ -1,0 +1,27 @@
+{{- if .Values.pocketbase.persistence.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "stjorna.pocketbase.fullname" . }}
+  namespace: {{ .Values.namespace.name }}
+  labels:
+    {{- include "stjorna.labels" . | nindent 4 }}
+    app.kubernetes.io/component: pocketbase
+spec:
+  accessModes:
+    {{- toYaml .Values.pocketbase.persistence.accessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ .Values.pocketbase.persistence.size | quote }}
+  {{- with .Values.pocketbase.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+{{- end -}}
+{{/*
+NOTE: persistentVolumeReclaimPolicy is intentionally NOT set on the PVC.
+That field belongs on a PersistentVolume (PV), not a PVC. To get
+"retain data on helm uninstall" semantics, configure the StorageClass
+with reclaimPolicy: Retain (cluster-side). The chart documents this in
+README.md; the values.pocketbase.persistence.reclaimPolicy key is kept
+for documentation purposes only.
+*/ -}}

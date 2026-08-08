@@ -1,0 +1,30 @@
+apiVersion: v2
+name: stjorna
+description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
+type: application
+version: 3.0.0-rc1
+appVersion: "v3.0.0-rc1"
+kubeVersion: ">=1.20.0-0"
+home: https://github.com/secanis/stjorna
+keywords:
+  - pocketbase
+  - cms
+  - product-management
+  - multi-tenant
+maintainers:
+  - name: secanis
+    email: support@secanis.ch
+annotations:
+  category: CMS
+  licenses: MIT
+dependencies:
+  - name: garage
+    # Chart version (matches the garage chart's Chart.yaml).
+    # Track the v1.3.1 release: https://git.deuxfleurs.fr/Deuxfleurs/garage/src/tag/v1.3.1
+    version: "0.7.3"
+    # Local path — Deuxfleurs does not publish a public helm repo or chart
+    # tarball, so the user must clone the garage repo as a sibling directory
+    # and run `helm dep build` once before installing. See README.
+    repository: file://../garage
+    # Off by default; flip on via `--set garage.enabled=true`.
+    condition: garage.enabled
