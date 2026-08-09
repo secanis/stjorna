@@ -15,7 +15,15 @@ FE_IMAGE       := docker.io/$(REPO_OWNER)/stjorna-frontend
 
 .DEFAULT_GOAL := help
 
-.PHONY: help test-helm build-images lint-helm keep-kind clean-kind
+.PHONY: help test-helm build-images lint-helm keep-kind clean-kind site-serve
+
+# Note: the 'gh-pages' site lives in site/ and is published by the
+# 'publish-site' job in .github/workflows/release.yml. The old v2
+# Jekyll-based 'github-pages' Ruby gem that read a docs/ directory
+# was removed in the v3 rewrite and no longer exists in this repo.
+# If you see 'No such file or directory @ dir_chdir0 - .../docs',
+# it's coming from a local alias or stale venv — see site/README.md
+# for the current build path.
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "Targets:\n"} \
@@ -37,3 +45,8 @@ keep-kind: ## Run the full test but keep the kind cluster for debugging
 
 clean-kind: ## Delete the test kind cluster if it still exists
 	-kind delete cluster --name $(KIND_CLUSTER)
+
+site-serve: ## Serve site/ locally for development (no Jekyll, no Ruby)
+	@echo "Serving site/ at http://localhost:8080"
+	@echo "(Ctrl-C to stop. The Swagger UI will load ./openapi.json from disk.)"
+	@python3 -m http.server 8080 --directory site

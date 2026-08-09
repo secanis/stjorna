@@ -33,3 +33,18 @@ todo.md
 reports/
 stjorna.iml
 docs/REWRITE_PLAN.md
+
+# v2 docs site leftovers — removed in the v3 rewrite. The current
+# gh-pages site is plain HTML in site/, published by the
+# 'publish-site' job in .github/workflows/release.yml. The old
+# 'github-pages' Ruby gem + jekyll-theme-primer that built a docs/
+# directory was removed too. If you see this in a fresh checkout
+# (e.g. a stale git clone, a leftover symlink, a venv with
+# github-pages installed), delete it — anything matching these
+# patterns is dead infrastructure.
+docs/
+docs/**
+_site/
+_site/**
+.jekyll-cache/
+.jekyll-metadata
