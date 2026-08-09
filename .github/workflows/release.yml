@@ -6,9 +6,14 @@
 #      - <tag>               (exact: v3.0.0)
 #      - <semver>            (3.0.0, 3.0, 3)
 #      - latest              (on main only)
-#   2. Package and publish the helm chart to the gh-pages branch
+#   2. Build and push the static site (landing + Swagger UI) to the
+#      gh-pages branch. Refreshes openapi.json from a live PB container
+#      so the published docs always match the released image.
+#   3. Package and publish the helm chart to the gh-pages branch
 #      (gh-pages is served at https://secanis.github.io/stjorna/).
-#      Register this URL on https://artifacthub.io/ to index the chart.
+#      The chart files (index.yaml + .tgz) coexist with the site at
+#      the root of the pages branch. Register this URL on
+#      https://artifacthub.io/ to index the chart.
 #
 # Required secrets:
 #   - DOCKERHUB_USERNAME   Docker Hub username
@@ -110,14 +115,104 @@ jobs:
           cache-from: type=gha,scope=release-${{ matrix.name }}
 
   # -------------------------------------------------------------------------
-  # 2. Package and publish the helm chart
+  # 2. Publish the static site (landing + Swagger UI) to gh-pages
+  # Runs BEFORE release-helm so the branch exists for chart-releaser
+  # to layer the chart files on top of. Also refreshes openapi.json
+  # from a live PB container so the docs always match the released image.
+  # -------------------------------------------------------------------------
+  publish-site:
+    name: Build & push site to gh-pages
+    needs: build-images
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Resolve release tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Refresh openapi.json from a live PB container
+        # Boots the just-built PB image, fetches the public /api/openapi.json
+        # (no auth required per pocketbase/pb_hooks/openapi.pb.js), kills the
+        # container. ~10s added to the release.
+        env:
+          PB_IMAGE: ${{ env.REGISTRY_PB }}
+        run: |
+          docker run -d --rm --network=host --name stjorna-pb-spec \
+            -v stjorna-spec-data:/app/pb_data \
+            "${PB_IMAGE}:${{ steps.version.outputs.tag }}"
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+            curl -fsS http://localhost:8090/api/health >/dev/null && break
+            sleep 1
+          done
+          curl -fsS http://localhost:8090/api/openapi.json -o site/openapi.json
+          docker stop stjorna-pb-spec
+          echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
+      - name: Re-copy swagger-ui assets from npm
+        # In case swagger-ui was upgraded since the last release. The
+        # vendored copy in site/swagger-ui/ is the source of truth, but
+        # re-copying here keeps the workflow robust against local edits.
+        run: |
+          cp frontend/node_modules/swagger-ui-dist/swagger-ui-bundle.js site/swagger-ui/
+          cp frontend/node_modules/swagger-ui-dist/swagger-ui.css       site/swagger-ui/
+      - name: Push site to gh-pages
+        # If the branch is missing (first release, or someone deleted it),
+        # bootstrap it as an orphan branch with an empty initial commit.
+        # Then overlay site/ on top, EXCLUDING chart artifacts so this
+        # job never clobbers index.yaml or *.tgz that release-helm wrote.
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name  "github-actions[bot]"
+          if ! git ls-remote --heads origin gh-pages | grep -q gh-pages; then
+            echo "gh-pages missing on origin — bootstrapping with an empty commit"
+            git worktree add --orphan gh-pages /tmp/gh-pages-bootstrap
+            git -C /tmp/gh-pages-bootstrap config user.email "github-actions[bot]@users.noreply.github.com"
+            git -C /tmp/gh-pages-bootstrap config user.name  "github-actions[bot]"
+            git -C /tmp/gh-pages-bootstrap commit --allow-empty -m "chore: bootstrap gh-pages for site + chart"
+            git -C /tmp/gh-pages-bootstrap push origin gh-pages
+            git worktree remove --force /tmp/gh-pages-bootstrap
+          else
+            echo "gh-pages already exists on origin"
+          fi
+
+          # Overlay site/ on the existing branch.
+          git worktree add gh-pages /tmp/gh-pages-site
+          rsync -a --delete \
+                --exclude '.git' \
+                --exclude 'index.yaml' \
+                --exclude '*.tgz' \
+                site/ /tmp/gh-pages-site/
+          cd /tmp/gh-pages-site
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m "ci: publish site to gh-pages"
+            git push origin gh-pages
+          else
+            echo "No site changes to commit"
+          fi
+          git worktree remove --force /tmp/gh-pages-site
+
+  # -------------------------------------------------------------------------
+  # 3. Package and publish the helm chart
   # Uses chart-releaser-action which:
   #   - packages helm/stjorna/ as a .tgz
   #   - publishes to the gh-pages branch (with index.yaml)
   #   - creates a GitHub release with the chart attached
+  # Depends on publish-site: chart-releaser-action expects origin/gh-pages
+  # to exist (it doesn't bootstrap on its own with the restricted GITHUB_TOKEN).
   # -------------------------------------------------------------------------
   release-helm:
     name: Package and publish helm chart
+    needs: publish-site
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
