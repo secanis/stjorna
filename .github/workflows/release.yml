@@ -58,12 +58,12 @@ jobs:
       matrix:
         include:
           - name: pocketbase
-            context: pocketbase
-            dockerfile: ../docker/Dockerfile.pocketbase
+            context: .
+            dockerfile: docker/Dockerfile.pocketbase
             registry: docker.io/secanis/stjorna-pocketbase
           - name: frontend
-            context: frontend
-            dockerfile: Dockerfile
+            context: .
+            dockerfile: frontend/Dockerfile
             registry: docker.io/secanis/stjorna-frontend
     steps:
       - uses: actions/checkout@v5
