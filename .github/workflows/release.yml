@@ -149,17 +149,47 @@ jobs:
         # Boots the just-built PB image, fetches the public /api/openapi.json
         # (no auth required per pocketbase/pb_hooks/openapi.pb.js), kills the
         # container. ~10s added to the release.
+        # Uses 'docker exec' for the health check + spec fetch so we curl
+        # from inside the container (avoids any host-network namespace
+        # weirdness on the GHA runner) and the container's own loopback.
         env:
           PB_IMAGE: ${{ env.REGISTRY_PB }}
         run: |
+          set -e
+          # Capture logs on failure for debugging.
+          trap 'echo "----- PB container logs -----"; docker logs stjorna-pb-spec 2>&1 || true; docker stop stjorna-pb-spec 2>/dev/null || true' ERR
+
           docker run -d --rm --network=host --name stjorna-pb-spec \
             -v stjorna-spec-data:/app/pb_data \
             "${PB_IMAGE}:${{ steps.version.outputs.tag }}"
-          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-            curl -fsS http://localhost:8090/api/health >/dev/null && break
+
+          # Wait for PB to be ready. PB usually takes <2s; we allow 60s.
+          # Curl from inside the container so we use its loopback, not
+          # the host's (--network=host can be quirky on some runners).
+          for i in $(seq 1 60); do
+            if docker exec stjorna-pb-spec \
+                curl -fsS http://127.0.0.1:8090/api/health >/dev/null 2>&1; then
+              echo "PB ready after ${i}s"
+              break
+            fi
             sleep 1
           done
-          curl -fsS http://localhost:8090/api/openapi.json -o site/openapi.json
+
+          # Final check — if not ready, dump logs and fail loudly.
+          if ! docker exec stjorna-pb-spec \
+              curl -fsS http://127.0.0.1:8090/api/health >/dev/null; then
+            echo "PB did not become ready within 60s"
+            echo "----- PB container logs -----"
+            docker logs stjorna-pb-spec 2>&1
+            exit 1
+          fi
+
+          # Fetch the spec from inside the container.
+          docker exec stjorna-pb-spec \
+            curl -fsS http://127.0.0.1:8090/api/openapi.json -o /tmp/openapi.json
+          docker cp stjorna-pb-spec:/tmp/openapi.json site/openapi.json
+          echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
+
           docker stop stjorna-pb-spec
           echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
       - name: Re-copy swagger-ui assets from npm
