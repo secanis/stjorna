@@ -149,9 +149,18 @@ jobs:
         # Boots the just-built PB image, fetches the public /api/openapi.json
         # (no auth required per pocketbase/pb_hooks/openapi.pb.js), kills the
         # container. ~10s added to the release.
-        # Uses 'docker exec' for the health check + spec fetch so we curl
-        # from inside the container (avoids any host-network namespace
-        # weirdness on the GHA runner) and the container's own loopback.
+        #
+        # Why --tmpfs instead of a named volume: GHA's Docker named
+        # volumes are root-owned. The container's pocketbase user (uid
+        # 1000) can't write to a root-owned mount, so PB exits immediately
+        # with a permission error and --rm removes the container. A
+        # --tmpfs is owned by root but writable by any uid inside the
+        # container. We don't need persistence here (we just want the
+        # spec out), so --tmpfs is the right tool.
+        #
+        # Also: the health check and spec fetch go via 'docker exec' so
+        # we curl from inside the container using its own loopback,
+        # avoiding any --network=host quirks on the GHA runner.
         env:
           PB_IMAGE: ${{ env.REGISTRY_PB }}
         run: |
@@ -160,12 +169,10 @@ jobs:
           trap 'echo "----- PB container logs -----"; docker logs stjorna-pb-spec 2>&1 || true; docker stop stjorna-pb-spec 2>/dev/null || true' ERR
 
           docker run -d --rm --network=host --name stjorna-pb-spec \
-            -v stjorna-spec-data:/app/pb_data \
+            --tmpfs /app/pb_data:rw,size=64m \
             "${PB_IMAGE}:${{ steps.version.outputs.tag }}"
 
           # Wait for PB to be ready. PB usually takes <2s; we allow 60s.
-          # Curl from inside the container so we use its loopback, not
-          # the host's (--network=host can be quirky on some runners).
           for i in $(seq 1 60); do
             if docker exec stjorna-pb-spec \
                 curl -fsS http://127.0.0.1:8090/api/health >/dev/null 2>&1; then
