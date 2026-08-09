@@ -165,10 +165,10 @@ jobs:
       matrix:
         include:
           - name: pocketbase
-            context: .
+            context: pocketbase
             dockerfile: docker/Dockerfile.pocketbase
           - name: frontend
-            context: .
+            context: frontend
             dockerfile: frontend/Dockerfile
     steps:
       - uses: actions/checkout@v5
