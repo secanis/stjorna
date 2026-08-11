@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STJÓRNA API — Swagger UI</title>
+  <link rel="stylesheet" href="../swagger-ui/swagger-ui.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>📦</text></svg>" />
+  <style>body { margin: 0; }</style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="../swagger-ui/swagger-ui-bundle.js"></script>
+  <script>
+    // Bundled at release time. This URL is relative to the page so it
+    // works when the site is served from any subpath of secanis.github.io.
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: "../openapi.json",
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        presets: [
+          SwaggerUIBundle.presets.apis
+        ],
+        layout: "BaseLayout",
+      });
+    };
+  </script>
+</body>
+</html>
