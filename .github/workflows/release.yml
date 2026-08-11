@@ -210,11 +210,22 @@ jobs:
           git config user.name  "github-actions[bot]"
           if ! git ls-remote --heads origin gh-pages | grep -q gh-pages; then
             echo "gh-pages missing on origin — bootstrapping with an empty commit"
-            git worktree add --orphan gh-pages /tmp/gh-pages-bootstrap
+            # Pattern for modern git (>= 2.30): 'git worktree add' no
+            # longer accepts --orphan. The bootstrap is a 3-step dance:
+            #   1. add a detached worktree (working tree = current commit)
+            #   2. clear the working tree (so the orphan starts empty)
+            #   3. switch to the orphan branch and create an empty commit
+            git worktree add --detach /tmp/gh-pages-bootstrap
             git -C /tmp/gh-pages-bootstrap config user.email "github-actions[bot]@users.noreply.github.com"
             git -C /tmp/gh-pages-bootstrap config user.name  "github-actions[bot]"
+            # Clear the working tree: 'git rm -rfq' knows not to touch
+            # the .git dir, so the worktree stays valid.
+            git -C /tmp/gh-pages-bootstrap rm -rfq .
+            # Now create the orphan branch (no files staged or in worktree)
+            git -C /tmp/gh-pages-bootstrap checkout --orphan gh-pages
             git -C /tmp/gh-pages-bootstrap commit --allow-empty -m "chore: bootstrap gh-pages for site + chart"
             git -C /tmp/gh-pages-bootstrap push origin gh-pages
+            git -C /tmp/gh-pages-bootstrap checkout --detach
             git worktree remove --force /tmp/gh-pages-bootstrap
           else
             echo "gh-pages already exists on origin"
