@@ -173,9 +173,13 @@ jobs:
             "${PB_IMAGE}:${{ steps.version.outputs.tag }}"
 
           # Wait for PB to be ready. PB usually takes <2s; we allow 60s.
+          # NOTE: the PB image is alpine + wget (no curl). Use wget -qO- for
+          # the health check and the spec fetch. (-qO- writes the body
+          # to stdout, matching what 'curl -fsS' would do, and -q
+          # silences progress; --tries=1 --timeout=2 keeps each probe fast.)
           for i in $(seq 1 60); do
             if docker exec stjorna-pb-spec \
-                curl -fsS http://127.0.0.1:8090/api/health >/dev/null 2>&1; then
+                wget -qO- --tries=1 --timeout=2 http://127.0.0.1:8090/api/health >/dev/null 2>&1; then
               echo "PB ready after ${i}s"
               break
             fi
@@ -184,7 +188,7 @@ jobs:
 
           # Final check — if not ready, dump logs and fail loudly.
           if ! docker exec stjorna-pb-spec \
-              curl -fsS http://127.0.0.1:8090/api/health >/dev/null; then
+              wget -qO- --tries=1 --timeout=2 http://127.0.0.1:8090/api/health >/dev/null; then
             echo "PB did not become ready within 60s"
             echo "----- PB container logs -----"
             docker logs stjorna-pb-spec 2>&1
@@ -193,7 +197,7 @@ jobs:
 
           # Fetch the spec from inside the container.
           docker exec stjorna-pb-spec \
-            curl -fsS http://127.0.0.1:8090/api/openapi.json -o /tmp/openapi.json
+            wget -qO /tmp/openapi.json --tries=1 --timeout=5 http://127.0.0.1:8090/api/openapi.json
           docker cp stjorna-pb-spec:/tmp/openapi.json site/openapi.json
           echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
 
