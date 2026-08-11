@@ -133,9 +133,6 @@ jobs:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: actions/setup-node@v5
-        with:
-          node-version: '24'
       - name: Resolve release tag
         id: version
         run: |
@@ -203,13 +200,6 @@ jobs:
 
           docker stop stjorna-pb-spec
           echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
-      - name: Re-copy swagger-ui assets from npm
-        # In case swagger-ui was upgraded since the last release. The
-        # vendored copy in site/swagger-ui/ is the source of truth, but
-        # re-copying here keeps the workflow robust against local edits.
-        run: |
-          cp frontend/node_modules/swagger-ui-dist/swagger-ui-bundle.js site/swagger-ui/
-          cp frontend/node_modules/swagger-ui-dist/swagger-ui.css       site/swagger-ui/
       - name: Push site to gh-pages
         # If the branch is missing (first release, or someone deleted it),
         # bootstrap it as an orphan branch with an empty initial commit.
