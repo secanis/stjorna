@@ -312,15 +312,22 @@ jobs:
           fi
       - name: Build chart dependencies
         working-directory: helm/stjorna
+        # Helm v4 (installed by azure/setup-helm@v5 below) hardcodes the
+        # 5MB per-file limit and removed the HELM_MAX_FILE_SIZE env override
+        # that helm v3 honored. The garage subchart bundles a dep whose
+        # pack file exceeds that limit, so 'helm dependency build' fails
+        # with "chart file ... is larger than the maximum file size 5242880".
+        # Install helm v3.16.x just for this step — it honors the env var,
+        # so we can bump the limit and proceed.
         env:
-          # The garage subchart bundles a large dependency whose pack file
-          # exceeds helm's 5MB default. Bump the per-file limit for this
-          # step only. Helm v4 reads HELM_MAX_CHART_FILE_SIZE (in bytes).
-          HELM_MAX_CHART_FILE_SIZE: "104857600"
-          # Older helm reads HELM_MAX_FILE_SIZE — set both for safety.
           HELM_MAX_FILE_SIZE: "104857600"
         run: |
-          helm dependency build
+          curl -fsSL -o /tmp/helm3.tgz \
+            https://get.helm.sh/helm-v3.16.4-linux-amd64.tar.gz
+          tar -xzf /tmp/helm3.tgz -C /tmp linux-amd64/helm
+          install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm3
+          helm3 version --short
+          helm3 dependency build
           # Verify the dependency was built and vendored.
           ls -la charts/ 2>&1
       - name: Configure git (chart-releaser needs it)
