@@ -298,40 +298,27 @@ jobs:
           echo "Updated image tags in values.yaml:"
           grep -E "tag:" helm/stjorna/values.yaml
       - name: Clone garage subchart (required for helm dep build)
-        # Chart.yaml has a local-path dep on ../garage. We need it on
-        # disk before 'helm dependency build' can run. The garage repo
-        # is at git.deuxfleurs.fr/Deuxfleurs/garage; the chart's
-        # README documents the same setup.
+        # The Deuxfleurs garage repo doesn't have its Chart.yaml at the
+        # repo root — the helm chart lives in script/helm/garage/. Helm's
+        # file://../garage dep expects Chart.yaml at helm/garage/, so we
+        # clone the repo to a scratch dir and copy the chart contents
+        # into helm/garage/ where helm will find them.
         run: |
-          if [ ! -d "$GITHUB_WORKSPACE/helm/garage" ]; then
-            git clone --branch v1.3.1 --depth 1 \
-              https://git.deuxfleurs.fr/Deuxfleurs/garage \
-              "$GITHUB_WORKSPACE/helm/garage"
-          else
-            echo "garage already present at $GITHUB_WORKSPACE/helm/garage"
-          fi
+          SCRATCH="$(mktemp -d)"
+          git clone --branch v1.3.1 --depth 1 \
+            https://git.deuxfleurs.fr/Deuxfleurs/garage "$SCRATCH/garage"
+          mkdir -p "$GITHUB_WORKSPACE/helm/garage"
+          # Copy chart contents (Chart.yaml, templates/, values.yaml,
+          # .helmignore, etc.) into the path helm expects.
+          cp -r "$SCRATCH/garage/script/helm/garage/." \
+                "$GITHUB_WORKSPACE/helm/garage/"
+          rm -rf "$SCRATCH"
+          echo "garage chart staged at $GITHUB_WORKSPACE/helm/garage"
+          ls -la "$GITHUB_WORKSPACE/helm/garage"
       - name: Build chart dependencies
         working-directory: helm/stjorna
-        # Helm v4 (installed by azure/setup-helm@v5 below) hardcodes the
-        # 5MB per-file limit and removed the HELM_MAX_FILE_SIZE env override
-        # that helm v3 honored. The garage subchart bundles a dep whose
-        # pack file exceeds that limit, so 'helm dependency build' fails
-        # with "chart file ... is larger than the maximum file size 5242880".
-        # Install helm v3.16.x just for this step — it honors the env var,
-        # so we can bump the limit and proceed.
-        env:
-          HELM_MAX_FILE_SIZE: "104857600"
         run: |
-          curl -fsSL -o /tmp/helm3.tgz \
-            https://get.helm.sh/helm-v3.16.4-linux-amd64.tar.gz
-          tar -xzf /tmp/helm3.tgz -C /tmp linux-amd64/helm
-          install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm3
-          helm3 version --short
-          echo "----- pwd -----"; pwd
-          echo "----- ls -----"; ls -la
-          echo "----- stat Chart.yaml -----"; stat Chart.yaml
-          echo "----- helm3 lint . -----"; helm3 lint . --debug 2>&1 | head -40
-          helm3 dependency build
+          helm dependency build
           # Verify the dependency was built and vendored.
           ls -la charts/ 2>&1
       - name: Configure git (chart-releaser needs it)
