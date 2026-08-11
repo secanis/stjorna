@@ -235,9 +235,9 @@ jobs:
           git worktree add /tmp/gh-pages-site gh-pages
           rsync -a --delete \
                 --exclude '.git' \
-                --exclude 'CNAME' \
                 --exclude 'index.yaml' \
                 --exclude '*.tgz' \
+                --filter='P CNAME' \
                 site/ /tmp/gh-pages-site/
           cd /tmp/gh-pages-site
           # Use -f to force-add openapi.json despite the .gitignore rule
