@@ -232,7 +232,7 @@ jobs:
           fi
 
           # Overlay site/ on the existing branch.
-          git worktree add gh-pages /tmp/gh-pages-site
+          git worktree add /tmp/gh-pages-site gh-pages
           rsync -a --delete \
                 --exclude '.git' \
                 --exclude 'index.yaml' \
