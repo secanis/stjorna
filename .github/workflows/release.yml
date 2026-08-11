@@ -329,7 +329,8 @@ jobs:
           helm3 version --short
           echo "----- pwd -----"; pwd
           echo "----- ls -----"; ls -la
-          echo "----- Chart.yaml head -----"; head -5 Chart.yaml
+          echo "----- stat Chart.yaml -----"; stat Chart.yaml
+          echo "----- helm3 lint . -----"; helm3 lint . --debug 2>&1 | head -40
           helm3 dependency build
           # Verify the dependency was built and vendored.
           ls -la charts/ 2>&1
