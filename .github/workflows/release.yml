@@ -297,6 +297,25 @@ jobs:
           grep -E "^(version|appVersion):" helm/stjorna/Chart.yaml
           echo "Updated image tags in values.yaml:"
           grep -E "tag:" helm/stjorna/values.yaml
+      - name: Clone garage subchart (required for helm dep build)
+        # Chart.yaml has a local-path dep on ../garage. We need it on
+        # disk before 'helm dependency build' can run. The garage repo
+        # is at git.deuxfleurs.fr/Deuxfleurs/garage; the chart's
+        # README documents the same setup.
+        run: |
+          if [ ! -d "$GITHUB_WORKSPACE/../garage" ]; then
+            git clone --branch v1.3.1 --depth 1 \
+              https://git.deuxfleurs.fr/Deuxfleurs/garage \
+              "$GITHUB_WORKSPACE/../garage"
+          else
+            echo "garage already present at $GITHUB_WORKSPACE/../garage"
+          fi
+      - name: Build chart dependencies
+        working-directory: helm/stjorna
+        run: |
+          helm dependency build
+          # Verify the dependency was built and vendored.
+          ls -la charts/ 2>&1
       - name: Configure git (chart-releaser needs it)
         run: |
           git config user.name "github-actions[bot]"
@@ -304,10 +323,6 @@ jobs:
       - uses: azure/setup-helm@v5
         with:
           version: v4.2.2
-      - name: Configure git (chart-releaser needs it)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
       - uses: helm/chart-releaser-action@v1
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -318,11 +333,10 @@ jobs:
           skip_packaging: false
           # Mark this release as the latest
           mark_as_latest: true
-          # Update gh-pages with the new chart + index.yaml
+          # Push the chart + index.yaml to the gh-pages branch
           pages_branch: gh-pages
-          pages_index_path: index.yaml
-          # Skip the PR creation for changes; releases are direct
-          skip_existing_release: true
+          # Skip upload if a release for this version already exists
+          skip_existing: true
 
   # -------------------------------------------------------------------------
   # 3. Notify artifacthub.io (optional, but recommended)
