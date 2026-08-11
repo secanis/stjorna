@@ -239,7 +239,11 @@ jobs:
                 --exclude '*.tgz' \
                 site/ /tmp/gh-pages-site/
           cd /tmp/gh-pages-site
-          git add -A
+          # Use -f to force-add openapi.json despite the .gitignore rule
+          # in site/.gitignore. The rule exists for the main branch (we
+          # don't want a stale generated spec in the repo), but the spec
+          # MUST ship on gh-pages so Swagger UI at /docs/ can fetch it.
+          git add -Af .
           if ! git diff --cached --quiet; then
             git commit -m "ci: publish site to gh-pages"
             git push origin gh-pages
