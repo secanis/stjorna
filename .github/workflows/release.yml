@@ -297,7 +297,7 @@ jobs:
           grep -E "^(version|appVersion):" helm/stjorna/Chart.yaml
           echo "Updated image tags in values.yaml:"
           grep -E "tag:" helm/stjorna/values.yaml
-- name: Clone garage subchart (required for helm dep build)
+      - name: Clone garage subchart (required for helm dep build)
         # Chart.yaml has a local-path dep on ../garage. We need it on
         # disk before 'helm dependency build' can run. The garage repo
         # is at git.deuxfleurs.fr/Deuxfleurs/garage; the chart's
