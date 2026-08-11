@@ -312,6 +312,13 @@ jobs:
           fi
       - name: Build chart dependencies
         working-directory: helm/stjorna
+        env:
+          # The garage subchart bundles a large dependency whose pack file
+          # exceeds helm's 5MB default. Bump the per-file limit for this
+          # step only. Helm v4 reads HELM_MAX_CHART_FILE_SIZE (in bytes).
+          HELM_MAX_CHART_FILE_SIZE: "104857600"
+          # Older helm reads HELM_MAX_FILE_SIZE — set both for safety.
+          HELM_MAX_FILE_SIZE: "104857600"
         run: |
           helm dependency build
           # Verify the dependency was built and vendored.
