@@ -333,9 +333,12 @@ jobs:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         with:
           charts_dir: helm
-          # The chart's version is already set in Chart.yaml (above);
-          # don't let chart-releaser auto-bump it.
-          skip_packaging: false
+          # NB: skip_packaging is intentionally NOT set. Setting it to
+          # the literal "false" is treated as truthy by the action's
+          # bash -n check (any non-empty string passes), which makes
+          # cr.sh skip the packaging step entirely and fail with
+          # "no charts found at .cr-release-packages". Omitting the
+          # input lets cr.sh run its own helm package step.
           # Mark this release as the latest
           mark_as_latest: true
           # Push the chart + index.yaml to the gh-pages branch
