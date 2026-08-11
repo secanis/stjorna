@@ -235,6 +235,7 @@ jobs:
           git worktree add /tmp/gh-pages-site gh-pages
           rsync -a --delete \
                 --exclude '.git' \
+                --exclude 'CNAME' \
                 --exclude 'index.yaml' \
                 --exclude '*.tgz' \
                 site/ /tmp/gh-pages-site/
