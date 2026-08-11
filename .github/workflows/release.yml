@@ -327,6 +327,9 @@ jobs:
           tar -xzf /tmp/helm3.tgz -C /tmp linux-amd64/helm
           install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm3
           helm3 version --short
+          echo "----- pwd -----"; pwd
+          echo "----- ls -----"; ls -la
+          echo "----- Chart.yaml head -----"; head -5 Chart.yaml
           helm3 dependency build
           # Verify the dependency was built and vendored.
           ls -la charts/ 2>&1
