@@ -4,7 +4,7 @@
 # Jobs:
 #   - lint-frontend: type-check + build the SolidJS frontend
 #   - test-frontend: vitest unit tests in frontend/src/utils
-#   - test-pb:      vitest integration tests in pocketbase/test
+#   - test-pb:      vitest integration tests in pocketbase
 #   - lint-helm:     helm lint + template render check
 #   - test-helm:     full kind-based end-to-end test (slower, only on push)
 #   - build-images:  build PB + frontend images, push to ghcr.io for caching
@@ -71,9 +71,9 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: pocketbase/test/package.json
+          cache-dependency-path: pocketbase/package-lock.json
       - name: Install dependencies
-        working-directory: pocketbase/test
+        working-directory: pocketbase
         run: npm install --no-audit --no-fund
       - name: Build PocketBase image
         # Tests spin up a real PB container via setup.ts; the image must
@@ -99,7 +99,7 @@ jobs:
             docker.io/alpine:3.19 \
             chown -R 1000:1000 /pb_data
       - name: Run tests
-        working-directory: pocketbase/test
+        working-directory: pocketbase
         run: npx vitest run
         env:
           PB_URL: http://localhost:8090

@@ -265,14 +265,38 @@ export default function CategoryEdit() {
             <Show when={selectedMedia()}>
               <div
                 data-testid="cat-selected-media"
-                class="bg-gray-700 rounded p-3 mb-3 flex items-center gap-3"
+                data-loaded={selectedMedia()!.mime_type?.startsWith('image/') ? 'pending' : 'no'}
+                class="bg-gray-700 rounded p-3 mb-3 flex items-center gap-3 min-h-24"
               >
-                <Show when={selectedMedia()!.mime_type?.startsWith('image/')}>
+                <Show
+                  when={selectedMedia()!.mime_type?.startsWith('image/')}
+                  fallback={
+                    <div
+                      data-testid="cat-selected-media-fallback"
+                      class="w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center"
+                    >
+                      {selectedMedia()!.filename}
+                    </div>
+                  }
+                >
                   <img
-                    src={getMediaFileUrl(selectedMedia()!.id, selectedMedia()!.file || '', { thumb: '100x100' })}
+                    src={getMediaFileUrl(selectedMedia()!.id, selectedMedia()!.file || '', { thumb: '200x200' })}
                     alt={selectedMedia()!.filename || ''}
-                    class="w-16 h-16 object-cover rounded"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    class="w-24 h-24 object-cover rounded"
+                    onLoad={(e) => {
+                      (e.currentTarget.parentElement as HTMLElement).dataset.loaded = 'yes';
+                    }}
+                    onError={(e) => {
+                      const img = e.currentTarget as HTMLImageElement;
+                      const parent = img.parentElement as HTMLElement;
+                      if (!parent) return;
+                      parent.dataset.loaded = 'error';
+                      const placeholder = document.createElement('div');
+                      placeholder.setAttribute('data-testid', 'cat-selected-media-fallback');
+                      placeholder.className = 'w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center';
+                      placeholder.textContent = selectedMedia()!.filename || '';
+                      img.replaceWith(placeholder);
+                    }}
                   />
                 </Show>
                 <div class="flex-1 min-w-0">

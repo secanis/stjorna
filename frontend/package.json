@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "npm run build && playwright test",
+    "test:e2e:fast": "playwright test"
   },
   "dependencies": {
     "@solidjs/router": "^0.15.3",
@@ -19,6 +21,7 @@
     "swagger-ui-dist": "^5.32.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.6.3",
     "autoprefixer": "^10.4.20",
     "jsdom": "^25.0.1",

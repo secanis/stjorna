@@ -22,7 +22,6 @@ export default defineConfig({
     command: 'npm run preview',
     url: 'http://localhost:4173',
     reuseExistingServer: false,
-    cwd: './frontend',
     timeout: 60000,
   },
   globalSetup: './tests/e2e/helpers/global-setup',

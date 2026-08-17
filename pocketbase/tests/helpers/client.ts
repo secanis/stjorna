@@ -1,5 +1,5 @@
 import PocketBase from 'pocketbase';
-import { getPb, getTestAdminCredentials } from '../setup.ts';
+import { getPb, getTestAdminCredentials } from '../../setup.ts';
 
 export async function createAdminClient(): Promise<PocketBase> {
   const pb = getPb();

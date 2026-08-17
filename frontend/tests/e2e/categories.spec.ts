@@ -1,4 +1,4 @@
-import { test, expect, getContext } from './helpers/test-context';
+import { test, expect, getContext, pb, getTenantId } from './helpers/test-context';
 
   test.describe('Categories', () => {
     let ctx: ReturnType<typeof getContext>;
@@ -154,5 +154,112 @@ import { test, expect, getContext } from './helpers/test-context';
       page.on('dialog', dialog => dialog.accept());
       await page.locator('button:has-text("Delete")').first().click();
       await page.waitForTimeout(1000);
+    });
+
+    test('selected media block renders with image when media assigned', async ({ page }) => {
+      const tenantId = getTenantId();
+      if (!tenantId) test.skip();
+
+      const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const pngBuffer = Buffer.from(pngBase64, 'base64');
+      const filename = `cat-media-test-${Date.now()}.png`;
+
+      const form = new FormData();
+      form.append('file', new File([pngBuffer], filename, { type: 'image/png' }));
+      form.append('filename', filename);
+      form.append('original_name', filename);
+      form.append('mime_type', 'image/png');
+      form.append('size', String(pngBuffer.length));
+      form.append('width', '1');
+      form.append('height', '1');
+      form.append('usage_count', '0');
+      form.append('tenant', tenantId);
+      const mediaRecord = await pb.collection('media').create(form);
+
+      const uniqueSlug = `cat-with-media-${Date.now()}`;
+      const category = await pb.collection('categories').create({
+        tenant: tenantId,
+        name: 'Category With Media',
+        slug: uniqueSlug,
+        description: 'Has an image assigned',
+        active: true,
+        sort_order: 1,
+        media: mediaRecord.id,
+      });
+
+      await page.goto(`${ctx.frontendUrl}/categories/${category.id}`);
+      await page.waitForSelector('#cat-name', { timeout: 15000 });
+
+      const block = page.locator('[data-testid="cat-selected-media"]');
+      await expect(block).toBeVisible({ timeout: 10000 });
+
+      const box = await block.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(80);
+
+      const img = block.locator('img');
+      await expect(img).toBeVisible({ timeout: 10000 });
+
+      await page.screenshot({
+        path: 'test-results/edit-category-selected-media.png',
+        fullPage: true,
+      });
+    });
+
+    test('selected media block stays tall when image fails to load', async ({ page }) => {
+      const tenantId = getTenantId();
+      if (!tenantId) test.skip();
+
+      const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const pngBuffer = Buffer.from(pngBase64, 'base64');
+      const filename = `cat-broken-media-${Date.now()}.png`;
+
+      const form = new FormData();
+      form.append('file', new File([pngBuffer], filename, { type: 'image/png' }));
+      form.append('filename', filename);
+      form.append('original_name', filename);
+      form.append('mime_type', 'image/png');
+      form.append('size', String(pngBuffer.length));
+      form.append('width', '1');
+      form.append('height', '1');
+      form.append('usage_count', '0');
+      form.append('tenant', tenantId);
+      const mediaRecord = await pb.collection('media').create(form);
+
+      const uniqueSlug = `cat-broken-media-${Date.now()}`;
+      const category = await pb.collection('categories').create({
+        tenant: tenantId,
+        name: 'Category Broken Media',
+        slug: uniqueSlug,
+        description: 'Media file URL will 404',
+        active: true,
+        sort_order: 1,
+        media: mediaRecord.id,
+      });
+
+      await page.route('**/api/files/media/**', (route) =>
+        route.fulfill({ status: 404, body: 'stubbed' })
+      );
+
+      await page.goto(`${ctx.frontendUrl}/categories/${category.id}`);
+      await page.waitForSelector('#cat-name', { timeout: 15000 });
+
+      const block = page.locator('[data-testid="cat-selected-media"]');
+      await expect(block).toBeVisible({ timeout: 10000 });
+
+      const box = await block.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.height).toBeGreaterThanOrEqual(80);
+
+      const fallback = block.locator('[data-testid="cat-selected-media-fallback"]');
+      await expect(fallback).toBeVisible({ timeout: 10000 });
+      await expect(fallback).toContainText(filename);
+
+      await page.screenshot({
+        path: 'test-results/edit-category-broken-media.png',
+        fullPage: true,
+      });
+
+      await page.unroute('**/api/files/media/**');
     });
   });

@@ -121,6 +121,7 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'description', type: 'text' as const },
         { name: 'active', type: 'bool' as const },
         { name: 'sort_order', type: 'number' as const },
+        { name: 'media', type: 'relation' as const, options: { collectionId: '_MEDIA_ID_', maxSelect: 1, cascadeDelete: false } },
       ],
       listRule: '@request.auth.id != ""',
       viewRule: '@request.auth.id != ""',
