@@ -169,6 +169,27 @@ cd ../pocketbase
 npm test
 ```
 
+### Connect to a remote PocketBase
+
+Use `dev:remote` to point the frontend at an existing backend (staging,
+production, or another dev machine) without running PocketBase locally:
+
+```bash
+VITE_PB_URL=https://pb.example.com npm run dev:remote
+```
+
+This overrides both the build-time API base URL (`VITE_PB_URL`) and the
+Vite dev server proxy (`/api/` → remote backend), so all API calls route
+through the remote PocketBase without CORS issues.
+
+You can also put the URL in a `.env.local` file (git-ignored) so you
+don't have to type it every time:
+
+```bash
+echo 'VITE_PB_URL=https://pb.example.com' > frontend/.env.local
+npm run dev:remote
+```
+
 ## Project Structure
 
 ```
