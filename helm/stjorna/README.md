@@ -23,7 +23,7 @@ Multi-tenant product management: PocketBase backend + SolidJS frontend, deployed
 ```bash
 # 1. Build and push images (one-time per release)
 podman build -t docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1 \
-  -f docker/Dockerfile.pocketbase pocketbase
+  -f pocketbase/Dockerfile pocketbase
 podman push docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1
 
 podman build -t docker.io/secanis/stjorna-frontend:v3.0.0-rc1 \
@@ -213,7 +213,7 @@ podman build -t docker.io/secanis/stjorna-frontend:v3.0.0-rc1 \
 
 ### Hooks iteration
 
-PocketBase hook files live in `helm/stjorna/files/hooks/*.pb.js`. The chart ships them as a ConfigMap mounted at `/app/pb_hooks`. The `docker/Dockerfile.pocketbase` copies the same files from `pocketbase/pb_hooks/` (so local dev with `docker compose` works), and the chart's `files/hooks/` keeps an in-chart copy for the helm install.
+PocketBase hook files live in `helm/stjorna/files/hooks/*.pb.js`. The chart ships them as a ConfigMap mounted at `/app/pb_hooks`. The `pocketbase/Dockerfile` copies the same files from `pocketbase/pb_hooks/` (so local dev with `docker compose` works), and the chart's `files/hooks/` keeps an in-chart copy for the helm install.
 
 > **Keep the two locations in sync.** When you add/edit a hook, update both:
 >

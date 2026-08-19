@@ -84,7 +84,7 @@ jobs:
           docker buildx build \
             --tag localhost/stjorna-pocketbase:test \
             --load \
-            --file docker/Dockerfile.pocketbase \
+            --file pocketbase/Dockerfile \
             pocketbase
       - name: Pre-create PB data volume
         # Docker creates the named volume lazily, but on a fresh runner
@@ -166,7 +166,7 @@ jobs:
         include:
           - name: pocketbase
             context: pocketbase
-            dockerfile: docker/Dockerfile.pocketbase
+            dockerfile: pocketbase/Dockerfile
           - name: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
