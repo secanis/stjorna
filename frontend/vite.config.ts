@@ -2,6 +2,8 @@ import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 import path from 'path';
 
+const pbUrl = (process.env.VITE_PB_URL || 'http://localhost:8090').replace(/\/+$/, '');
+
 export default defineConfig({
   plugins: [solid()],
   resolve: {
@@ -13,7 +15,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api/': {
-        target: 'http://localhost:8090',
+        target: pbUrl,
         changeOrigin: true,
       },
     },
