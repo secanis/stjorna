@@ -1,0 +1,24 @@
+{
+  "name": "stjorna-pocketbase",
+  "version": "1.0.0",
+  "description": "PocketBase backend + integration tests for STJÓRNA",
+  "type": "module",
+  "scripts": {
+    "test": "npm run test:reset-volume && vitest run",
+    "test:reset-volume": "(podman volume rm -f stjorna-test-data 2>/dev/null || docker volume rm -f stjorna-test-data 2>/dev/null || true) && (podman volume create stjorna-test-data 2>/dev/null || docker volume create stjorna-test-data 2>/dev/null || true)",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:sequential": "npm run test:reset-volume && for f in tests/auth.test.ts tests/multitenant.test.ts tests/webhooks.test.ts tests/collections/categories.test.ts tests/collections/media.test.ts tests/collections/products.test.ts tests/collections/tenants.test.ts; do echo \"Running $f\" && (podman ps -q --format \"{{.ID}}\" | xargs -r podman stop 2>/dev/null || docker ps -q | xargs -r docker stop 2>/dev/null || true); npx vitest run \"$f\" || exit 1; done",
+    "fix": "tsx ../scripts/fix-pocketbase.ts",
+    "test:api-rules": "tsx ../scripts/test-api-rules.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.2.0"
+  },
+  "dependencies": {
+    "pocketbase": "^0.21.0"
+  }
+}

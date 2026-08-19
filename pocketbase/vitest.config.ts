@@ -5,8 +5,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    timeout: 30000,
-    include: ['**/*.test.ts', '../../frontend/src/utils/*.test.ts'],
+    testTimeout: 60000,
+    hookTimeout: 60000,
+    include: ['**/*.test.ts'],
     // Run test files serially. Each file's beforeAll starts a PocketBase
     // container; if vitest runs files in parallel they race to start/stop
     // the same container and most calls fail with "Failed to start

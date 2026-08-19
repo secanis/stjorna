@@ -1,8 +1,8 @@
 import { Page } from '@playwright/test';
 import { test as base, expect } from '@playwright/test';
-import { getTestCredentials, getTenantId, pb } from './global-setup';
+import { getTestCredentials, getTenantId, pb, readE2EState } from './global-setup';
 
-export { pb, getTestCredentials, getTenantId, expect };
+export { pb, getTestCredentials, getTenantId, expect, readE2EState };
 
 export class TestContext {
   readonly page: Page;

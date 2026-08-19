@@ -1,5 +1,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as nodeFs from 'node:fs';
+import * as nodePath from 'node:path';
 import PocketBase from 'pocketbase';
 
 const execAsync = promisify(exec);
@@ -121,6 +123,7 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'description', type: 'text' as const },
         { name: 'active', type: 'bool' as const },
         { name: 'sort_order', type: 'number' as const },
+        { name: 'media', type: 'relation' as const, options: { collectionId: '_MEDIA_ID_', maxSelect: 1, cascadeDelete: false } },
       ],
       listRule: '@request.auth.id != ""',
       viewRule: '@request.auth.id != ""',
@@ -221,22 +224,42 @@ async function setupCollections(pb: PocketBase): Promise<void> {
   let rolesId: string | null = null;
   let mediaId: string | null = null;
 
+  const usersId = (await pb.collections.getOne('_pb_users_auth_')).id;
+  let categoriesId: string | null = null;
+
+  const replaceIds = (col: any): any => ({
+    ...col,
+    schema: col.schema.map((field: any) => {
+      if (field.type === 'relation' && field.options?.collectionId) {
+        let targetId = field.options.collectionId;
+        if (targetId === '_TENANTS_ID_') targetId = tenantsId;
+        else if (targetId === '_CATEGORIES_ID_') targetId = categoriesId;
+        else if (targetId === '_MEDIA_ID_') targetId = mediaId;
+        else if (targetId === '_pb_users_auth_') targetId = usersId;
+        else if (targetId === '_ROLES_ID_') targetId = rolesId;
+        return { ...field, options: { ...field.options, collectionId: targetId } };
+      }
+      return field;
+    }),
+  });
+
   for (const name of phase1) {
-    if (!existingNames.has(name)) {
-      const col = collections.find(c => c.name === name)!;
-      console.log(`[Setup] Creating collection: ${name}`);
-      const created = await pb.collections.create(col);
-      if (name === 'tenants') tenantsId = created.id;
-      if (name === 'roles') rolesId = created.id;
-      if (name === 'media') mediaId = created.id;
-      console.log(`[Setup] Created collection: ${name}`);
-    } else {
+    const colTemplate = collections.find(c => c.name === name)!;
+    if (existingNames.has(name)) {
       console.log(`[Setup] Collection ${name} already exists`);
       const col = await pb.collections.getFirstListItem(`name="${name}"`);
       if (name === 'tenants') tenantsId = col.id;
       if (name === 'roles') rolesId = col.id;
       if (name === 'media') mediaId = col.id;
+      continue;
     }
+    console.log(`[Setup] Creating collection: ${name}`);
+    const colToCreate = replaceIds(colTemplate);
+    const created = await pb.collections.create(colToCreate);
+    if (name === 'tenants') tenantsId = created.id;
+    if (name === 'roles') rolesId = created.id;
+    if (name === 'media') mediaId = created.id;
+    console.log(`[Setup] Created collection: ${name}`);
   }
 
   if (!existingNames.has('roles')) {
@@ -250,56 +273,37 @@ async function setupCollections(pb: PocketBase): Promise<void> {
   if (!tenantsId) throw new Error('Could not get tenants collection ID');
   if (!rolesId) throw new Error('Could not get roles collection ID');
   if (!mediaId) throw new Error('Could not get media collection ID');
-  const usersId = (await pb.collections.getOne('_pb_users_auth_')).id;
-
-  let categoriesId = tenantsId;
-  if (existingNames.has('categories')) {
-    const catCol = await pb.collections.getFirstListItem('name="categories"');
-    categoriesId = catCol.id;
-  }
-
-  const replaceIds = (col: any): any => ({
-    ...col,
-    schema: col.schema.map((field: any) => {
-      if (field.type === 'relation' && field.options?.collectionId) {
-        let targetId = field.options.collectionId;
-        if (targetId === '_TENANTS_ID_') targetId = tenantsId!;
-        if (targetId === '_CATEGORIES_ID_') targetId = categoriesId;
-        if (targetId === '_MEDIA_ID_') targetId = mediaId;
-        if (targetId === '_pb_users_auth_') targetId = usersId;
-        if (targetId === '_ROLES_ID_') targetId = rolesId!;
-        return { ...field, options: { ...field.options, collectionId: targetId } };
-      }
-      return field;
-    }),
-  });
 
   for (const name of phase2) {
-    if (!existingNames.has(name)) {
-      console.log(`[Setup] Creating collection: ${name}`);
-      const colTemplate = collections.find(c => c.name === name)!;
-      const colToCreate = replaceIds(colTemplate);
-      delete colToCreate.listRule;
-      delete colToCreate.viewRule;
-      delete colToCreate.createRule;
-      delete colToCreate.updateRule;
-      delete colToCreate.deleteRule;
-      await pb.collections.create(colToCreate);
-      console.log(`[Setup] Created collection: ${name}`);
-    } else {
+    if (existingNames.has(name)) {
       console.log(`[Setup] Collection ${name} already exists`);
+      if (name === 'categories') {
+        const catCol = await pb.collections.getFirstListItem('name="categories"');
+        categoriesId = catCol.id;
+      }
+      continue;
+    }
+    if (name === 'categories') categoriesId = tenantsId;
+    console.log(`[Setup] Creating collection: ${name}`);
+    const colTemplate = collections.find(c => c.name === name)!;
+    const colToCreate = replaceIds(colTemplate);
+    await pb.collections.create(colToCreate);
+    console.log(`[Setup] Created collection: ${name}`);
+    if (name === 'categories' && !categoriesId) {
+      const catCol = await pb.collections.getFirstListItem('name="categories"');
+      categoriesId = catCol.id;
     }
   }
 
   for (const name of phase3) {
-    if (!existingNames.has(name)) {
-      console.log(`[Setup] Creating collection: ${name}`);
-      const col = collections.find(c => c.name === name)!;
-      await pb.collections.create(col);
-      console.log(`[Setup] Created collection: ${name}`);
-    } else {
+    if (existingNames.has(name)) {
       console.log(`[Setup] Collection ${name} already exists`);
+      continue;
     }
+    console.log(`[Setup] Creating collection: ${name}`);
+    const col = collections.find(c => c.name === name)!;
+    await pb.collections.create(col);
+    console.log(`[Setup] Created collection: ${name}`);
   }
 
   const usersCol = await pb.collections.getOne('_pb_users_auth_');
@@ -422,6 +426,7 @@ export async function cleanup(): Promise<void> {
     } catch {}
     containerId = null;
   }
+  clearE2EState();
   pb = undefined as any;
 }
 
@@ -439,9 +444,49 @@ export function getTestCredentials() {
 }
 
 export function getTenantId() {
-  return testTenantId;
+  // Worker processes don't see the module-level var set in global-setup
+  // (main process). Fall back to the file written by writeE2EState().
+  if (testTenantId) return testTenantId;
+  return readE2EState().tenantId;
+}
+
+// Playwright runs global-setup in the main process and tests in worker
+// processes; module-level state set in main is not visible in workers.
+// Persist the bits tests need (tenantId, userId) to a file so workers can
+// read them. The file lives under test-results/ (gitignored) and is removed
+// on teardown.
+const stateFilePath = (): string =>
+  nodePath.resolve(process.cwd(), 'test-results', 'e2e-state.json');
+
+export function writeE2EState(): void {
+  const dir = nodePath.dirname(stateFilePath());
+  if (!nodeFs.existsSync(dir)) nodeFs.mkdirSync(dir, { recursive: true });
+  nodeFs.writeFileSync(
+    stateFilePath(),
+    JSON.stringify({ tenantId: testTenantId, userId: testUserId, containerId }, null, 2),
+  );
+}
+
+export function readE2EState(): {
+  tenantId: string | null;
+  userId: string | null;
+  containerId: string | null;
+} {
+  try {
+    const raw = nodeFs.readFileSync(stateFilePath(), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return { tenantId: null, userId: null, containerId: null };
+  }
+}
+
+export function clearE2EState(): void {
+  try {
+    nodeFs.unlinkSync(stateFilePath());
+  } catch {}
 }
 
 export default async function globalSetup() {
   await startPBContainer();
+  writeE2EState();
 }

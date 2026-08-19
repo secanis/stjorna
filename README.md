@@ -96,7 +96,7 @@ Use the PocketBase Admin UI:
 Or, if you have storage config in `instance_settings.storage_type === 's3'`
 but PB doesn't have S3 active, run the fix script:
 ```bash
-ADMIN_EMAIL=... ADMIN_PASSWORD=... npx tsx scripts/fix-pocketbase.ts
+ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run fix   # run from pocketbase/
 ```
 It re-syncs the S3 config from `instance_settings` to PB's settings table.
 
@@ -158,19 +158,22 @@ npm install
 npm run dev          # http://localhost:3000
 
 # E2E tests (Playwright, requires PocketBase container)
-cd ..
 npm run test:e2e     # full build + e2e
 npm run test:e2e:fast  # just e2e (assumes build is current)
 
 # Unit tests for frontend utils
-npm run test:unit
+npm test
+
+# PocketBase integration tests
+cd ../pocketbase
+npm test
 ```
 
 ## Project Structure
 
 ```
 .
-├── frontend/               # v3 SolidJS frontend
+├── frontend/               # v3 SolidJS frontend + Playwright e2e
 │   ├── src/
 │   │   ├── pages/          # Route components
 │   │   ├── components/     # Shared components
@@ -178,14 +181,15 @@ npm run test:unit
 │   │   ├── services/       # PocketBase client, etc.
 │   │   ├── types/          # TypeScript types
 │   │   └── utils/          # Helpers
+│   ├── tests/e2e/          # Playwright e2e tests
 │   └── package.json
-├── pocketbase/             # PocketBase backend
+├── pocketbase/             # PocketBase backend + vitest integration tests
 │   ├── pb_hooks/           # JS hooks loaded by PB at startup
-│   └── test/               # Vitest integration tests
+│   ├── tests/              # Vitest integration tests
+│   └── package.json
 ├── scripts/                # Admin/maintenance scripts
 │   ├── fix-pocketbase.ts   # One-time fix for orphaned data + missing rules
 │   └── test-api-rules.ts   # Standalone API rules verification
-├── tests/e2e/              # Playwright e2e tests
 ├── helm/stjorna/           # Helm chart for Kubernetes deployment
 ├── .github/workflows/      # CI/CD (lint, test, build, release)
 └── docker-compose.yml
@@ -200,7 +204,7 @@ Two GitHub Actions workflows under `.github/workflows/`:
 | Job | What it does |
 |---|---|
 | `test-frontend` | `npm ci && npm run build` (catches TypeScript errors) + vitest |
-| `test-pb` | Vitest integration tests in `pocketbase/test/` |
+| `test-pb` | Vitest integration tests in `pocketbase/` |
 | `lint-helm` | `make lint-helm` (helm lint + template render check) |
 | `test-helm` | Full kind-based end-to-end test (`make test-helm`) — push only, ~3 min |
 | `build-images` | Build + push PB and frontend images to **ghcr.io** with branch-specific tags — push only |

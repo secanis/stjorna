@@ -36,32 +36,32 @@ describe('getMediaFileUrl', () => {
   it('builds a basic URL with no token or thumb', () => {
     (pb.authStore as any).token = '';
     const url = getMediaFileUrl('rec123', 'file.png');
-    expect(url).toBe('http://localhost:8090/api/files/media/rec123/file.png');
+    expect(url).toBe('/api/files/media/rec123/file.png');
   });
 
   it('appends the auth token when present', () => {
     (pb.authStore as any).token = 'jwt-abc-123';
     const url = getMediaFileUrl('rec123', 'file.png');
-    expect(url).toBe('http://localhost:8090/api/files/media/rec123/file.png?token=jwt-abc-123');
+    expect(url).toBe('/api/files/media/rec123/file.png?token=jwt-abc-123');
   });
 
   it('appends thumb when provided', () => {
     const url = getMediaFileUrl('rec123', 'file.png', { thumb: '100x100' });
-    expect(url).toBe('http://localhost:8090/api/files/media/rec123/file.png?thumb=100x100');
+    expect(url).toBe('/api/files/media/rec123/file.png?thumb=100x100');
   });
 
   it('appends both token and thumb (token first)', () => {
     (pb.authStore as any).token = 'jwt-abc';
     const url = getMediaFileUrl('rec123', 'file.png', { thumb: '50x50' });
-    expect(url).toBe('http://localhost:8090/api/files/media/rec123/file.png?token=jwt-abc&thumb=50x50');
+    expect(url).toBe('/api/files/media/rec123/file.png?token=jwt-abc&thumb=50x50');
   });
 
-  it('uses VITE_PB_URL when set', () => {
+  it('returns relative URL regardless of VITE_PB_URL (routes through proxy)', () => {
     vi.stubEnv('VITE_PB_URL', 'https://pb.example.com');
     try {
       (pb.authStore as any).token = 'tok';
       const url = getMediaFileUrl('rec1', 'img.jpg', { thumb: '200x200' });
-      expect(url).toBe('https://pb.example.com/api/files/media/rec1/img.jpg?token=tok&thumb=200x200');
+      expect(url).toBe('/api/files/media/rec1/img.jpg?token=tok&thumb=200x200');
     } finally {
       vi.unstubAllEnvs();
     }
@@ -69,6 +69,6 @@ describe('getMediaFileUrl', () => {
 
   it('handles filenames with special characters (no escaping)', () => {
     const url = getMediaFileUrl('rec1', 'image with spaces.png');
-    expect(url).toBe('http://localhost:8090/api/files/media/rec1/image with spaces.png');
+    expect(url).toBe('/api/files/media/rec1/image with spaces.png');
   });
 });
