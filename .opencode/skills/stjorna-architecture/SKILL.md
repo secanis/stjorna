@@ -49,7 +49,6 @@ STJÓRNA is a multi-tenant product/media management application with three API t
   │   ├── e2e/                     # Playwright E2E
   │   └── unit/                    # Vitest unit tests
   ├── scripts/                     # fix-pocketbase.ts etc.
-  ├── docker/                      # Dockerfiles
   ├── helm/stjorna/                # Helm chart
   └── .opencode/                   # Skills + plans for AI agents
   ```
@@ -432,7 +431,7 @@ helm/stjorna/
 
 ```bash
 # Build and push images first
-podman build -t docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1 -f docker/Dockerfile.pocketbase pocketbase
+podman build -t docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1 -f pocketbase/Dockerfile pocketbase
 podman push docker.io/secanis/stjorna-pocketbase:v3.0.0-rc1
 podman build -t docker.io/secanis/stjorna-frontend:v3.0.0-rc1 -f frontend/Dockerfile frontend
 podman push docker.io/secanis/stjorna-frontend:v3.0.0-rc1

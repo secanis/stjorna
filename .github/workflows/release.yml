@@ -64,7 +64,7 @@ jobs:
         include:
           - name: pocketbase
             context: pocketbase
-            dockerfile: docker/Dockerfile.pocketbase
+            dockerfile: pocketbase/Dockerfile
             registry: docker.io/secanis/stjorna-pocketbase
           - name: frontend
             context: frontend

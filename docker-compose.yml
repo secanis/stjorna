@@ -2,7 +2,7 @@ services:
     pocketbase:
         build:
             context: ./pocketbase
-            dockerfile: ../docker/Dockerfile.pocketbase
+            dockerfile: Dockerfile
         ports:
             - '8090:8090'
         volumes:

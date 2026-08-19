@@ -181,8 +181,8 @@ build_image_if_missing() {
 
 # Run in build-only mode after this point
 if [[ "$MODE" == "build" ]]; then
-  build_image_if_missing "$PB_IMAGE" "$SCRIPT_DIR/../docker/Dockerfile.pocketbase" "$SCRIPT_DIR/../pocketbase"
-  build_image_if_missing "$FE_IMAGE" "$SCRIPT_DIR/../frontend/Dockerfile"        "$SCRIPT_DIR/../frontend"
+  build_image_if_missing "$PB_IMAGE" "$SCRIPT_DIR/../pocketbase/Dockerfile" "$SCRIPT_DIR/../pocketbase"
+  build_image_if_missing "$FE_IMAGE" "$SCRIPT_DIR/../frontend/Dockerfile"   "$SCRIPT_DIR/../frontend"
   ok "all images built"
   exit 0
 fi
@@ -190,7 +190,7 @@ fi
 # --- Full mode: build, kind, install, smoke, cleanup --------------------
 install_kind_if_missing
 
-build_image_if_missing "$PB_IMAGE" "$SCRIPT_DIR/../docker/Dockerfile.pocketbase" "$SCRIPT_DIR/../pocketbase"
+build_image_if_missing "$PB_IMAGE" "$SCRIPT_DIR/../pocketbase/Dockerfile" "$SCRIPT_DIR/../pocketbase"
 build_image_if_missing "$FE_IMAGE" "$SCRIPT_DIR/../frontend/Dockerfile"        "$SCRIPT_DIR/../frontend"
 
 # Trap to ensure kind cluster is cleaned up on any exit
