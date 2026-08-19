@@ -1,4 +1,13 @@
-import { test, expect, getContext, pb, getTenantId } from './helpers/test-context';
+import { test, expect, getContext, getTenantId } from './helpers/test-context';
+import PocketBase from 'pocketbase';
+
+// Each test creates its own PB client. The `pb` export from global-setup
+// is defined in the main process only; worker processes can't see it.
+async function getAdminPb(): Promise<PocketBase> {
+  const pb = new PocketBase('http://localhost:8090');
+  await pb.admins.authWithPassword('admin@test.stjorna.local', 'admin12345678test');
+  return pb;
+}
 
   test.describe('Categories', () => {
     let ctx: ReturnType<typeof getContext>;
@@ -160,6 +169,8 @@ import { test, expect, getContext, pb, getTenantId } from './helpers/test-contex
       const tenantId = getTenantId();
       if (!tenantId) test.skip();
 
+      const pb = await getAdminPb();
+
       const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       const pngBuffer = Buffer.from(pngBase64, 'base64');
       const filename = `cat-media-test-${Date.now()}.png`;
@@ -209,6 +220,8 @@ import { test, expect, getContext, pb, getTenantId } from './helpers/test-contex
     test('selected media block stays tall when image fails to load', async ({ page }) => {
       const tenantId = getTenantId();
       if (!tenantId) test.skip();
+
+      const pb = await getAdminPb();
 
       const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
       const pngBuffer = Buffer.from(pngBase64, 'base64');
