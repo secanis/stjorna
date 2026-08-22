@@ -1,4 +1,13 @@
-import { test, expect, getContext, pb } from './helpers/test-context';
+import { test, expect, getContext, pb, getTenantId } from './helpers/test-context';
+import PocketBase from 'pocketbase';
+
+// Each test creates its own PB client. The `pb` export from global-setup
+// is defined in the main process only; worker processes can't see it.
+async function getAdminPb(): Promise<PocketBase> {
+  const client = new PocketBase('http://localhost:8090');
+  await client.admins.authWithPassword('admin@test.stjorna.local', 'admin12345678test');
+  return client;
+}
 
 test.describe('Products', () => {
   let ctx: ReturnType<typeof getContext>;
@@ -14,6 +23,58 @@ test.describe('Products', () => {
     await page.waitForLoadState('networkidle');
     await expect(page.locator('h1:has-text("Products")')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('table')).toBeVisible();
+    // Thumb column should be present
+    await expect(page.locator('th:has-text("Thumb")')).toBeVisible();
+
+    await expect(page).toHaveScreenshot('products-list.png', { fullPage: true });
+  });
+
+  test('product with multiple media shows stacked thumbs + overflow counter', async ({ page, request }) => {
+    const tenantId = getTenantId();
+    if (!tenantId) test.skip();
+
+    const pb = await getAdminPb();
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const pngBuffer = Buffer.from(pngBase64, 'base64');
+
+    // Create 4 media records
+    const mediaIds: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      const filename = `prod-thumb-${Date.now()}-${i}.png`;
+      const form = new FormData();
+      form.append('file', new File([pngBuffer], filename, { type: 'image/png' }));
+      form.append('filename', filename);
+      form.append('original_name', filename);
+      form.append('mime_type', 'image/png');
+      form.append('size', String(pngBuffer.length));
+      form.append('width', '1');
+      form.append('height', '1');
+      form.append('usage_count', '0');
+      form.append('tenant', tenantId);
+      const m = await pb.collection('media').create(form);
+      mediaIds.push(m.id);
+    }
+
+    const product = await pb.collection('products').create({
+      tenant: tenantId,
+      name: 'Product Multi Thumb',
+      slug: `prod-multi-thumb-${Date.now()}`,
+      description: 'Has 4 media',
+      active: true,
+      sort_order: 99,
+      media: mediaIds,
+    });
+
+    await page.goto(ctx.frontendUrl + '/products');
+    await page.waitForSelector(`text=Product Multi Thumb`, { timeout: 10000 });
+    const row = page.locator('tbody tr', { hasText: 'Product Multi Thumb' });
+    // First cell should have 3 thumbs + "+1" overflow
+    const imgs = row.locator('td').first().locator('img');
+    await expect(imgs).toHaveCount(3, { timeout: 10000 });
+    await expect(row.locator('td').first().locator('text=+1')).toBeVisible();
+
+    await pb.collection('products').delete(product.id);
+    for (const id of mediaIds) await pb.collection('media').delete(id);
   });
 
   test('+ Add Product button navigates to /products/new', async ({ page }) => {

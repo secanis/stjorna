@@ -1,16 +1,21 @@
 import { createSignal, createResource, Show, For, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
-import { FileText } from 'lucide-solid';
+import { FileText, Video } from 'lucide-solid';
 import Table, { Column } from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { getMediaFileUrl } from '~/utils/mediaUrl';
+import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Media } from '~/types';
 
-async function fetchMedia() {
+async function fetchMedia(filterType: string) {
   const tenant = getCurrentTenant();
-  const filter = tenant ? `tenant = "${tenant}"` : '';
+  const parts: string[] = [];
+  if (tenant) parts.push(`tenant = "${tenant}"`);
+  if (filterType === 'image') parts.push(`mime_type ?~ "image/"`);
+  if (filterType === 'video') parts.push(`mime_type ?~ "video/"`);
+  const filter = parts.length ? parts.join(' && ') : '';
   return await pb.collection('media').getList<Media>(1, 50, {
     filter,
     sort: '-created',
@@ -38,8 +43,8 @@ export default function MediaList() {
   const [filterType, setFilterType] = createSignal('');
 
   const [data, { refetch }] = createResource(
-    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), filterType: filterType() }),
-    () => fetchMedia()
+    () => ({ filterType: filterType() }),
+    ({ filterType }) => fetchMedia(filterType)
   );
 
   const handleSort = (key: string, dir: 'asc' | 'desc') => {
@@ -63,7 +68,7 @@ export default function MediaList() {
       key: 'file',
       label: 'Preview',
       render: (v, row) => (
-        <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center overflow-hidden">
+        <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-black">
           <Show when={row.mime_type?.startsWith('image/') && v}>
             <img
               src={getMediaFileUrl(row.id, v, { thumb: '100x100' })}
@@ -72,7 +77,20 @@ export default function MediaList() {
               onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           </Show>
-          <Show when={!row.mime_type?.startsWith('image/') || !v}>
+          <Show when={row.mime_type?.startsWith('video/') && v && !row.mime_type?.startsWith('image/')}>
+            <div class="relative w-full h-full flex items-center justify-center">
+              <video
+                src={getMediaFileUrl(row.id, v)}
+                class="w-full h-full object-cover"
+                muted
+                playsinline
+                preload="metadata"
+                onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
+              />
+              <Video size={20} class="absolute text-white drop-shadow pointer-events-none" />
+            </div>
+          </Show>
+          <Show when={!v || (!row.mime_type?.startsWith('image/') && !row.mime_type?.startsWith('video/'))}>
             <FileText size={16} class="text-gray-400" />
           </Show>
         </div>
@@ -126,7 +144,7 @@ export default function MediaList() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-white">Media</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/media/new" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+          <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} text-white px-4 py-2 rounded font-medium transition-colors`}>
             + Add Media
           </A>
         </Show>

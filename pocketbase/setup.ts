@@ -180,7 +180,7 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       type: 'base',
       schema: [
         { name: 'tenant', type: 'text', required: true },
-        { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: 10485760, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
+        { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: 524288000, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
         { name: 'filename', type: 'text' },
         { name: 'original_name', type: 'text' },
         { name: 'mime_type', type: 'text' },

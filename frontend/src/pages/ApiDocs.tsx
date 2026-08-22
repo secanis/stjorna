@@ -34,7 +34,7 @@ export default function ApiDocs() {
         document.head.appendChild(link);
       }
 
-      const pbUrl = (import.meta.env.VITE_PB_URL as string) || 'http://localhost:8090';
+      const pbUrl = (import.meta.env.VITE_PB_URL as string)?.replace(/\/+$/, '') || '';
       const ui = SwaggerUIBundle({
         url: `${pbUrl}/api/openapi.json`,
         domNode: containerRef,

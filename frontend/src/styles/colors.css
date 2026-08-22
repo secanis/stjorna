@@ -1,0 +1,58 @@
+/*
+ * STJÓRNA Design System — Color Tokens
+ * =====================================
+ * Single source of truth for the colors used across the app.
+ * Two parallel files describe the same palette:
+ *   - colors.css  (this file) — CSS custom properties, importable anywhere.
+ *   - colors.ts   (next to this) — TypeScript constants for use in JS/TSX
+ *     components that build className strings dynamically (e.g. the
+ *     activity badge switch in Dashboard/Activities).
+ *
+ * When you change a color, change it in BOTH files.
+ * When you add a new entity, add it to BOTH files AND to
+ * src/utils/activity.ts (ActivityType union + ALL_ACTIVITY_TYPES).
+ *
+ * Tailwind utility classes (bg-emerald-600, text-blue-300, …) are still
+ * the recommended way to apply colors in JSX. This file documents
+ * which Tailwind shade maps to which semantic role; it does not
+ * generate custom utility classes (no Tailwind plugin needed).
+ */
+
+:root {
+  /* ─────────────────────────────────────────
+   * Entity colors
+   * Used in:
+   *   - Activity stream Type badge
+   *   - Quick Actions "Add <Entity>" button
+   * ───────────────────────────────────────── */
+  --color-entity-tenant:    #ea580c;  /* orange-600 */
+  --color-entity-user:      #0891b2;  /* cyan-600   */
+  --color-entity-product:   #059669;  /* emerald-600 */
+  --color-entity-media:     #2563eb;  /* blue-600   */
+  --color-entity-category:  #9333ea;  /* purple-600 */
+
+  /* ─────────────────────────────────────────
+   * Activity-action colors
+   * Used in:
+   *   - Activity stream Action badge
+   * ───────────────────────────────────────── */
+  --color-action-created-bg:   rgba(34, 197, 94, 0.20);  /* green-500/20  */
+  --color-action-created-text: #86efac;                  /* green-300     */
+  --color-action-updated-bg:   rgba(59, 130, 246, 0.20); /* blue-500/20   */
+  --color-action-updated-text: #93c5fd;                  /* blue-300      */
+  --color-action-deleted-bg:   rgba(239, 68, 68, 0.20);  /* red-500/20    */
+  --color-action-deleted-text: #fca5a5;                  /* red-300       */
+
+  /* ─────────────────────────────────────────
+   * Brand / utility
+   * Used in: primary CTA buttons, focus rings, sidebar active state
+   * ───────────────────────────────────────── */
+  --color-brand:         #2563eb;  /* blue-600  */
+  --color-brand-hover:   #1d4ed8;  /* blue-700  */
+
+  /* Generic semantic colors */
+  --color-success:       #16a34a;  /* green-600  */
+  --color-danger:        #dc2626;  /* red-600    */
+  --color-danger-hover:  #b91c1c;  /* red-700    */
+  --color-warning:       #ca8a04;  /* yellow-600 */
+}

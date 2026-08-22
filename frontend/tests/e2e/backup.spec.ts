@@ -22,6 +22,8 @@ test.describe('Backup & Restore', () => {
 
     await expect(page.getByRole('button', { name: /Download JSON/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Download ZIP/ })).toBeVisible();
+
+    await expect(page).toHaveScreenshot('settings-instance.png', { fullPage: true });
   });
 
   test('Download JSON yields a valid manifest file', async ({ page }) => {

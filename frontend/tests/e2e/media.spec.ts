@@ -16,6 +16,8 @@ test.describe('Media Upload', () => {
     await page.waitForLoadState('networkidle');
     await expect(page.locator('h1:has-text("Media")')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('table')).toBeVisible();
+
+    await expect(page).toHaveScreenshot('media-list.png', { fullPage: true });
   });
 
   test('+ Add Media button navigates to /media/new', async ({ page }) => {
@@ -271,5 +273,60 @@ test.describe('Media Upload', () => {
     expect(editImgSrc).toContain('/api/files/media/');
     expect(editImgSrc).toContain('token=');
     expect(editImgSrc).toContain(filename);
+  });
+
+  test('upload video larger than 10MB succeeds (schema allows 500MB)', async ({ request }) => {
+    // Authenticate as admin so we can attach the media record to a tenant.
+    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+      data: { identity: 'admin@test.stjorna.local', password: 'admin12345678test' },
+    });
+    expect(authRes.ok()).toBeTruthy();
+    const { token } = await authRes.json();
+
+    // Pick the first tenant from the e2e setup.
+    const tenantsRes = await request.get(`${ctx.pbUrl}/api/collections/tenants/records?perPage=1`, {
+      headers: { Authorization: token },
+    });
+    expect(tenantsRes.ok()).toBeTruthy();
+    const { items: tenants } = await tenantsRes.json();
+    expect(tenants.length).toBeGreaterThan(0);
+    const tenantId = tenants[0].id;
+
+    // 490 MB payload with a minimal valid MP4 ftyp header so PB's content
+    // sniffer accepts the mimetype. Just under the 500 MB schema cap so
+    // we exercise the actual limit, not a smaller boundary.
+    const buffer = Buffer.alloc(490 * 1024 * 1024, 0xab);
+    const ftyp = Buffer.from([
+      0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70,
+      0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00,
+      0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32,
+      0x61, 0x76, 0x63, 0x31, 0x6d, 0x70, 0x34, 0x31,
+    ]);
+    ftyp.copy(buffer, 0);
+
+    const upRes = await request.post(`${ctx.pbUrl}/api/collections/media/records`, {
+      multipart: {
+        file: { name: 'e2e-video.mp4', mimeType: 'video/mp4', buffer },
+        filename: 'e2e-video.mp4',
+        original_name: 'e2e-video.mp4',
+        mime_type: 'video/mp4',
+        size: String(buffer.length),
+        tenant: tenantId,
+      },
+      headers: { Authorization: token },
+    });
+
+    const body = await upRes.text();
+    expect(upRes.status(), `body: ${body}`).toBe(200);
+    expect(body).toContain('e2e-video.mp4');
+
+    // Read it back and confirm the full size is on disk.
+    const list = await request.get(`${ctx.pbUrl}/api/collections/media/records?perPage=200&sort=-created`, {
+      headers: { Authorization: token },
+    });
+    const { items } = await list.json();
+    const stored = items.find((i: any) => i.filename === 'e2e-video.mp4');
+    expect(stored, 'uploaded record should be in media collection').toBeTruthy();
+    expect(stored.size).toBe(490 * 1024 * 1024);
   });
 });

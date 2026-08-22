@@ -4,6 +4,9 @@ import Table, { Column } from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
+import MediaThumb from '~/components/media/MediaThumb';
+import { ImageOff } from 'lucide-solid';
+import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 
 async function fetchCategories() {
   const tenant = getCurrentTenant();
@@ -11,6 +14,7 @@ async function fetchCategories() {
   return await pb.collection('categories').getList(1, 50, {
     filter,
     sort: 'sort_order,name',
+    expand: 'media',
   });
 }
 
@@ -65,6 +69,25 @@ export default function CategoryList() {
   };
 
   const columns: Column[] = [
+    {
+      key: 'media',
+      label: 'Thumb',
+      render: (_, row) => {
+        const m: any = (row as any).expand?.media;
+        if (!m || !m.file) {
+          return (
+            <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center" title="No media">
+              <ImageOff size={16} class="text-gray-500" />
+            </div>
+          );
+        }
+        return (
+          <div class="w-12 h-12 rounded overflow-hidden bg-black">
+            <MediaThumb media={m} thumb="100x100" class="w-12 h-12 object-cover" />
+          </div>
+        );
+      },
+    },
     { key: 'name', label: 'Name', sortable: true },
     { key: 'slug', label: 'Slug', sortable: true },
     { key: 'description', label: 'Description' },
@@ -124,7 +147,7 @@ export default function CategoryList() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-white">Categories</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/categories/new" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors">
+          <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} text-white px-4 py-2 rounded font-medium transition-colors`}>
             + Add Category
           </A>
         </Show>

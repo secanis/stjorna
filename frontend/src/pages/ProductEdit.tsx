@@ -4,8 +4,10 @@ import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
-import { getMediaFileUrl } from '~/utils/mediaUrl';
+import MediaThumb from '~/components/media/MediaThumb';
+import Combobox from '~/components/ui/Combobox';
 import type { Product, Category, Media } from '~/types';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 async function fetchCategories() {
   const tenant = getCurrentTenant();
@@ -285,17 +287,15 @@ export default function ProductEdit() {
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-category">Category</label>
-            <select
+            <Combobox
               id="prod-category"
+              testId="prod-category"
               value={formData().category}
-              onChange={(e) => setFormData(d => ({ ...d, category: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="">— None —</option>
-              <For each={categories()?.items || []}>
-                {(cat) => <option value={cat.id}>{cat.name}</option>}
-              </For>
-            </select>
+              onChange={(v) => setFormData(d => ({ ...d, category: v }))}
+              options={(categories()?.items || []).map(c => ({ value: c.id, label: c.name }))}
+              placeholder="Type to search categories…"
+              emptyMessage="No matching category"
+            />
           </div>
 
           <div>
@@ -394,12 +394,7 @@ export default function ProductEdit() {
                         dragOverIndex() === i() ? 'border-blue-500' : 'border-transparent'
                       }`}
                     >
-                      <img
-                        src={getMediaFileUrl(m.id, m.file || '', { thumb: '200x200' })}
-                        alt={m.filename || ''}
-                        class="w-full h-20 object-cover rounded"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
+                      <MediaThumb media={m} thumb="200x200" class="w-full h-20 object-cover rounded" />
                       <button
                         type="button"
                         onClick={() => handleRemoveSelected(m.id)}
@@ -443,8 +438,9 @@ export default function ProductEdit() {
                 >
                   <div
                     data-testid="prod-media-picker"
-                    class="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto p-1"
+                    class="border border-gray-700 rounded bg-gray-900/40 max-h-96 overflow-y-auto p-2"
                   >
+                    <div class="grid grid-cols-6 gap-2">
                     <For each={media()?.items || []}>
                       {(m) => (
                         <Show when={m.file}>
@@ -457,23 +453,12 @@ export default function ProductEdit() {
                             }`}
                             title={m.filename}
                           >
-                            <Show when={m.mime_type?.startsWith('image/')}>
-                              <img
-                                src={getMediaFileUrl(m.id, m.file!, { thumb: '100x100' })}
-                                alt={m.filename || ''}
-                                class="w-full h-16 object-cover"
-                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                              />
-                            </Show>
-                            <Show when={!m.mime_type?.startsWith('image/')}>
-                              <div class="w-full h-16 bg-gray-700 flex items-center justify-center text-xs text-gray-400 p-1 truncate">
-                                {m.filename}
-                              </div>
-                            </Show>
+                            <MediaThumb media={m} thumb="100x100" class="w-full h-16 object-cover" />
                           </button>
                         </Show>
                       )}
                     </For>
+                    </div>
                   </div>
                 </Show>
               </div>
@@ -484,7 +469,7 @@ export default function ProductEdit() {
             <button
               type="submit"
               disabled={saving() || mediaLoading()}
-              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded disabled:opacity-50"
+              class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
               {saving() ? 'Saving...' : 'Save Product'}
             </button>

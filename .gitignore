@@ -7,6 +7,7 @@ scripts/node_modules
 **/coverage
 **/.nyc_output
 **/*.tsbuildinfo
+frontend/ai-failed-tests
 
 # Test outputs
 **/test-results/
@@ -38,6 +39,12 @@ todo.md
 reports/
 stjorna.iml
 docs/REWRITE_PLAN.md
+
+# Env files — example templates are tracked, real values are not
+**/.env
+!**/.env.example
+**/.env.local
+**/.env.*.local
 
 # v2 docs site leftovers — removed in the v3 rewrite. The current
 # gh-pages site is plain HTML in site/, published by the

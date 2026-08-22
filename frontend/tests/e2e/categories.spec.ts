@@ -18,14 +18,85 @@ async function getAdminPb(): Promise<PocketBase> {
       await ctx.waitForDashboard();
     });
 
-    test('category list page loads with existing categories', async ({ page }) => {
-      await page.goto(ctx.frontendUrl + '/categories');
-      await page.waitForLoadState('networkidle');
-      await expect(page.locator('h1:has-text("Categories")')).toBeVisible({ timeout: 15000 });
-      await expect(page.locator('table')).toBeVisible();
-      const rows = page.locator('tbody tr');
-      await expect(rows).not.toHaveCount(0);
+  test('category list page loads with existing categories', async ({ page }) => {
+    await page.goto(ctx.frontendUrl + '/categories');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('h1:has-text("Categories")')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('table')).toBeVisible();
+    const rows = page.locator('tbody tr');
+    await expect(rows).not.toHaveCount(0);
+    // Thumb column should be present
+    await expect(page.locator('th:has-text("Thumb")')).toBeVisible();
+
+    await expect(page).toHaveScreenshot('categories-list.png', { fullPage: true });
+  });
+
+  test('category with media shows thumbnail in table', async ({ page, request }) => {
+    const tenantId = getTenantId();
+    if (!tenantId) test.skip();
+
+    const pb = await getAdminPb();
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const pngBuffer = Buffer.from(pngBase64, 'base64');
+    const filename = `cat-thumb-${Date.now()}.png`;
+
+    const form = new FormData();
+    form.append('file', new File([pngBuffer], filename, { type: 'image/png' }));
+    form.append('filename', filename);
+    form.append('original_name', filename);
+    form.append('mime_type', 'image/png');
+    form.append('size', String(pngBuffer.length));
+    form.append('width', '1');
+    form.append('height', '1');
+    form.append('usage_count', '0');
+    form.append('tenant', tenantId);
+    const media = await pb.collection('media').create(form);
+
+    const category = await pb.collection('categories').create({
+      tenant: tenantId,
+      name: 'Cat With Thumb',
+      slug: `cat-with-thumb-${Date.now()}`,
+      description: 'Has a thumbnail',
+      active: true,
+      sort_order: 99,
+      media: media.id,
     });
+
+    await page.goto(ctx.frontendUrl + '/categories');
+    await page.waitForSelector(`text=Cat With Thumb`, { timeout: 10000 });
+    const row = page.locator('tbody tr', { hasText: 'Cat With Thumb' });
+    // The first cell should contain a real <img> (not the ImageOff placeholder)
+    const img = row.locator('td').first().locator('img');
+    await expect(img).toBeVisible({ timeout: 10000 });
+    await expect(img).toHaveAttribute('src', /\/api\/files\/media\//);
+
+    await pb.collection('categories').delete(category.id);
+    await pb.collection('media').delete(media.id);
+  });
+
+  test('category without media shows placeholder', async ({ page, request }) => {
+    const tenantId = getTenantId();
+    if (!tenantId) test.skip();
+
+    const pb = await getAdminPb();
+    const category = await pb.collection('categories').create({
+      tenant: tenantId,
+      name: 'Cat No Thumb',
+      slug: `cat-no-thumb-${Date.now()}`,
+      description: 'No media',
+      active: true,
+      sort_order: 100,
+      // no media field
+    });
+
+    await page.goto(ctx.frontendUrl + '/categories');
+    await page.waitForSelector(`text=Cat No Thumb`, { timeout: 10000 });
+    const row = page.locator('tbody tr', { hasText: 'Cat No Thumb' });
+    // First cell has the placeholder (no <img>)
+    await expect(row.locator('td').first().locator('img')).toHaveCount(0);
+
+    await pb.collection('categories').delete(category.id);
+  });
 
     test('+ Add Category button navigates to /categories/new', async ({ page }) => {
       await page.goto(ctx.frontendUrl + '/categories');
@@ -274,5 +345,63 @@ async function getAdminPb(): Promise<PocketBase> {
       });
 
       await page.unroute('**/api/files/media/**');
+    });
+
+    test('edit category via direct URL pre-populates form fields', async ({ page }) => {
+      const tenantId = getTenantId();
+      if (!tenantId) test.skip();
+
+      const pb = await getAdminPb();
+      const uniqueSlug = `direct-url-edit-${Date.now()}`;
+      const originalName = 'Direct URL Edit Source';
+      const originalDesc = 'Created for direct-URL edit test';
+
+      const category = await pb.collection('categories').create({
+        tenant: tenantId,
+        name: originalName,
+        slug: uniqueSlug,
+        description: originalDesc,
+        active: true,
+        sort_order: 5,
+      });
+
+      await page.goto(`${ctx.frontendUrl}/categories/${category.id}`);
+      await page.waitForSelector('#cat-name', { timeout: 15000 });
+
+      await expect(page.locator('h1:has-text("Edit Category")')).toBeVisible();
+      await expect(page.locator('#cat-name')).toHaveValue(originalName);
+      await expect(page.locator('#cat-slug')).toHaveValue(uniqueSlug);
+      await expect(page.locator('#cat-desc')).toHaveValue(originalDesc);
+
+      await expect(page).toHaveScreenshot('categories-edit.png', {
+        fullPage: true,
+        animations: 'disabled',
+        caret: 'hide',
+        mask: [page.locator('[data-testid="cat-media-picker"]')],
+        maxDiffPixels: 300,
+        threshold: 0.2,
+      });
+
+      const updatedName = `Direct URL Edit Updated ${Date.now()}`;
+      await page.locator('#cat-name').fill(updatedName);
+      await page.locator('#cat-desc').fill('Updated via direct URL navigation');
+      await page.getByRole('button', { name: 'Save Category' }).click();
+
+      await page.waitForURL(/\/categories$/, { timeout: 15000 });
+      await expect(page.locator(`text=${updatedName}`)).toBeVisible();
+
+      await page.goto(`${ctx.frontendUrl}/categories/${category.id}`);
+      await page.waitForSelector('#cat-name', { timeout: 15000 });
+      await expect(page.locator('#cat-name')).toHaveValue(updatedName);
+      await expect(page.locator('#cat-desc')).toHaveValue('Updated via direct URL navigation');
+    });
+
+    test('edit category via direct URL with invalid id shows error', async ({ page }) => {
+      await page.goto(`${ctx.frontendUrl}/categories/ljp3r9rspje8sgo`);
+      await page.waitForSelector('h1:has-text("Edit Category")', { timeout: 15000 }).catch(() => {});
+
+      const errorText = page.locator('.text-red-400, .bg-red-500\\/10');
+      await expect(errorText).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('#cat-name')).toHaveCount(0);
     });
   });

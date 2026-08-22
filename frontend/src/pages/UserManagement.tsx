@@ -5,6 +5,7 @@ import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 async function fetchUsers() {
   const tenant = getCurrentTenant();
@@ -182,7 +183,7 @@ export default function UserManagement() {
         <Show when={authStore.isAdminOrAbove()}>
           <button
             onClick={() => setShowInvite(true)}
-            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium transition-colors"
+            class={`${PRIMARY_BUTTON_CLASSES} text-white px-4 py-2 rounded font-medium transition-colors`}
           >
             + Invite User
           </button>
@@ -266,7 +267,7 @@ export default function UserManagement() {
               <button
                 type="submit"
                 disabled={inviting()}
-                class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+                class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
               >
                 {inviting() ? 'Inviting...' : 'Invite'}
               </button>

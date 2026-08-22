@@ -157,7 +157,7 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       type: 'base' as const,
       schema: [
         { name: 'tenant', type: 'relation' as const, options: { collectionId: '_TENANTS_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'file', type: 'file' as const, options: { maxSelect: 1, maxSize: 10485760, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
+        { name: 'file', type: 'file' as const, options: { maxSelect: 1, maxSize: 524288000, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
         { name: 'filename', type: 'text' as const },
         { name: 'original_name', type: 'text' as const },
         { name: 'mime_type', type: 'text' as const },

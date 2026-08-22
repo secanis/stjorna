@@ -15,6 +15,8 @@ test.describe('Auth flows', () => {
     expect(dashboardText).toContain('Products');
     expect(dashboardText).toContain('Media');
     expect(dashboardText).toContain('Users');
+
+    await expect(page).toHaveScreenshot('dashboard.png', { fullPage: true });
   });
 
   test('PB admin: no tenant selector in header', async ({ page }) => {
@@ -54,7 +56,6 @@ test.describe('Auth flows', () => {
     const ctx = getContext(page);
     await page.goto(ctx.frontendUrl);
     await page.evaluate(() => {
-      localStorage.setItem('stjorna_pb_url', 'http://localhost:8090');
       localStorage.setItem('pb_setup_done', 'true');
     });
     await page.goto(ctx.frontendUrl + '/setup');

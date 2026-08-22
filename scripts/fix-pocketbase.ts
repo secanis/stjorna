@@ -86,23 +86,51 @@ async function main() {
   console.log();
 
   // Step 1b: Ensure media collection has a 'file' field (required for uploads)
+  // and that its maxSize matches the current limit. Existing deployments
+  // created with the old 10 MiB cap need this bumped in place.
   console.log('Step 1b: Ensuring media collection has a file field...');
+  const DESIRED_FILE_MAX_SIZE = 524288000; // 500 MiB
+  const DESIRED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'];
   try {
     const mediaCol = allCollections.find(c => c.name === 'media');
     if (mediaCol) {
       const hasFileField = mediaCol.schema?.some((f: any) => f.name === 'file');
+      let cleanedSchema: any[];
       if (!hasFileField) {
-        const updatedSchema = [
+        cleanedSchema = [
           ...(mediaCol.schema || []),
-          { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: 10485760, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
+          { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: DESIRED_FILE_MAX_SIZE, mimeTypes: DESIRED_MIME_TYPES } },
         ];
-        const cleanedSchema = updatedSchema.map((f: any) =>
+        cleanedSchema = cleanedSchema.map((f: any) =>
           f.name === 'filename' ? { ...f, required: false } : f
         );
         await pb.collections.update(mediaCol.id, { schema: cleanedSchema });
         console.log('  ✓ Added file field to media collection');
       } else {
-        console.log('  - file field already exists');
+        // Update maxSize / mimeTypes on the existing field if they differ.
+        let touched = false;
+        cleanedSchema = (mediaCol.schema || []).map((f: any) => {
+          if (f.name !== 'file') return f;
+          const opts = f.options || {};
+          const needsMaxSize = opts.maxSize !== DESIRED_FILE_MAX_SIZE;
+          const mimeSet = new Set(opts.mimeTypes || []);
+          const desiredSet = new Set(DESIRED_MIME_TYPES);
+          const mimeDiff =
+            mimeSet.size !== desiredSet.size ||
+            [...desiredSet].some(m => !mimeSet.has(m));
+          if (!needsMaxSize && !mimeDiff) return f;
+          touched = true;
+          return { ...f, options: { ...opts, maxSize: DESIRED_FILE_MAX_SIZE, mimeTypes: [...DESIRED_MIME_TYPES] } };
+        });
+        if (touched) {
+          cleanedSchema = cleanedSchema.map((f: any) =>
+            f.name === 'filename' ? { ...f, required: false } : f
+          );
+          await pb.collections.update(mediaCol.id, { schema: cleanedSchema });
+          console.log(`  ✓ Updated file field maxSize to ${DESIRED_FILE_MAX_SIZE}`);
+        } else {
+          console.log('  - file field already up to date');
+        }
       }
     }
   } catch (e: any) {

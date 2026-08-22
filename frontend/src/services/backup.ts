@@ -64,7 +64,7 @@ const triggerDownload = (blob: Blob, filename: string) => {
 };
 
 export async function downloadBackup(format: BackupFormat): Promise<void> {
-  const url = `${pb.baseUrl}/api/backup/${format}`;
+  const url = pb.buildUrl(`/api/backup/${format}`);
   const res = await fetch(url, {
     method: 'GET',
     headers: { Authorization: pb.authStore.token },
@@ -86,7 +86,7 @@ export async function importBackup(args: {
   const { source, file, tenantId } = args;
   await validateUtf8File(file, source);
   const data_base64 = await fileToBase64(file);
-  const res = await fetch(`${pb.baseUrl}/api/backup/import`, {
+  const res = await fetch(pb.buildUrl('/api/backup/import'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
