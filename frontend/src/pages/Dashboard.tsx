@@ -1,9 +1,10 @@
-import { createSignal, Show, onMount } from 'solid-js';
+import { createSignal, Show, onMount, createEffect } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
 import Table from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { tenantStore } from '~/stores/tenant';
 import { fetchRecentActivity, type ActivityEvent, type ActivityType } from '~/utils/activity';
 import {
   ENTITY_TYPE_TEXT_COLORS,
@@ -101,6 +102,23 @@ export default function Dashboard() {
     setRecentLoading(false);
   });
 
+  // Stats reader is imperative (non-createResource) — re-run on any
+  // tenant change so the cards reflect the newly-active tenant.
+  createEffect(() => {
+    tenantStore.version;
+    if (!authStore.isAuthenticated()) return;
+    (async () => {
+      setStatsLoading(true);
+      setRecentLoading(true);
+      const s = await fetchStats();
+      setStats(s);
+      setStatsLoading(false);
+      const r = await fetchRecentActivity();
+      setRecentActivity(r);
+      setRecentLoading(false);
+    })();
+  });
+
   const activityColumns = dashboardActivityColumns;
 
   return (
@@ -129,7 +147,7 @@ export default function Dashboard() {
         </div>
         <div class="flex gap-3">
           <Show when={authStore.isPBAdmin}>
-            <A href="/tenants/add" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/tenants/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}>
               + Add Tenant
             </A>
           </Show>

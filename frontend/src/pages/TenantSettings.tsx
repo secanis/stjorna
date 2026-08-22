@@ -1,5 +1,5 @@
 import { createSignal, Show, onMount, For } from 'solid-js';
-import { useNavigate, useParams } from '@solidjs/router';
+import { useNavigate, useParams, useLocation } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
@@ -20,7 +20,13 @@ interface TenantUser {
 export default function TenantSettings() {
   const navigate = useNavigate();
   const params = useParams();
-  const tenantId = () => params.id;
+  const location = useLocation();
+  // Mirrors the isNew pattern used by CategoryEdit / ProductEdit / MediaEdit:
+  // '/tenants/new' is the create page; '/tenants/:id' with a real id is edit.
+  // Falling back to location.pathname catches the case where `:id` is
+  // missing entirely (e.g. somebody navigates to '/tenants/').
+  const isNew = () => params.id === 'new' || location.pathname.endsWith('/new');
+  const tenantId = () => (isNew() ? undefined : params.id);
 
   const [formData, setFormData] = createSignal({
     name: '',
@@ -38,9 +44,9 @@ export default function TenantSettings() {
   const [tenantUsers, setTenantUsers] = createSignal<TenantUser[]>([]);
   const [usersLoading, setUsersLoading] = createSignal(true);
   const [showAddUser, setShowAddUser] = createSignal(false);
-  const [newUserEmail, setNewUserEmail] = createSignal('');
-  const [newUserName, setNewUserName] = createSignal('');
-  const [newUserPassword, setNewUserPassword] = createSignal('');
+  const [availableUsers, setAvailableUsers] = createSignal<{ id: string; email: string; name: string }[]>([]);
+  const [availableLoading, setAvailableLoading] = createSignal(true);
+  const [selectedUserId, setSelectedUserId] = createSignal('');
   const [newUserRole, setNewUserRole] = createSignal('editor');
   const [addingUser, setAddingUser] = createSignal(false);
   const [editingUserId, setEditingUserId] = createSignal<string | null>(null);
@@ -74,6 +80,30 @@ export default function TenantSettings() {
     } finally {
       setUsersLoading(false);
     }
+    // Refresh the dropdown too — anything now in tenantUsers is no
+    // longer a candidate.
+    await loadAvailableUsers();
+  };
+
+  // Lists every user on the system minus the ones already linked to
+  // this tenant. PB admin sees all users; non-admin scope is irrelevant
+  // because TenantSettings requires PB admin (already gated upstream).
+  const loadAvailableUsers = async () => {
+    if (!tenantId()) return;
+    setAvailableLoading(true);
+    try {
+      const all = await pb.collection('users').getFullList({ fields: 'id,email,name' });
+      const takenIds = new Set(tenantUsers().map((u) => u.id));
+      setAvailableUsers(
+        all
+          .filter((u: any) => !takenIds.has(u.id))
+          .map((u: any) => ({ id: u.id, email: u.email || '', name: u.name || '' }))
+      );
+    } catch (e: any) {
+      console.error('Failed to load available users:', e);
+    } finally {
+      setAvailableLoading(false);
+    }
   };
 
   onMount(async () => {
@@ -84,6 +114,13 @@ export default function TenantSettings() {
     }
     if (!authStore.isPBAdmin) {
       navigate('/', { replace: true });
+      return;
+    }
+
+    // Create mode: there's no record yet, so no getOne, no tenant users
+    // to load. The form fields stay at their defaults.
+    if (isNew()) {
+      setLoading(false);
       return;
     }
 
@@ -117,7 +154,6 @@ export default function TenantSettings() {
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    if (!tenantId()) return;
 
     setSaving(true);
     setError('');
@@ -125,18 +161,32 @@ export default function TenantSettings() {
 
     try {
       const themeConfig = JSON.parse(formData().theme_config || '{}');
-      await pb.collection('tenants').update(tenantId()!, {
+      const payload = {
         name: formData().name,
         slug: formData().slug,
         plan: formData().plan,
         custom_domain: formData().custom_domain,
         theme_config: JSON.stringify(themeConfig),
-      });
-      sidebarStore.bump();
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      };
+      if (isNew()) {
+        const created = await pb.collection('tenants').create<Tenant>(payload);
+        sidebarStore.bump();
+        // Land admins on the freshly-created tenant's settings page
+        // (replace=true so the back button won't return to /tenants/new).
+        navigate(`/tenants/${created.id}`, { replace: true });
+      } else {
+        if (!tenantId()) return;
+        await pb.collection('tenants').update(tenantId()!, payload);
+        sidebarStore.bump();
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
     } catch (e: any) {
-      setError(e.message || 'Failed to save');
+      // Show the real PB error message — the same pattern CategoryEdit
+      // uses (e.response.message holds the server-side reason).
+      const detail = e?.response?.message || e?.message || 'Failed to save';
+      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+      setError(`${detail}${fields}`);
     } finally {
       setSaving(false);
     }
@@ -144,44 +194,30 @@ export default function TenantSettings() {
 
   const handleAddUser = async (e: Event) => {
     e.preventDefault();
-    if (!tenantId() || !newUserEmail() || !newUserPassword()) return;
+    if (!tenantId() || !selectedUserId()) return;
 
     setAddingUser(true);
     setError('');
 
     try {
-      let user: any;
-      const existingUsers = await pb.collection('users').getList(1, 1, {
-        filter: `email = "${newUserEmail()}"`,
-      });
-
-      if (existingUsers.items.length > 0) {
-        user = existingUsers.items[0];
-      } else {
-        user = await pb.collection('users').create({
-          email: newUserEmail(),
-          password: newUserPassword(),
-          passwordConfirm: newUserPassword(),
-          name: newUserName() || newUserEmail().split('@')[0],
-        });
-      }
-
+      // Just create the user_tenants link — the user record itself
+      // already exists. New user creation lives on /users.
       const roleId = await getRoleId(newUserRole());
       await pb.collection('user_tenants').create({
-        user: user.id,
+        user: selectedUserId(),
         tenant: tenantId(),
         role: roleId,
       });
 
       setShowAddUser(false);
-      setNewUserEmail('');
-      setNewUserName('');
-      setNewUserPassword('');
+      setSelectedUserId('');
       setNewUserRole('editor');
       sidebarStore.bump();
       await loadTenantUsers();
     } catch (e: any) {
-      setError(e.message || 'Failed to add user');
+      const detail = e?.response?.message || e?.message || 'Failed to add user';
+      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+      setError(`${detail}${fields}`);
     } finally {
       setAddingUser(false);
     }
@@ -224,7 +260,7 @@ export default function TenantSettings() {
           <ArrowLeft size={16} />
           Back to Tenants
         </button>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenant Settings</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{isNew() ? 'New Tenant' : 'Tenant Settings'}</h1>
       </div>
 
       <Show when={loading()}>
@@ -246,6 +282,13 @@ export default function TenantSettings() {
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Settings saved successfully!
+        </div>
+      </Show>
+
+      <Show when={!loading() && !notFound() && !isNew()}>
+        <div class="bg-blue-500/10 border border-blue-500 rounded p-4 text-blue-700 dark:text-blue-300 text-sm">
+          Fill in the details below and save. After creating the tenant,
+          you'll be able to invite users and manage backups from this page.
         </div>
       </Show>
 
@@ -315,16 +358,16 @@ export default function TenantSettings() {
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
-            {saving() ? 'Saving...' : 'Save Settings'}
+            {saving() ? (isNew() ? 'Creating...' : 'Saving...') : (isNew() ? 'Create Tenant' : 'Save Settings')}
           </button>
         </form>
       </Show>
 
-      <Show when={!loading() && !notFound()}>
+      <Show when={!loading() && !notFound() && !isNew()}>
         <BackupSection tenantId={tenantId()!} />
       </Show>
 
-      <Show when={!loading() && !notFound()}>
+      <Show when={!loading() && !notFound() && !isNew()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Tenant Users</h2>
@@ -339,50 +382,51 @@ export default function TenantSettings() {
 
           <Show when={showAddUser()}>
             <form onSubmit={handleAddUser} class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={newUserEmail()}
-                    onInput={(e) => setNewUserEmail(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={newUserName()}
-                    onInput={(e) => setNewUserName(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                  />
-                </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-user">
+                  Assign existing user
+                </label>
+                <select
+                  id="ts-existing-user"
+                  value={selectedUserId()}
+                  onChange={(e) => setSelectedUserId(e.currentTarget.value)}
+                  disabled={availableLoading()}
+                  required
+                  class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="" disabled>— Select a user —</option>
+                  <For each={availableUsers()}>
+                    {(u) => (
+                      <option value={u.id}>
+                        {u.name ? `${u.name} <${u.email}>` : u.email}
+                      </option>
+                    )}
+                  </For>
+                </select>
+                <Show when={!availableLoading() && availableUsers().length === 0}>
+                  <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">
+                    No users available. Go to{' '}
+                    <a href="/users" class="text-blue-600 dark:text-blue-400 hover:underline">
+                      User Management
+                    </a>{' '}
+                    to create a new one.
+                  </p>
+                </Show>
               </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Password</label>
-                  <input
-                    type="password"
-                    value={newUserPassword()}
-                    onInput={(e) => setNewUserPassword(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Role</label>
-                  <select
-                    value={newUserRole()}
-                    onChange={(e) => setNewUserRole(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-role">
+                  Role
+                </label>
+                <select
+                  id="ts-existing-role"
+                  value={newUserRole()}
+                  onChange={(e) => setNewUserRole(e.currentTarget.value)}
+                  class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
               <Show when={error()}>
                 <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
@@ -390,14 +434,14 @@ export default function TenantSettings() {
               <div class="flex gap-2">
                 <button
                   type="submit"
-                  disabled={addingUser()}
+                  disabled={addingUser() || !selectedUserId() || availableUsers().length === 0}
                   class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm disabled:opacity-50`}
                 >
-                  {addingUser() ? 'Adding...' : 'Add'}
+                  {addingUser() ? 'Adding...' : 'Add to tenant'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowAddUser(false); setError(''); }}
+                  onClick={() => { setShowAddUser(false); setSelectedUserId(''); setError(''); }}
                   class="bg-gray-100 dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm"
                 >
                   Cancel

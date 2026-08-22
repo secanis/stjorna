@@ -13,6 +13,7 @@ import { JSX } from 'solid-js';
 import { ENTITY_TYPE_COLORS, ENTITY_TYPE_LABELS, ACTION_COLORS, ENTITY_TYPE_TEXT_COLORS } from '~/styles/colors';
 import type { Column } from '~/components/ui/Table';
 import type { ActivityType, ActivityAction, ActivityEvent } from '~/utils/activity';
+import { authStore } from '~/stores/auth';
 
 // ─────────────────────────────────────────
 // Single source for the badge renderers
@@ -57,15 +58,54 @@ export function recordHref(e: ActivityEvent): string | null {
 }
 
 // ─────────────────────────────────────────
+// Tenant label cell
+// ─────────────────────────────────────────
+// Renders the tenant where the activity occurred. PB admin gets a clickable
+// link to the tenant settings page; everyone else (non-admin) gets a muted
+// dash because they only see one tenant anyway and the column would be
+// redundant noise.
+function TenantCell(props: { value: unknown; row: ActivityEvent }): JSX.Element {
+  const name = () => String(props.value ?? '');
+  const id = () => props.row.tenant;
+  // Type==='tenant' events still resolve a tenantName (= the entity name),
+  // so admins can scan the row and click through.
+  if (!name()) {
+    return <span class="text-gray-400 dark:text-gray-600">—</span>;
+  }
+  if (authStore.isPBAdmin && id()) {
+    return (
+      <a
+        href={`/tenants/${id()}`}
+        class="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+      >
+        {name()}
+      </a>
+    );
+  }
+  return <span class="text-gray-900 dark:text-white text-sm">{name()}</span>;
+}
+
+// ─────────────────────────────────────────
 // Column definitions
 // ─────────────────────────────────────────
 
 // Full activity log table: includes the Record (link to detail) and When columns.
-export const activityColumns: Column[] = [
-  { key: 'type',   label: 'Type',   render: (v) => <TypeBadge value={v} /> },
-  { key: 'action', label: 'Action', render: (v) => <ActionBadge value={v} /> },
-  { key: 'name',   label: 'Name' },
-  {
+// Tenant column is added at render time so PB admins get the cross-tenant view;
+// non-admin viewers already only see their own tenant so the column is omitted.
+function getActivityColumns(): Column[] {
+  const cols: Column[] = [
+    { key: 'type',   label: 'Type',   render: (v) => <TypeBadge value={v} /> },
+    { key: 'action', label: 'Action', render: (v) => <ActionBadge value={v} /> },
+    { key: 'name',   label: 'Name' },
+  ];
+  if (authStore.isPBAdmin) {
+    cols.push({
+      key: 'tenantName',
+      label: 'Tenant',
+      render: (v, row) => <TenantCell value={v} row={row as ActivityEvent} />,
+    });
+  }
+  cols.push({
     key: 'id',
     label: 'Record',
     render: (v, row) => {
@@ -78,9 +118,18 @@ export const activityColumns: Column[] = [
         </a>
       );
     },
-  },
-  { key: 'at', label: 'When', render: (v) => v ? new Date(v as string).toLocaleString() : '-' },
-];
+  });
+  cols.push({ key: 'at', label: 'When', render: (v) => v ? new Date(v as string).toLocaleString() : '-' });
+  return cols;
+}
+
+// Backward-compatible export. SolidJS re-runs the column consumers each
+// render, so calling it once at module-eval works (PB admin flag is set
+// before this page mounts in practice). For environments where the
+// admin flag flips at runtime, use `getActivityColumns()` directly.
+export function activityColumns(): Column[] {
+  return getActivityColumns();
+}
 
 // Dashboard "Recent Activity" card: no Record column, no extra metadata.
 export const dashboardActivityColumns: Column[] = [

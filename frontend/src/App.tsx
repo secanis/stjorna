@@ -38,6 +38,7 @@ export default function App() {
         <Route path="/settings/instance" component={InstanceSettings} />
         <Route path="/users" component={UserManagement} />
         <Route path="/tenants" component={TenantList} />
+        <Route path="/tenants/new" component={TenantSettings} />
         <Route path="/tenants/:id" component={TenantSettings} />
         <Route path="/api-docs" component={ApiDocs} />
         <Route path="/activities" component={Activities} />

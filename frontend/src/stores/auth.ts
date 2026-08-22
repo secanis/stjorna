@@ -1,6 +1,7 @@
 import { createSignal, createMemo } from 'solid-js';
 import { pbInstance as pb, setCurrentTenant, getCurrentTenant, clearAuth } from '~/services/pocketbase';
 import type { Role, UserTenant } from '~/types';
+import { tenantStore } from '~/stores/tenant';
 
 const [user, setUser] = createSignal<Record<string, any> | null>(
   pb.authStore.model
@@ -224,6 +225,7 @@ export const authStore = {
       setCurrentTenantSignal(null);
       setCurrentTenant(null);
       setRole(null);
+      tenantStore.bump();
       return;
     }
     const t = tenants().find(t => t.tenant === tenantId);
@@ -231,6 +233,7 @@ export const authStore = {
       setCurrentTenantSignal(tenantId);
       setCurrentTenant(tenantId);
       setRole(t.role);
+      tenantStore.bump();
       if (!isPBAdmin() && user()?.id) {
         try {
           await pb.collection('users').update(user()!.id!, { last_tenant: tenantId });
@@ -247,6 +250,7 @@ export const authStore = {
     setRole(null);
     setIsPBAdmin(false);
     setError(null);
+    tenantStore.bump();
   },
 };
 

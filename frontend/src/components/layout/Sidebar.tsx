@@ -3,6 +3,7 @@ import { A, useLocation } from '@solidjs/router';
 import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
+import { tenantStore } from '~/stores/tenant';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 
 const navItems = [
@@ -70,7 +71,13 @@ export default function Sidebar() {
     fetchCounts();
   });
 
+  // Re-fetch counts on any tenant change. tenantStore is bumped by
+  // switchTenant, login-time tenant resolution, and CRUD operations
+  // (delete, create, update) so the badges stay in step with the
+  // page below. sidebarStore is kept for backwards-compat with
+  // existing bump() callers.
   createEffect(() => {
+    tenantStore.version;
     sidebarStore.version;
     fetchCounts();
   });

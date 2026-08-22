@@ -3,42 +3,100 @@ import { useNavigate } from '@solidjs/router';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
+import { tenantStore } from '~/stores/tenant';
 import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { X, ExternalLink } from 'lucide-solid';
 
-async function fetchUsers() {
+// One row per tenant membership of a given user.
+// uniqUser below rolls several of these up into a single row.
+interface UserMembership {
+  userTenantId: string;
+  tenantId: string;
+  tenantName: string;
+  role: string;
+}
+
+// One row per user, regardless of how many tenants they belong to.
+interface AggregatedUser {
+  userId: string;
+  name: string;
+  email: string;
+  memberships: UserMembership[];
+}
+
+// Raw shape as it comes out of user_tenants.getList with expand.
+// Kept narrow so unknown expand fields are tolerated.
+interface RawUserTenant {
+  id: string;
+  user: string;
+  tenant: string;
+  role: string;
+  expand?: {
+    user?: { id?: string; name?: string; email?: string };
+    tenant?: { id?: string; name?: string };
+    role?: { name?: string };
+  };
+}
+
+// Roll user_tenants records up by user so a user belonging to two
+// tenants produces a single row, with their memberships listed
+// inside it. The previous shape had one row per link, which made
+// the same double up across the table — fine data, wrong UX.
+function aggregateUserTenants(rows: RawUserTenant[]): AggregatedUser[] {
+  const byUser = new Map<string, AggregatedUser>();
+  for (const ut of rows) {
+    const userId = ut.expand?.user?.id || ut.user;
+    const tenantId = ut.expand?.tenant?.id || ut.tenant;
+    const existing = byUser.get(userId);
+    const membership: UserMembership = {
+      userTenantId: ut.id,
+      tenantId,
+      tenantName: ut.expand?.tenant?.name || 'Unknown tenant',
+      role: ut.expand?.role?.name || ut.role || 'viewer',
+    };
+    if (existing) {
+      existing.memberships.push(membership);
+    } else {
+      byUser.set(userId, {
+        userId,
+        name: ut.expand?.user?.name || '',
+        email: ut.expand?.user?.email || '',
+        memberships: [membership],
+      });
+    }
+  }
+  // Sort memberships inside each row by tenant name so the cells
+  // have a stable order across re-fetches.
+  return Array.from(byUser.values()).map((u) => ({
+    ...u,
+    memberships: [...u.memberships].sort((a, b) =>
+      a.tenantName.localeCompare(b.tenantName)
+    ),
+  }));
+}
+
+async function fetchUsers(): Promise<AggregatedUser[]> {
   const tenant = getCurrentTenant();
   try {
+    let raw: RawUserTenant[];
     if (authStore.isPBAdmin) {
-      const userTenantsResult = await pb.collection('user_tenants').getList(1, 500, {
+      const r = await pb.collection('user_tenants').getList(1, 500, {
         expand: 'user,tenant,role',
+        sort: 'tenant',
       });
-      return userTenantsResult.items.map((ut: any) => ({
-        ...ut,
-        id: ut.id,
-        name: ut.expand?.user?.name || '',
-        email: ut.expand?.user?.email || '',
-        tenantName: ut.expand?.tenant?.name || 'Unknown',
-        userTenantId: ut.id,
-        userRole: ut.expand?.role?.name || ut.role,
-      }));
+      raw = r.items as unknown as RawUserTenant[];
     } else {
       const filter = tenant ? `tenant = "${tenant}"` : '';
-      const userTenantsResult = await pb.collection('user_tenants').getList(1, 500, {
+      const r = await pb.collection('user_tenants').getList(1, 500, {
         filter,
         expand: 'user,tenant,role',
+    sort: 'tenant',
       });
-      return userTenantsResult.items.map((ut: any) => ({
-        ...ut,
-        id: ut.id,
-        name: ut.expand?.user?.name || '',
-        email: ut.expand?.user?.email || '',
-        tenantName: ut.expand?.tenant?.name || '',
-        userTenantId: ut.id,
-        userRole: ut.expand?.role?.name || ut.role,
-      }));
+      raw = r.items as unknown as RawUserTenant[];
     }
+    return aggregateUserTenants(raw);
   } catch (e: any) {
     console.error('[fetchUsers] error:', e);
     return [];
@@ -57,10 +115,15 @@ export default function UserManagement() {
     }
   });
 
-  const [users, { refetch }] = createResource(initialized, (ready) => {
-    if (!ready) return undefined;
-    return fetchUsers();
-  });
+  // tenantStore.version inside the source key keeps the user list in
+  // step with tenant switches — particularly for non-admin viewers
+  // whose query is filtered by getCurrentTenant(); without this
+  // subscription a switch to a different tenant left the table
+  // showing the previous tenant's user_tenants rows.
+  const [users, { refetch }] = createResource(
+    () => ({ ready: initialized(), tenantVersion: tenantStore.version }),
+    ({ ready }) => (ready ? fetchUsers() : undefined)
+  );
 
   const [showInvite, setShowInvite] = createSignal(false);
   const [inviteEmail, setInviteEmail] = createSignal('');
@@ -115,64 +178,97 @@ export default function UserManagement() {
     }
   };
 
-  const handleRoleChange = async (userTenantId: string, newRole: Role) => {
+const handleRoleChange = async (userTenantId: string, newRole: Role) => {
     try {
       const roleId = await getRoleId(newRole);
       await pb.collection('user_tenants').update(userTenantId, { role: roleId });
       refetch();
     } catch (e: any) {
-      alert(`Failed to update role: ${e.message}`);
+      alert(`Failed to update role: ${e?.message}`);
     }
   };
 
-  const handleRemove = async (userTenantId: string) => {
-    if (!confirm('Remove this user from the tenant?')) return;
+  const handleRemove = async (userTenantId: string, tenantName: string) => {
+    if (!confirm(`Remove this user from "${tenantName}"?`)) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to remove user: ${e.message}`);
+      alert(`Failed to remove user: ${e?.message}`);
     }
   };
 
+  // Each membership gets its own inline row inside the Tenants
+  // column. PB admin sees a tenant link + role select + remove.
+  // Non-admin (single-tenant context) only sees the role select
+  // — the membership is implicit and the row reflects the
+  // viewer's own tenant.
+  // data-membership-tenant-id is used by e2e tests to scope a
+  // single membership without DOM-tree text collision risk.
+  const renderMembershipCell = (row: AggregatedUser) => (
+    <div class="space-y-1.5">
+      <For each={row.memberships}>
+        {(m) => (
+          <div
+            class="flex items-center gap-2 text-sm"
+            data-membership-tenant-id={m.tenantId}
+          >
+            <Show
+              when={authStore.isPBAdmin}
+              fallback={
+                <span class="text-gray-900 dark:text-white">{m.tenantName}</span>
+              }
+            >
+              <a
+                href={`/tenants/${m.tenantId}`}
+                class="text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {m.tenantName}
+                <ExternalLink size={12} />
+              </a>
+            </Show>
+            <select
+              value={m.role}
+              onChange={(e) => handleRoleChange(m.userTenantId, e.currentTarget.value as Role)}
+              onClick={(e) => e.stopPropagation()}
+              disabled={!authStore.isAdminOrAbove()}
+              class="ml-auto bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-0.5 text-gray-900 dark:text-white text-xs"
+            >
+              <option value="viewer">Viewer</option>
+              <option value="editor">Editor</option>
+              <option value="admin">Admin</option>
+            </select>
+            <Show when={authStore.isAdminOrAbove()}>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleRemove(m.userTenantId, m.tenantName); }}
+                title={`Remove from ${m.tenantName}`}
+                class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+              >
+                <X size={14} />
+              </button>
+            </Show>
+          </div>
+        )}
+      </For>
+    </div>
+  );
+
+  // Backend column rows carry an array of memberships. The Table
+  // component calls render(value, wholeRow), so we ignore `value`
+  // and read row.memberships directly. Header label is deliberately
+  // always "Tenants" plural — solid in any context (singular cases
+  // are still readable), and avoids the
+  // `isPBAdmin ? 'Tenants' : 'Tenant'` capture-at-init race that
+  // would otherwise leak the wrong label until a refetch.
   const columns: Column[] = [
     { key: 'name', label: 'Name' },
     { key: 'email', label: 'Email' },
     {
-      key: 'userRole',
-      label: 'Role',
-      render: (v, row) => (
-        <select
-          value={v || ''}
-          onChange={(e) => handleRoleChange(row.userTenantId || row.id, e.currentTarget.value as Role)}
-          onClick={(e) => e.stopPropagation()}
-          disabled={!authStore.isAdminOrAbove()}
-          class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm"
-        >
-          <option value="viewer">Viewer</option>
-          <option value="editor">Editor</option>
-          <option value="admin">Admin</option>
-        </select>
-      ),
-    },
-    {
-      key: 'tenantName',
-      label: 'Tenant',
-    },
-    {
-      key: 'actions',
-      label: '',
-      render: (_, row) => (
-        <Show when={authStore.isAdminOrAbove()}>
-          <button
-            onClick={(e) => { e.stopPropagation(); handleRemove(row.userTenantId || row.id); }}
-            class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
-          >
-            Remove
-          </button>
-        </Show>
-      ),
+      key: 'memberships',
+      label: 'Tenants',
+      render: (_v, row) => renderMembershipCell(row as AggregatedUser),
     },
   ];
 
