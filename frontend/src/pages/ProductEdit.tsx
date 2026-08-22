@@ -6,6 +6,7 @@ import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
 import MediaThumb from '~/components/media/MediaThumb';
 import Combobox from '~/components/ui/Combobox';
+import ActiveBadge from '~/components/ui/ActiveBadge';
 import type { Product, Category, Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -324,15 +325,11 @@ export default function ProductEdit() {
 
           <div class="flex items-center gap-4">
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Active</label>
-            <button
-              type="button"
+            <ActiveBadge
+              active={formData().active}
+              size="md"
               onClick={() => setFormData(d => ({ ...d, active: !d.active }))}
-              class={`px-3 py-1 rounded text-sm font-medium ${
-                formData().active ? 'bg-green-600 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-              }`}
-            >
-              {formData().active ? 'Yes' : 'No'}
-            </button>
+            />
           </div>
 
           <div>

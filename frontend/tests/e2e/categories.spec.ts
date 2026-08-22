@@ -216,10 +216,15 @@ async function getAdminPb(): Promise<PocketBase> {
       const toggleButtons = page.locator('button:has-text("Yes")').or(page.locator('button:has-text("No")'));
       const firstToggle = toggleButtons.first();
       const initialText = await firstToggle.textContent();
+      // ActiveBadge renders a lucide-solid icon as the first child — make
+      // sure the toggle is still a <button> with an inline svg child.
+      await expect(firstToggle.locator('svg').first()).toBeVisible();
       await firstToggle.click();
       await page.waitForTimeout(500);
       const newText = await firstToggle.textContent();
       expect(newText).not.toEqual(initialText);
+      // After toggle, the icon should still be present.
+      await expect(firstToggle.locator('svg').first()).toBeVisible();
     });
 
     test('delete category with confirmation', async ({ page }) => {

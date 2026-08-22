@@ -5,6 +5,7 @@ import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import MediaThumb from '~/components/media/MediaThumb';
+import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Product } from '~/types';
@@ -125,14 +126,11 @@ export default function ProductList() {
       label: 'Active',
       sortable: true,
       render: (v, row) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); handleToggleActive(row.id, v); }}
-          class={`px-2 py-1 rounded text-xs font-medium ${
-            v ? 'bg-green-600 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
-          }`}
-        >
-          {v ? 'Yes' : 'No'}
-        </button>
+        <ActiveBadge
+          active={!!v}
+          size="sm"
+          onClick={() => handleToggleActive(row.id, v)}
+        />
       ),
     },
     {

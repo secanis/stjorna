@@ -96,7 +96,7 @@ export default function ApiDocs() {
       <div
         ref={containerRef}
         data-testid="swagger-ui"
-        class="bg-gray-900 dark:bg-white rounded-lg p-2 min-h-[600px]"
+        class="bg-white dark:bg-gray-900 rounded-lg p-2 min-h-[600px]"
         style={{ display: loading() || !!error() ? 'none' : 'block' }}
       />
     </div>
