@@ -63,17 +63,18 @@ export default function Settings() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium mb-1">Auth token (optional)</label>
+            <label class="block text-sm font-medium mb-1">Auth token / API key (optional)</label>
             <textarea
               rows="3"
-              placeholder='paste STJÓRNA user JWT or PB admin JWT…'
+              placeholder={'paste STJÓRNA user JWT, PB admin JWT, or STJÓRNA API key (stjorna_…)…'}
               value={token()}
               onInput={(e) => setToken(e.currentTarget.value)}
               class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm font-mono"
             />
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Stored as <code>localStorage.demo_pb_token</code>, applied via <code>pb.authStore.save(token, null)</code>.
-              Required only to unlock media thumbnails.
+              Required only to unlock media thumbnails. STJÓRNA API keys (<code>stjorna_…</code>) work alongside
+              regular user JWTs.
             </p>
             <Show when={getTokenRaw()}>
               <button

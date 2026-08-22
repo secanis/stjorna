@@ -35,15 +35,15 @@ npm run preview    # serve the build
 
 Categories and products are **public reads** on STJÓRNA — no auth needed.
 Media files and their inline `expand` data are **private**. To see product
-images, paste a STJÓRNA auth token on `/settings`:
+images, paste either:
 
-1. Sign in to your STJÓRNA instance in a browser.
-2. Open DevTools → Application → Local Storage → grab the value of `pocketbase_auth`.
-3. Paste the JSON into the **Auth token** field on `/settings`.
+- **A STJÓRN A user JWT** — sign in to your STJÓRN A instance in a browser,
+  open DevTools → Application → Local Storage → grab `pocketbase_auth`.
+- **A STJÓRN A API key** — issue one in **STJÓRN A → API Keys** (admin only),
+  paste the plaintext (`stjorna_<…>.<…>`).
 
 The token is stored in `localStorage.demo_pb_token` and applied via
-`pb.authStore.save(token, null)` — works for both regular user JWTs and PB
-admin JWTs.
+`pb.authStore.save(token, null)` — works for both regular user JWTs and STJÓRNA API keys.
 
 ---
 
