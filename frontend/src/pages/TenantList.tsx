@@ -1,9 +1,10 @@
 import { createSignal, createResource, Show, For, onMount } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { A, useNavigate } from '@solidjs/router';
 import { Settings } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import Table, { Column } from '~/components/ui/Table';
+import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 
 interface TenantRecord {
   id: string;
@@ -79,6 +80,12 @@ export default function TenantList() {
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenants</h1>
+        <A
+          href="/tenants/new"
+          class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}
+        >
+          + Add Tenant
+        </A>
       </div>
 
       <Show

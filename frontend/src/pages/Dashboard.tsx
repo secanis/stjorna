@@ -129,7 +129,7 @@ export default function Dashboard() {
         </div>
         <div class="flex gap-3">
           <Show when={authStore.isPBAdmin}>
-            <A href="/tenants/add" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/tenants/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}>
               + Add Tenant
             </A>
           </Show>

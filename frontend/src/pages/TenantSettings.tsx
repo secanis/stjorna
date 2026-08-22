@@ -1,5 +1,5 @@
 import { createSignal, Show, onMount, For } from 'solid-js';
-import { useNavigate, useParams } from '@solidjs/router';
+import { useNavigate, useParams, useLocation } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
@@ -20,7 +20,13 @@ interface TenantUser {
 export default function TenantSettings() {
   const navigate = useNavigate();
   const params = useParams();
-  const tenantId = () => params.id;
+  const location = useLocation();
+  // Mirrors the isNew pattern used by CategoryEdit / ProductEdit / MediaEdit:
+  // '/tenants/new' is the create page; '/tenants/:id' with a real id is edit.
+  // Falling back to location.pathname catches the case where `:id` is
+  // missing entirely (e.g. somebody navigates to '/tenants/').
+  const isNew = () => params.id === 'new' || location.pathname.endsWith('/new');
+  const tenantId = () => (isNew() ? undefined : params.id);
 
   const [formData, setFormData] = createSignal({
     name: '',
@@ -87,6 +93,13 @@ export default function TenantSettings() {
       return;
     }
 
+    // Create mode: there's no record yet, so no getOne, no tenant users
+    // to load. The form fields stay at their defaults.
+    if (isNew()) {
+      setLoading(false);
+      return;
+    }
+
     if (!tenantId()) {
       setNotFound(true);
       setLoading(false);
@@ -117,7 +130,6 @@ export default function TenantSettings() {
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    if (!tenantId()) return;
 
     setSaving(true);
     setError('');
@@ -125,18 +137,32 @@ export default function TenantSettings() {
 
     try {
       const themeConfig = JSON.parse(formData().theme_config || '{}');
-      await pb.collection('tenants').update(tenantId()!, {
+      const payload = {
         name: formData().name,
         slug: formData().slug,
         plan: formData().plan,
         custom_domain: formData().custom_domain,
         theme_config: JSON.stringify(themeConfig),
-      });
-      sidebarStore.bump();
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
+      };
+      if (isNew()) {
+        const created = await pb.collection('tenants').create<Tenant>(payload);
+        sidebarStore.bump();
+        // Land admins on the freshly-created tenant's settings page
+        // (replace=true so the back button won't return to /tenants/new).
+        navigate(`/tenants/${created.id}`, { replace: true });
+      } else {
+        if (!tenantId()) return;
+        await pb.collection('tenants').update(tenantId()!, payload);
+        sidebarStore.bump();
+        setSuccess(true);
+        setTimeout(() => setSuccess(false), 3000);
+      }
     } catch (e: any) {
-      setError(e.message || 'Failed to save');
+      // Show the real PB error message — the same pattern CategoryEdit
+      // uses (e.response.message holds the server-side reason).
+      const detail = e?.response?.message || e?.message || 'Failed to save';
+      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+      setError(`${detail}${fields}`);
     } finally {
       setSaving(false);
     }
@@ -224,7 +250,7 @@ export default function TenantSettings() {
           <ArrowLeft size={16} />
           Back to Tenants
         </button>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenant Settings</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{isNew() ? 'New Tenant' : 'Tenant Settings'}</h1>
       </div>
 
       <Show when={loading()}>
@@ -246,6 +272,13 @@ export default function TenantSettings() {
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Settings saved successfully!
+        </div>
+      </Show>
+
+      <Show when={!loading() && !notFound() && !isNew()}>
+        <div class="bg-blue-500/10 border border-blue-500 rounded p-4 text-blue-700 dark:text-blue-300 text-sm">
+          Fill in the details below and save. After creating the tenant,
+          you'll be able to invite users and manage backups from this page.
         </div>
       </Show>
 
@@ -315,16 +348,16 @@ export default function TenantSettings() {
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
-            {saving() ? 'Saving...' : 'Save Settings'}
+            {saving() ? (isNew() ? 'Creating...' : 'Saving...') : (isNew() ? 'Create Tenant' : 'Save Settings')}
           </button>
         </form>
       </Show>
 
-      <Show when={!loading() && !notFound()}>
+      <Show when={!loading() && !notFound() && !isNew()}>
         <BackupSection tenantId={tenantId()!} />
       </Show>
 
-      <Show when={!loading() && !notFound()}>
+      <Show when={!loading() && !notFound() && !isNew()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div class="flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Tenant Users</h2>
