@@ -629,23 +629,23 @@ export default function Setup() {
   };
 
   return (
-    <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
+    <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
         <div class="text-center mb-8">
-          <h1 class="text-3xl font-bold text-white mb-2">STJÓRNA</h1>
-          <p class="text-gray-400">First-time setup</p>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">STJÓRNA</h1>
+          <p class="text-gray-500 dark:text-gray-400">First-time setup</p>
         </div>
 
         <div class="mb-6">
-          <div class="flex justify-between text-xs text-gray-500 mb-2">
-            <span class={['connect', 'admin', 'storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-400' : ''}>1. Connect</span>
-            <span class={['admin', 'storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-400' : ''}>2. Admin</span>
-            <span class={['storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-400' : ''}>3. Storage</span>
-            <span class={['collections', 'tenant', 'link'].includes(step()) ? 'text-blue-400' : ''}>4. Schema</span>
-            <span class={['tenant', 'link'].includes(step()) ? 'text-blue-400' : ''}>5. Tenant</span>
-            <span class={step() === 'link' ? 'text-blue-400' : ''}>6. Link</span>
+          <div class="flex justify-between text-xs text-gray-600 dark:text-gray-500 mb-2">
+            <span class={['connect', 'admin', 'storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>1. Connect</span>
+            <span class={['admin', 'storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>2. Admin</span>
+            <span class={['storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>3. Storage</span>
+            <span class={['collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>4. Schema</span>
+            <span class={['tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>5. Tenant</span>
+            <span class={step() === 'link' ? 'text-blue-600 dark:text-blue-400' : ''}>6. Link</span>
           </div>
-          <div class="h-1 bg-gray-700 rounded">
+          <div class="h-1 bg-gray-50 dark:bg-gray-700 rounded">
             <div
               class="h-1 bg-blue-500 rounded transition-all duration-300"
               style={{
@@ -663,19 +663,19 @@ export default function Setup() {
         <Show when={step() === 'connect'}>
           <div class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">PocketBase URL</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PocketBase URL</label>
               <input
                 type="url"
                 value={pbUrl()}
                 onInput={(e) => setPbUrl(e.currentTarget.value)}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                 placeholder="http://localhost:8090"
               />
             </div>
             <button
               onClick={handleConnect}
               disabled={loading()}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Connecting...' : 'Connect'}
             </button>
@@ -684,40 +684,40 @@ export default function Setup() {
 
         <Show when={step() === 'admin'}>
           <div class="space-y-4">
-            <p class="text-gray-400 text-sm mb-4">Enter your admin credentials:</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Enter your admin credentials:</p>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Admin Email</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Admin Email</label>
               <input
                 type="email"
                 value={adminEmail()}
                 onInput={(e) => setAdminEmail(e.currentTarget.value)}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
               <input
                 type="password"
                 value={adminPassword()}
                 onInput={(e) => setAdminPassword(e.currentTarget.value)}
                 autocomplete="new-password"
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Confirm Password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
               <input
                 type="password"
                 value={adminPasswordConfirm()}
                 autocomplete="new-password"
                 onInput={(e) => setAdminPasswordConfirm(e.currentTarget.value)}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <button
               onClick={handleCreateAdmin}
               disabled={loading() || !adminEmail() || !adminPassword() || adminPassword() !== adminPasswordConfirm()}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Setting up...' : 'Continue'}
             </button>
@@ -726,10 +726,10 @@ export default function Setup() {
 
         <Show when={step() === 'storage'}>
           <div class="space-y-4">
-            <p class="text-gray-400 text-sm mb-2">Choose how STJÓRNA should store uploaded files:</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">Choose how STJÓRNA should store uploaded files:</p>
 
             <div class="space-y-2">
-              <label class="flex items-start gap-3 p-3 bg-gray-700 rounded cursor-pointer hover:bg-gray-600">
+              <label class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                 <input
                   type="radio"
                   name="storage"
@@ -738,15 +738,15 @@ export default function Setup() {
                   class="mt-1"
                 />
                 <div class="flex-1">
-                  <div class="text-white font-medium text-sm">Local filesystem (default)</div>
-                  <div class="text-gray-400 text-xs mt-1">
-                    Files are stored inside the PocketBase container at <code class="text-gray-300">pb_data/storage/</code>.
+                  <div class="text-gray-900 dark:text-white font-medium text-sm">Local filesystem (default)</div>
+                  <div class="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                    Files are stored inside the PocketBase container at <code class="text-gray-700 dark:text-gray-300">pb_data/storage/</code>.
                     Best for development. Make sure to mount a volume in production to persist data.
                   </div>
                 </div>
               </label>
 
-              <label class="flex items-start gap-3 p-3 bg-gray-700 rounded cursor-pointer hover:bg-gray-600">
+              <label class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                 <input
                   type="radio"
                   name="storage"
@@ -755,8 +755,8 @@ export default function Setup() {
                   class="mt-1"
                 />
                 <div class="flex-1">
-                  <div class="text-white font-medium text-sm">S3 (or S3-compatible)</div>
-                  <div class="text-gray-400 text-xs mt-1">
+                  <div class="text-gray-900 dark:text-white font-medium text-sm">S3 (or S3-compatible)</div>
+                  <div class="text-gray-500 dark:text-gray-400 text-xs mt-1">
                     Files are stored in an S3 bucket. Works with AWS S3, Cloudflare R2, Backblaze B2, MinIO, etc.
                     Requires restart of PocketBase after setup.
                   </div>
@@ -767,29 +767,29 @@ export default function Setup() {
             <Show when={storageType() === 's3'}>
               <div class="space-y-3 pl-4 border-l-2 border-blue-500">
                 <div>
-                  <label class="block text-sm font-medium text-gray-300 mb-1" for="s3-bucket">Bucket *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-bucket">Bucket *</label>
                   <input
                     id="s3-bucket"
                     type="text"
                     value={s3Bucket()}
                     onInput={(e) => { setS3Bucket(e.currentTarget.value); setS3TestPassed(false); }}
                     placeholder="my-bucket"
-                    class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-300 mb-1" for="s3-region">Region *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-region">Region *</label>
                   <input
                     id="s3-region"
                     type="text"
                     value={s3Region()}
                     onInput={(e) => { setS3Region(e.currentTarget.value); setS3TestPassed(false); }}
                     placeholder="eu-central-1"
-                    class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-300 mb-1" for="s3-endpoint">Endpoint *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-endpoint">Endpoint *</label>
                   <input
                     id="s3-endpoint"
                     type="text"
@@ -797,32 +797,32 @@ export default function Setup() {
                     onInput={(e) => { setS3Endpoint(e.currentTarget.value); setS3TestPassed(false); }}
                     placeholder="https://s3.eu-central-1.amazonaws.com"
                     required
-                    class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
                   />
-                  <p class="text-gray-500 text-xs mt-1">Auto-filled from region for AWS, override for R2 / B2 / MinIO</p>
+                  <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">Auto-filled from region for AWS, override for R2 / B2 / MinIO</p>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-300 mb-1" for="s3-access-key">Access Key *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-access-key">Access Key *</label>
                   <input
                     id="s3-access-key"
                     type="text"
                     value={s3AccessKey()}
                     onInput={(e) => { setS3AccessKey(e.currentTarget.value); setS3TestPassed(false); }}
-                    class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-300 mb-1" for="s3-secret-key">Secret Key *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-secret-key">Secret Key *</label>
                   <input
                     id="s3-secret-key"
                     type="password"
                     value={s3SecretKey()}
                     onInput={(e) => { setS3SecretKey(e.currentTarget.value); setS3TestPassed(false); }}
                     autocomplete="new-password"
-                    class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-500"
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
                   />
                 </div>
-                <label class="flex items-center gap-2 text-sm text-gray-300">
+                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                   <input
                     type="checkbox"
                     checked={s3ForcePathStyle()}
@@ -837,7 +837,7 @@ export default function Setup() {
                   type="button"
                   onClick={handleTestS3}
                   disabled={!isS3Valid() || s3TestStatus() === 'testing'}
-                  class="w-full bg-gray-600 hover:bg-gray-500 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+                  class="w-full bg-gray-100 dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
                   data-testid="s3-test-btn"
                 >
                   {s3TestStatus() === 'testing' ? 'Testing…' : 'Verify S3 settings'}
@@ -845,7 +845,7 @@ export default function Setup() {
                 <Show when={s3TestStatus() === 'success'}>
                   <div
                     data-testid="s3-test-success"
-                    class="bg-green-500/10 border border-green-500 rounded p-2 text-green-300 text-xs"
+                    class="bg-green-500/10 border border-green-500 rounded p-2 text-green-700 dark:text-green-300 text-xs"
                   >
                     {s3TestMessage()}
                   </div>
@@ -853,18 +853,18 @@ export default function Setup() {
                 <Show when={s3TestStatus() === 'error'}>
                   <div
                     data-testid="s3-test-error"
-                    class="bg-red-500/10 border border-red-500 rounded p-2 text-red-300 text-xs break-words"
+                    class="bg-red-500/10 border border-red-500 rounded p-2 text-red-700 dark:text-red-300 text-xs break-words"
                   >
                     {s3TestMessage()}
                   </div>
                 </Show>
                 <Show when={s3TestStatus() === 'error'}>
-                  <p class="text-gray-500 text-xs italic mt-1">
-                    If a test record was created, it will appear in the media list with a <code class="bg-gray-700 px-1 rounded">__stjorna_s3_test__</code> filename. You can safely delete it.
+                  <p class="text-gray-600 dark:text-gray-500 text-xs italic mt-1">
+                    If a test record was created, it will appear in the media list with a <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">__stjorna_s3_test__</code> filename. You can safely delete it.
                   </p>
                 </Show>
                 <Show when={storageType() === 's3' && !s3TestPassed() && s3TestStatus() !== 'testing'}>
-                  <p class="text-gray-500 text-xs italic mt-1">
+                  <p class="text-gray-600 dark:text-gray-500 text-xs italic mt-1">
                     Click "Verify S3 settings" before continuing.
                   </p>
                 </Show>
@@ -874,7 +874,7 @@ export default function Setup() {
             <button
               onClick={handleConfigureStorage}
               disabled={!isS3Valid() || (storageType() === 's3' && !s3TestPassed())}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               Continue
             </button>
@@ -883,29 +883,29 @@ export default function Setup() {
 
         <Show when={step() === 'tenant'}>
           <div class="space-y-4">
-            <p class="text-gray-400 text-sm mb-4">Create your first tenant:</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Create your first tenant:</p>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Company Name</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
               <input
                 type="text"
                 value={tenantName()}
                 onInput={(e) => setTenantName(e.currentTarget.value)}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Slug</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
               <input
                 type="text"
                 value={tenantSlug()}
                 onInput={(e) => setTenantSlug(e.currentTarget.value.toLowerCase().replace(/\s+/g, '-'))}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <button
               onClick={handleCreateTenant}
               disabled={loading() || !tenantName() || !tenantSlug()}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Creating...' : 'Create Tenant'}
             </button>
@@ -914,11 +914,11 @@ export default function Setup() {
 
         <Show when={step() === 'link'}>
           <div class="space-y-4">
-            <p class="text-gray-400 text-sm mb-4">Linking admin to tenant...</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Linking admin to tenant...</p>
             <button
               onClick={handleLinkAdmin}
               disabled={loading()}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Linking...' : 'Complete Setup'}
             </button>
@@ -927,24 +927,24 @@ export default function Setup() {
 
         <Show when={step() === 'done'}>
           <div class="text-center space-y-3">
-            <p class="text-green-400 text-lg mb-2">Setup complete!</p>
+            <p class="text-green-600 dark:text-green-400 text-lg mb-2">Setup complete!</p>
             <Show when={storageType() === 's3'}>
               <div class="bg-green-500/10 border border-green-500/50 rounded p-3 text-left">
-                <p class="text-green-300 text-xs font-medium mb-1">S3 storage active</p>
-                <p class="text-green-200/80 text-xs">
-                  New uploads will be stored in bucket <code class="bg-gray-700 px-1 rounded">{s3Bucket()}</code>.
+                <p class="text-green-700 dark:text-green-300 text-xs font-medium mb-1">S3 storage active</p>
+                <p class="text-green-700/80 dark:text-green-200/80 text-xs">
+                  New uploads will be stored in bucket <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">{s3Bucket()}</code>.
                 </p>
               </div>
             </Show>
             <Show when={storageType() === 'local'}>
-              <p class="text-gray-400 text-xs">Using local filesystem storage.</p>
+              <p class="text-gray-500 dark:text-gray-400 text-xs">Using local filesystem storage.</p>
             </Show>
-            <p class="text-gray-400 text-sm">Redirecting to login...</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">Redirecting to login...</p>
           </div>
         </Show>
 
         <Show when={error()}>
-          <p class="text-red-400 text-sm mt-4">{error()}</p>
+          <p class="text-red-600 dark:text-red-400 text-sm mt-4">{error()}</p>
         </Show>
       </div>
     </div>

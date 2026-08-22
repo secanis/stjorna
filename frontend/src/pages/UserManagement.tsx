@@ -148,7 +148,7 @@ export default function UserManagement() {
           onChange={(e) => handleRoleChange(row.userTenantId || row.id, e.currentTarget.value as Role)}
           onClick={(e) => e.stopPropagation()}
           disabled={!authStore.isAdminOrAbove()}
-          class="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+          class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-gray-900 dark:text-white text-sm"
         >
           <option value="viewer">Viewer</option>
           <option value="editor">Editor</option>
@@ -167,7 +167,7 @@ export default function UserManagement() {
         <Show when={authStore.isAdminOrAbove()}>
           <button
             onClick={(e) => { e.stopPropagation(); handleRemove(row.userTenantId || row.id); }}
-            class="text-red-400 hover:text-red-300 text-sm"
+            class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
           >
             Remove
           </button>
@@ -179,11 +179,11 @@ export default function UserManagement() {
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-white">User Management</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
         <Show when={authStore.isAdminOrAbove()}>
           <button
             onClick={() => setShowInvite(true)}
-            class={`${PRIMARY_BUTTON_CLASSES} text-white px-4 py-2 rounded font-medium transition-colors`}
+            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}
           >
             + Invite User
           </button>
@@ -191,67 +191,67 @@ export default function UserManagement() {
       </div>
 
       <Show when={!authStore.isAdminOrAbove()}>
-        <div class="bg-yellow-500/10 border border-yellow-500 rounded p-4 text-yellow-400 text-sm">
+        <div class="bg-yellow-500/10 border border-yellow-500 rounded p-4 text-yellow-600 dark:text-yellow-400 text-sm">
           Only admins can manage users.
         </div>
       </Show>
 
       <Show when={showInvite()}>
-        <div class="bg-gray-800 rounded-lg p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-white">Invite User</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Invite User</h2>
           <form onSubmit={handleInvite} class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Name</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
                 <input
                   type="text"
                   value={inviteName()}
                   onInput={(e) => setInviteName(e.currentTarget.value)}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                 <input
                   type="email"
                   value={inviteEmail()}
                   onInput={(e) => setInviteEmail(e.currentTarget.value)}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
               </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
                 <input
                   type="password"
                   value={invitePassword()}
                   onInput={(e) => setInvitePassword(e.currentTarget.value)}
                   autocomplete="new-password"
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Confirm Password</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
                 <input
                   type="password"
                   value={invitePasswordConfirm()}
                   autocomplete="new-password"
                   onInput={(e) => setInvitePasswordConfirm(e.currentTarget.value)}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1">Role</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
               <select
                 value={inviteRole()}
                 onChange={(e) => setInviteRole(e.currentTarget.value as Role)}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               >
                 <option value="viewer">Viewer</option>
                 <option value="editor">Editor</option>
@@ -260,21 +260,21 @@ export default function UserManagement() {
             </div>
 
             <Show when={error()}>
-              <p class="text-red-400 text-sm">{error()}</p>
+              <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
             </Show>
 
             <div class="flex gap-3">
               <button
                 type="submit"
                 disabled={inviting()}
-                class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
+                class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
               >
                 {inviting() ? 'Inviting...' : 'Invite'}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowInvite(false); setError(''); }}
-                class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded"
+                class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
               >
                 Cancel
               </button>
@@ -284,11 +284,11 @@ export default function UserManagement() {
       </Show>
 
       <Show when={users.loading}>
-        <div class="text-gray-400">Loading users...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading users...</div>
       </Show>
 
       <Show when={!users.loading && users()}>
-        <div class="bg-gray-800 rounded-lg overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns}
             data={users() || []}

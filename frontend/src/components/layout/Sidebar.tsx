@@ -86,8 +86,8 @@ export default function Sidebar() {
   };
 
   return (
-    <aside class="w-64 bg-gray-800 min-h-screen p-4 flex flex-col">
-      <div class="text-2xl font-bold text-white mb-8">STJÓRNA</div>
+    <aside class="w-64 bg-white dark:bg-gray-800 min-h-screen p-4 flex flex-col">
+      <div class="text-2xl font-bold text-gray-900 dark:text-white mb-8">STJÓRNA</div>
 
       <nav class="flex-1 space-y-1">
         <For each={visibleItems()}>
@@ -98,44 +98,66 @@ export default function Sidebar() {
             return (
               <A
                 href={itemPath()}
-                class={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive() ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'
-                }`}
+                classList={{
+                  'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors': true,
+                  'bg-blue-600 text-gray-900 dark:text-white': isActive(),
+                  'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActive(),
+                }}
               >
                 <Icon size={20} />
                 <span class="flex-1">{item.label}</span>
                 <Show when={item.showCount && item.path === '/media'}>
-                  <span class={`text-xs px-2 py-0.5 rounded-full ${
-                    isActive() ? 'bg-blue-700 text-blue-200' : 'bg-gray-700 text-gray-400'
-                  }`}>
+                  <span
+                    classList={{
+                      'text-xs px-2 py-0.5 rounded-full': true,
+                      'bg-blue-700 text-white': isActive(),
+                      'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
+                    }}
+                  >
                     {mediaCount() ?? '-'}
                   </span>
                 </Show>
                 <Show when={item.showCount && item.path === '/categories'}>
-                  <span class={`text-xs px-2 py-0.5 rounded-full ${
-                    isActive() ? 'bg-blue-700 text-blue-200' : 'bg-gray-700 text-gray-400'
-                  }`}>
+                  <span
+                    classList={{
+                      'text-xs px-2 py-0.5 rounded-full': true,
+                      'bg-blue-700 text-white': isActive(),
+                      'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
+                    }}
+                  >
                     {categoriesCount() ?? '-'}
                   </span>
                 </Show>
                 <Show when={item.showCount && item.path === '/products'}>
-                  <span class={`text-xs px-2 py-0.5 rounded-full ${
-                    isActive() ? 'bg-blue-700 text-blue-200' : 'bg-gray-700 text-gray-400'
-                  }`}>
+                  <span
+                    classList={{
+                      'text-xs px-2 py-0.5 rounded-full': true,
+                      'bg-blue-700 text-white': isActive(),
+                      'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
+                    }}
+                  >
                     {productsCount() ?? '-'}
                   </span>
                 </Show>
                 <Show when={item.showCount && item.path === '/users'}>
-                  <span class={`text-xs px-2 py-0.5 rounded-full ${
-                    isActive() ? 'bg-blue-700 text-blue-200' : 'bg-gray-700 text-gray-400'
-                  }`}>
+                  <span
+                    classList={{
+                      'text-xs px-2 py-0.5 rounded-full': true,
+                      'bg-blue-700 text-white': isActive(),
+                      'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
+                    }}
+                  >
                     {usersCount() ?? '-'}
                   </span>
                 </Show>
                 <Show when={item.showCount && item.path === '/tenants'}>
-                  <span class={`text-xs px-2 py-0.5 rounded-full ${
-                    isActive() ? 'bg-blue-700 text-blue-200' : 'bg-gray-700 text-gray-400'
-                  }`}>
+                  <span
+                    classList={{
+                      'text-xs px-2 py-0.5 rounded-full': true,
+                      'bg-blue-700 text-white': isActive(),
+                      'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
+                    }}
+                  >
                     {tenantsCount() ?? '-'}
                   </span>
                 </Show>

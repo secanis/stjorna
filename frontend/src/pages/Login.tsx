@@ -55,11 +55,11 @@ export default function Login() {
   // and the "First-time setup?" link below handles setup redirection.
 
   return (
-    <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div class="bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
+    <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
         <div class="text-center mb-8">
-          <h1 class="text-4xl font-bold text-white mb-2">STJÓRNA</h1>
-          <p class="text-gray-400">Sign in to your account</p>
+          <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">STJÓRNA</h1>
+          <p class="text-gray-500 dark:text-gray-400">Sign in to your account</p>
         </div>
 
         <form onSubmit={handleLogin} class="space-y-4">
@@ -69,8 +69,8 @@ export default function Login() {
               onClick={() => { setIsAdminLogin(false); setSearchParams({ mode: 'user' }); }}
               class={`flex-1 py-2 px-4 rounded font-medium transition-colors ${
                 !isAdminLogin()
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-blue-600 text-gray-900 dark:text-white'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               User Login
@@ -80,8 +80,8 @@ export default function Login() {
               onClick={() => { setIsAdminLogin(true); setSearchParams({ mode: 'admin' }); }}
               class={`flex-1 py-2 px-4 rounded font-medium transition-colors ${
                 isAdminLogin()
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-blue-600 text-gray-900 dark:text-white'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               Admin Login
@@ -89,27 +89,27 @@ export default function Login() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="email">Email</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="email">Email</label>
             <input
               id="email"
               type="email"
               value={email()}
               onInput={(e) => setEmail(e.currentTarget.value)}
               autocomplete="email"
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="password">Password</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="password">Password</label>
             <input
               id="password"
               type="password"
               value={password()}
               onInput={(e) => setPassword(e.currentTarget.value)}
               autocomplete="current-password"
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
@@ -117,7 +117,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading()}
-            class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+            class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
           >
             {loading() ? 'Signing in...' : 'Sign In'}
           </button>
@@ -125,17 +125,17 @@ export default function Login() {
 
         <Show when={error()}>
           <div class="mt-4 text-sm">
-            <p class="text-red-400">{error()}</p>
+            <p class="text-red-600 dark:text-red-400">{error()}</p>
             <Show when={errorHint()}>
-              <p class="text-gray-400 mt-1">{errorHint()}</p>
+              <p class="text-gray-500 dark:text-gray-400 mt-1">{errorHint()}</p>
             </Show>
           </div>
         </Show>
 
-        <div class="mt-6 pt-6 border-t border-gray-700">
+        <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
             onClick={() => navigate('/setup?mode=admin')}
-            class="w-full text-gray-400 hover:text-gray-300 text-sm"
+            class="w-full text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-sm"
           >
             First-time setup?
           </button>

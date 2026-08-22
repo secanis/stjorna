@@ -6,6 +6,7 @@ import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
 import { getMediaFileUrl } from '~/utils/mediaUrl';
 import MediaThumb from '~/components/media/MediaThumb';
+import ActiveBadge from '~/components/ui/ActiveBadge';
 import type { Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -170,51 +171,51 @@ export default function CategoryEdit() {
       <div class="flex items-center gap-4">
         <button
           onClick={() => navigate('/categories')}
-          class="text-gray-400 hover:text-white"
+          class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
         >
           ← Back
         </button>
-        <h1 class="text-2xl font-bold text-white">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
           {location.pathname.endsWith('/new') ? 'New Category' : 'Edit Category'}
         </h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
       </Show>
 
       <Show when={error() && !loading()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
       </Show>
 
       <Show when={success()}>
-        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-400 text-sm">
+        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Category saved successfully!
         </div>
       </Show>
 
       <Show when={!loading() && !error()}>
-        <form onSubmit={handleSubmit} class="bg-gray-800 rounded-lg p-6 space-y-4">
+        <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="cat-name">Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-name">Name</label>
             <input
               id="cat-name"
               type="text"
               placeholder="Category name"
               value={formData().name}
               onInput={(e) => handleNameChange(e.currentTarget.value)}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="cat-slug">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-slug">
               Slug
               <Show when={!slugManuallyEdited()}>
-                <span class="ml-2 text-xs text-gray-500">(auto-generated from name)</span>
+                <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">(auto-generated from name)</span>
               </Show>
             </label>
             <input
@@ -223,54 +224,50 @@ export default function CategoryEdit() {
               placeholder="category-slug"
               value={formData().slug}
               onInput={(e) => handleSlugChange(e.currentTarget.value)}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="cat-desc">Description</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-desc">Description</label>
             <input
               id="cat-desc"
               type="text"
               placeholder="Optional description"
               value={formData().description}
               onInput={(e) => setFormData(d => ({ ...d, description: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div class="flex items-center gap-4">
-            <label class="block text-sm font-medium text-gray-300">Active</label>
-            <button
-              type="button"
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Active</label>
+            <ActiveBadge
+              active={formData().active}
+              size="md"
               onClick={() => setFormData(d => ({ ...d, active: !d.active }))}
-              class={`px-3 py-1 rounded text-sm font-medium ${
-                formData().active ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
-              }`}
-            >
-              {formData().active ? 'Yes' : 'No'}
-            </button>
+            />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Sort Order</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort Order</label>
             <input
               type="number"
               value={formData().sort_order}
               onInput={(e) => setFormData(d => ({ ...d, sort_order: parseInt(e.currentTarget.value) || 0 }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">Media</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Media</label>
               <Show when={selectedMedia()}>
                 <button
                   type="button"
                   onClick={handleClearMedia}
-                  class="text-xs text-red-400 hover:text-red-300"
+                  class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 >
                   Remove
                 </button>
@@ -281,7 +278,7 @@ export default function CategoryEdit() {
               <div
                 data-testid="cat-selected-media"
                 data-loaded={selectedMedia()!.mime_type?.startsWith('image/') || selectedMedia()!.mime_type?.startsWith('video/') ? 'pending' : 'no'}
-                class="bg-gray-700 rounded p-3 mb-3 flex items-center gap-3 min-h-24"
+                class="bg-gray-50 dark:bg-gray-700 rounded p-3 mb-3 flex items-center gap-3 min-h-24"
               >
                 <Show
                   when={selectedMedia()!.mime_type?.startsWith('image/')}
@@ -291,7 +288,7 @@ export default function CategoryEdit() {
                       fallback={
                         <div
                           data-testid="cat-selected-media-fallback"
-                          class="w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center"
+                          class="w-24 h-24 bg-gray-100 dark:bg-gray-600 rounded flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 p-2 text-center"
                         >
                           {selectedMedia()!.filename}
                         </div>
@@ -299,7 +296,7 @@ export default function CategoryEdit() {
                     >
                       <video
                         src={getMediaFileUrl(selectedMedia()!.id, selectedMedia()!.file || '')}
-                        class="w-24 h-24 object-cover rounded bg-black"
+                        class="w-24 h-24 object-cover rounded bg-gray-900 dark:bg-black"
                         muted
                         playsinline
                         preload="metadata"
@@ -313,7 +310,7 @@ export default function CategoryEdit() {
                           parent.dataset.loaded = 'error';
                           const placeholder = document.createElement('div');
                           placeholder.setAttribute('data-testid', 'cat-selected-media-fallback');
-                          placeholder.className = 'w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center';
+                          placeholder.className = 'w-24 h-24 bg-gray-100 dark:bg-gray-600 rounded flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 p-2 text-center';
                           placeholder.textContent = selectedMedia()!.filename || '';
                           v.replaceWith(placeholder);
                         }}
@@ -335,22 +332,22 @@ export default function CategoryEdit() {
                       parent.dataset.loaded = 'error';
                       const placeholder = document.createElement('div');
                       placeholder.setAttribute('data-testid', 'cat-selected-media-fallback');
-                      placeholder.className = 'w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center';
+                      placeholder.className = 'w-24 h-24 bg-gray-100 dark:bg-gray-600 rounded flex items-center justify-center text-xs text-gray-700 dark:text-gray-300 p-2 text-center';
                       placeholder.textContent = selectedMedia()!.filename || '';
                       img.replaceWith(placeholder);
                     }}
                   />
                 </Show>
                 <div class="flex-1 min-w-0">
-                  <div class="text-white text-sm truncate">{selectedMedia()!.filename}</div>
-                  <div class="text-gray-400 text-xs">{selectedMedia()!.mime_type}</div>
+                  <div class="text-gray-900 dark:text-white text-sm truncate">{selectedMedia()!.filename}</div>
+                  <div class="text-gray-500 dark:text-gray-400 text-xs">{selectedMedia()!.mime_type}</div>
                 </div>
               </div>
             </Show>
 
             <Show when={media.loading}>
-              <div class="flex items-center gap-2 text-gray-400 text-sm py-4">
-                <div class="w-4 h-4 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+              <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm py-4">
+                <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
                 Loading media library...
               </div>
             </Show>
@@ -358,9 +355,9 @@ export default function CategoryEdit() {
             <Show when={!media.loading && (media()?.items?.length || 0) > 0}>
               <div
                 data-testid="cat-media-picker"
-                class="border border-gray-700 rounded bg-gray-900/40 max-h-96 overflow-y-auto p-2"
+                class="border border-gray-200 dark:border-gray-700 rounded bg-white/80 dark:bg-gray-900/40 max-h-96 overflow-y-auto p-2"
               >
-                <p class="text-xs text-gray-500 mb-2 sticky top-0 bg-gray-900/95 py-1 -mt-1 z-10">
+                <p class="text-xs text-gray-600 dark:text-gray-500 mb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 py-1 -mt-1 z-10">
                   Pick one (replaces current):
                 </p>
                 <div class="grid grid-cols-6 gap-2">
@@ -374,7 +371,7 @@ export default function CategoryEdit() {
                         class={`relative border-2 rounded overflow-hidden ${
                           formData().media === m.id
                             ? 'border-blue-500 opacity-50'
-                            : 'border-gray-600 hover:border-gray-400'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-400'
                         }`}
                         title={m.filename}
                       >
@@ -388,8 +385,8 @@ export default function CategoryEdit() {
             </Show>
 
             <Show when={!media.loading && (media()?.items?.length || 0) === 0}>
-              <p class="text-gray-400 text-sm">
-                No media uploaded yet. <a href="/media/new" class="text-blue-400 hover:underline">Upload some at /media/new</a> first.
+              <p class="text-gray-500 dark:text-gray-400 text-sm">
+                No media uploaded yet. <a href="/media/new" class="text-blue-600 dark:text-blue-400 hover:underline">Upload some at /media/new</a> first.
               </p>
             </Show>
           </div>
@@ -398,14 +395,14 @@ export default function CategoryEdit() {
             <button
               type="submit"
               disabled={saving()}
-              class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
+              class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
               {saving() ? 'Saving...' : 'Save Category'}
             </button>
             <button
               type="button"
               onClick={() => navigate('/categories')}
-              class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded"
+              class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-6 rounded"
             >
               Cancel
             </button>

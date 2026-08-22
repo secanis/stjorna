@@ -68,27 +68,27 @@ export default function ApiDocs() {
   return (
     <div class="space-y-4">
       <div>
-        <h1 class="text-2xl font-bold text-white">API Documentation</h1>
-        <p class="text-sm text-gray-400 mt-1">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">API Documentation</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Auto-generated OpenAPI spec for the STJÓRN backend. The spec is
           filtered server-side based on the current token: anonymous
-          visitors see <span class="text-gray-300">Public</span>, any
-          authenticated user sees <span class="text-gray-300">Public + Private</span>,
+          visitors see <span class="text-gray-700 dark:text-gray-300">Public</span>, any
+          authenticated user sees <span class="text-gray-700 dark:text-gray-300">Public + Private</span>,
           and only PB superusers see the
-          <span class="text-gray-300">Admin</span> section. The
+          <span class="text-gray-700 dark:text-gray-300">Admin</span> section. The
           "Try it out" feature uses the currently logged-in token to
           authorize calls.
         </p>
       </div>
 
       <Show when={loading()}>
-        <div class="bg-gray-800 rounded-lg p-6 text-gray-400">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-gray-500 dark:text-gray-400">
           Loading API docs…
         </div>
       </Show>
 
       <Show when={error()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
       </Show>
@@ -96,7 +96,7 @@ export default function ApiDocs() {
       <div
         ref={containerRef}
         data-testid="swagger-ui"
-        class="bg-white rounded-lg p-2 min-h-[600px]"
+        class="bg-white dark:bg-gray-900 rounded-lg p-2 min-h-[600px]"
         style={{ display: loading() || !!error() ? 'none' : 'block' }}
       />
     </div>

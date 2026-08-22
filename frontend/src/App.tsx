@@ -16,6 +16,7 @@ import TenantList from '~/pages/TenantList';
 import TenantSettings from '~/pages/TenantSettings';
 import ApiDocs from '~/pages/ApiDocs';
 import Activities from '~/pages/Activities';
+import Profile from '~/pages/Profile';
 
 export default function App() {
   return (
@@ -39,11 +40,12 @@ export default function App() {
         <Route path="/tenants" component={TenantList} />
         <Route path="/tenants/:id" component={TenantSettings} />
         <Route path="/api-docs" component={ApiDocs} />
-      <Route path="/activities" component={Activities} />
+        <Route path="/activities" component={Activities} />
+        <Route path="/profile" component={Profile} />
       </Route>
       <Route path="*" component={() => (
-        <div class="min-h-screen bg-gray-900 flex items-center justify-center">
-          <div class="text-white text-2xl">404 — Page not found</div>
+        <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+          <div class="text-gray-900 dark:text-white text-2xl">404 — Page not found</div>
         </div>
       )} />
     </Router>

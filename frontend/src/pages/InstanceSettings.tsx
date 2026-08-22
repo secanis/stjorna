@@ -95,12 +95,12 @@ export default function InstanceSettings() {
 
   return (
     <div class="space-y-6 max-w-2xl">
-      <h1 class="text-2xl font-bold text-white">Instance Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Instance Settings</h1>
 
-      <div class="bg-gray-800 rounded-lg p-6 space-y-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
         <div>
-          <h2 class="text-lg font-semibold text-white">Backup</h2>
-          <p class="text-sm text-gray-400 mt-1">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
             Download a full backup of all tenants, users, products, categories and media.
             JSON is the manifest only; ZIP includes media files.
           </p>
@@ -110,7 +110,7 @@ export default function InstanceSettings() {
             type="button"
             disabled={downloading() !== null}
             onClick={() => handleDownload('json')}
-            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
+            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Download size={14} />
             {downloading() === 'json' ? 'Downloading…' : 'Download JSON'}
@@ -119,74 +119,74 @@ export default function InstanceSettings() {
             type="button"
             disabled={downloading() !== null}
             onClick={() => handleDownload('zip')}
-            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
+            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Download size={14} />
             {downloading() === 'zip' ? 'Downloading…' : 'Download ZIP (with media)'}
           </button>
         </div>
         <Show when={downloadError()}>
-          <p class="text-red-400 text-sm">{downloadError()}</p>
+          <p class="text-red-600 dark:text-red-400 text-sm">{downloadError()}</p>
         </Show>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
       </Show>
 
       <Show when={error() && !loading()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
       </Show>
 
       <Show when={success()}>
-        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-400 text-sm">
+        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Instance settings saved successfully!
         </div>
       </Show>
 
       <Show when={!loading()}>
-        <form onSubmit={handleSubmit} class="bg-gray-800 rounded-lg p-6 space-y-4">
+        <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Instance Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instance Name</label>
             <input
               type="text"
               value={formData().instance_name}
               onInput={(e) => setFormData(d => ({ ...d, instance_name: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Instance URL</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instance URL</label>
             <input
               type="url"
               value={formData().instance_url}
               onInput={(e) => setFormData(d => ({ ...d, instance_url: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               placeholder="http://localhost:8090"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Logo URL</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo URL</label>
             <input
               type="url"
               value={formData().instance_logo_url}
               onInput={(e) => setFormData(d => ({ ...d, instance_logo_url: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               placeholder="https://..."
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Tagline</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tagline</label>
             <input
               type="text"
               value={formData().instance_tagline}
               onInput={(e) => setFormData(d => ({ ...d, instance_tagline: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               placeholder="Product management made simple"
             />
           </div>
@@ -194,7 +194,7 @@ export default function InstanceSettings() {
           <button
             type="submit"
             disabled={saving()}
-            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
+            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
             {saving() ? 'Saving...' : 'Save Instance Settings'}

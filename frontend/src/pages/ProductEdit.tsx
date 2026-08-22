@@ -6,6 +6,7 @@ import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
 import MediaThumb from '~/components/media/MediaThumb';
 import Combobox from '~/components/ui/Combobox';
+import ActiveBadge from '~/components/ui/ActiveBadge';
 import type { Product, Category, Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -227,51 +228,51 @@ export default function ProductEdit() {
       <div class="flex items-center gap-4">
         <button
           onClick={() => navigate('/products')}
-          class="text-gray-400 hover:text-white"
+          class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
         >
           ← Back
         </button>
-        <h1 class="text-2xl font-bold text-white">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
           {isNew() ? 'New Product' : 'Edit Product'}
         </h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
       </Show>
 
       <Show when={error() && !loading()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
       </Show>
 
       <Show when={success()}>
-        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-400 text-sm">
+        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Product saved successfully!
         </div>
       </Show>
 
       <Show when={!loading() && !error()}>
-        <form onSubmit={handleSubmit} class="bg-gray-800 rounded-lg p-6 space-y-4">
+        <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-name">Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-name">Name</label>
             <input
               id="prod-name"
               type="text"
               placeholder="Product name"
               value={formData().name}
               onInput={(e) => handleNameChange(e.currentTarget.value)}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-slug">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-slug">
               Slug
               <Show when={!slugManuallyEdited()}>
-                <span class="ml-2 text-xs text-gray-500">(auto-generated from name)</span>
+                <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">(auto-generated from name)</span>
               </Show>
             </label>
             <input
@@ -280,13 +281,13 @@ export default function ProductEdit() {
               placeholder="product-slug"
               value={formData().slug}
               onInput={(e) => handleSlugChange(e.currentTarget.value)}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-category">Category</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-category">Category</label>
             <Combobox
               id="prod-category"
               testId="prod-category"
@@ -299,78 +300,74 @@ export default function ProductEdit() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-price">Price</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-price">Price</label>
             <input
               id="prod-price"
               type="number"
               step="0.01"
               value={formData().price}
               onInput={(e) => setFormData(d => ({ ...d, price: parseFloat(e.currentTarget.value) || 0 }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-desc">Description</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-desc">Description</label>
             <textarea
               id="prod-desc"
               placeholder="Product description"
               value={formData().description}
               onInput={(e) => setFormData(d => ({ ...d, description: e.currentTarget.value }))}
               rows="4"
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div class="flex items-center gap-4">
-            <label class="block text-sm font-medium text-gray-300">Active</label>
-            <button
-              type="button"
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Active</label>
+            <ActiveBadge
+              active={formData().active}
+              size="md"
               onClick={() => setFormData(d => ({ ...d, active: !d.active }))}
-              class={`px-3 py-1 rounded text-sm font-medium ${
-                formData().active ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
-              }`}
-            >
-              {formData().active ? 'Yes' : 'No'}
-            </button>
+            />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-sort">Sort Order</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-sort">Sort Order</label>
             <input
               id="prod-sort"
               type="number"
               value={formData().sort_order}
               onInput={(e) => setFormData(d => ({ ...d, sort_order: parseInt(e.currentTarget.value) || 0 }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="prod-custom-fields">Custom Fields (JSON)</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-custom-fields">Custom Fields (JSON)</label>
             <textarea
               id="prod-custom-fields"
               placeholder='{"key": "value"}'
               value={formData().custom_fields}
               onInput={(e) => setFormData(d => ({ ...d, custom_fields: e.currentTarget.value }))}
               rows="3"
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
 
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-300">Media</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Media</label>
               <Show when={selectedMediaRecords().length > 0}>
-                <span class="text-xs text-gray-500">
+                <span class="text-xs text-gray-600 dark:text-gray-500">
                   {selectedMediaRecords().length} selected · drag to reorder
                 </span>
               </Show>
             </div>
 
             <Show when={mediaLoading()}>
-              <div class="flex items-center gap-2 text-gray-400 text-sm py-4">
-                <div class="w-4 h-4 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+              <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm py-4">
+                <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
                 Loading media records...
               </div>
             </Show>
@@ -390,7 +387,7 @@ export default function ProductEdit() {
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop(i())}
                       onDragEnd={handleDragEnd}
-                      class={`relative group cursor-move bg-gray-700 rounded border-2 ${
+                      class={`relative group cursor-move bg-gray-50 dark:bg-gray-700 rounded border-2 ${
                         dragOverIndex() === i() ? 'border-blue-500' : 'border-transparent'
                       }`}
                     >
@@ -398,12 +395,12 @@ export default function ProductEdit() {
                       <button
                         type="button"
                         onClick={() => handleRemoveSelected(m.id)}
-                        class="absolute top-1 right-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100"
+                        class="absolute top-1 right-1 bg-red-600 text-gray-900 dark:text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100"
                         title="Remove"
                       >
                         ×
                       </button>
-                      <span class="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center px-1 truncate">
+                      <span class="absolute bottom-0 left-0 right-0 bg-gray-900 dark:bg-black/60 text-gray-900 dark:text-white text-[10px] text-center px-1 truncate">
                         {i() + 1}. {m.filename}
                       </span>
                     </div>
@@ -414,23 +411,23 @@ export default function ProductEdit() {
 
             <Show when={!mediaLoading()}>
               <div>
-                <p class="text-xs text-gray-500 mb-2">
+                <p class="text-xs text-gray-600 dark:text-gray-500 mb-2">
                   Pick from media library:
                 </p>
                 <Show
                   when={media()?.items && media()!.items.length > 0}
                   fallback={
-                    <div class="bg-gray-700/50 rounded p-4 text-center text-sm">
-                      <p class="text-gray-400">
+                    <div class="bg-gray-100/50 dark:bg-gray-700/50 rounded p-4 text-center text-sm">
+                      <p class="text-gray-500 dark:text-gray-400">
                         No media uploaded yet.
                       </p>
                       <a
                         href="/media/new"
-                        class="text-blue-400 hover:text-blue-300 underline"
+                        class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
                       >
                         Upload some at /media/new
                       </a>
-                      <p class="text-gray-400">
+                      <p class="text-gray-500 dark:text-gray-400">
                         first.
                       </p>
                     </div>
@@ -438,7 +435,7 @@ export default function ProductEdit() {
                 >
                   <div
                     data-testid="prod-media-picker"
-                    class="border border-gray-700 rounded bg-gray-900/40 max-h-96 overflow-y-auto p-2"
+                    class="border border-gray-200 dark:border-gray-700 rounded bg-white/80 dark:bg-gray-900/40 max-h-96 overflow-y-auto p-2"
                   >
                     <div class="grid grid-cols-6 gap-2">
                     <For each={media()?.items || []}>
@@ -449,7 +446,7 @@ export default function ProductEdit() {
                             onClick={() => handleToggleMedia(m)}
                             data-testid={`prod-media-pick-${m.id}`}
                             class={`relative border-2 rounded overflow-hidden ${
-                              selectedMediaIds().includes(m.id) ? 'border-blue-500 opacity-50' : 'border-gray-600 hover:border-gray-400'
+                              selectedMediaIds().includes(m.id) ? 'border-blue-500 opacity-50' : 'border-gray-300 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-400'
                             }`}
                             title={m.filename}
                           >
@@ -469,14 +466,14 @@ export default function ProductEdit() {
             <button
               type="submit"
               disabled={saving() || mediaLoading()}
-              class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
+              class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
               {saving() ? 'Saving...' : 'Save Product'}
             </button>
             <button
               type="button"
               onClick={() => navigate('/products')}
-              class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded"
+              class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-6 rounded"
             >
               Cancel
             </button>

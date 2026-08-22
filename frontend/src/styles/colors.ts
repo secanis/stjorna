@@ -37,12 +37,16 @@ export const ENTITY_TYPE_HOVER_COLORS: Record<ActivityType, string> = {
 };
 
 // Composite class strings for the standard "Add" button styling.
+// `text-white` is baked in: every entity-color background (orange-600,
+// cyan-600, emerald-600, blue-600, purple-600) needs bright text on it,
+// and the only consistent value across both light and dark mode is
+// pure white. Callers no longer need to add `text-white` themselves.
 export const ENTITY_TYPE_BUTTON_CLASSES: Record<ActivityType, string> = {
-  tenant:   'bg-orange-600 hover:bg-orange-700',
-  user:     'bg-cyan-600 hover:bg-cyan-700',
-  product:  'bg-emerald-600 hover:bg-emerald-700',
-  media:    'bg-blue-600 hover:bg-blue-700',
-  category: 'bg-purple-600 hover:bg-purple-700',
+  tenant:   'bg-orange-600 hover:bg-orange-700 text-white',
+  user:     'bg-cyan-600 hover:bg-cyan-700 text-white',
+  product:  'bg-emerald-600 hover:bg-emerald-700 text-white',
+  media:    'bg-blue-600 hover:bg-blue-700 text-white',
+  category: 'bg-purple-600 hover:bg-purple-700 text-white',
 };
 
 // Tailwind `text-` variants of the entity colors. Used for SVG icons
@@ -78,9 +82,13 @@ export const PRIMARY_BUTTON_CLASSES = 'bg-blue-600 hover:bg-blue-700';
 // Used in: Activity stream Action badge
 // ─────────────────────────────────────────────
 export const ACTION_COLORS: Record<ActivityAction, { bg: string; text: string }> = {
-  created: { bg: 'bg-green-500/20',  text: 'text-green-300'  },
-  updated: { bg: 'bg-blue-500/20',   text: 'text-blue-300'   },
-  deleted: { bg: 'bg-red-500/20',    text: 'text-red-300'    },
+  // Light mode:  pale solid tint (e.g. green-100) + darker text
+  //              (green-700). Pale text on pale bg was unreadable.
+  // Dark mode:   same dim tint as before (color/20 on dark gray-800)
+  //              + light text (color-300).
+  created: { bg: 'bg-green-100 dark:bg-green-500/20',  text: 'text-green-700 dark:text-green-300'  },
+  updated: { bg: 'bg-blue-100 dark:bg-blue-500/20',    text: 'text-blue-700 dark:text-blue-300'    },
+  deleted: { bg: 'bg-red-100 dark:bg-red-500/20',      text: 'text-red-700 dark:text-red-300'      },
 };
 
 export const ACTION_LABELS: Record<ActivityAction, string> = {
