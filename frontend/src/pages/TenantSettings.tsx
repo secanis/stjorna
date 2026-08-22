@@ -6,6 +6,7 @@ import { sidebarStore } from '~/stores/sidebar';
 import type { Tenant } from '~/types';
 import { ArrowLeft, Save, UserPlus, X } from 'lucide-solid';
 import BackupSection from '~/components/backup/BackupSection';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 interface TenantUser {
   id: string;
@@ -311,7 +312,7 @@ export default function TenantSettings() {
           <button
             type="submit"
             disabled={saving()}
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2"
+            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
             {saving() ? 'Saving...' : 'Save Settings'}
@@ -329,7 +330,7 @@ export default function TenantSettings() {
             <h2 class="text-lg font-semibold text-white">Tenant Users</h2>
             <button
               onClick={() => setShowAddUser(true)}
-              class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm flex items-center gap-1"
+              class={`${PRIMARY_BUTTON_CLASSES} text-white px-3 py-1.5 rounded text-sm flex items-center gap-1`}
             >
               <UserPlus size={14} />
               Add User
@@ -390,7 +391,7 @@ export default function TenantSettings() {
                 <button
                   type="submit"
                   disabled={addingUser()}
-                  class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded text-sm disabled:opacity-50"
+                  class={`${PRIMARY_BUTTON_CLASSES} text-white px-4 py-1.5 rounded text-sm disabled:opacity-50`}
                 >
                   {addingUser() ? 'Adding...' : 'Add'}
                 </button>

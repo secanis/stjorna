@@ -1,18 +1,16 @@
 import PocketBase from 'pocketbase';
 
+const ENV_PB_URL = (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || '/';
+
 export function getPbUrl(): string {
-  return localStorage.getItem('stjorna_pb_url') || 'http://localhost:8090';
+  return ENV_PB_URL;
 }
 
-export let pb = new PocketBase(getPbUrl());
+export let pb = new PocketBase(ENV_PB_URL);
 pb.autoCancellation(false);
 
-export function setPbUrl(url: string) {
-  localStorage.setItem('stjorna_pb_url', url);
-}
-
 export function recreatePb(url?: string) {
-  const finalUrl = url || getPbUrl();
+  const finalUrl = url ?? ENV_PB_URL;
   pb = new PocketBase(finalUrl);
   pb.autoCancellation(false);
 }

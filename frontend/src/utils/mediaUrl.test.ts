@@ -56,12 +56,23 @@ describe('getMediaFileUrl', () => {
     expect(url).toBe('/api/files/media/rec123/file.png?token=jwt-abc&thumb=50x50');
   });
 
-  it('returns relative URL regardless of VITE_PB_URL (routes through proxy)', () => {
+  it('prefixes absolute origin when VITE_PB_URL is set (cross-origin)', () => {
     vi.stubEnv('VITE_PB_URL', 'https://pb.example.com');
     try {
       (pb.authStore as any).token = 'tok';
       const url = getMediaFileUrl('rec1', 'img.jpg', { thumb: '200x200' });
-      expect(url).toBe('/api/files/media/rec1/img.jpg?token=tok&thumb=200x200');
+      expect(url).toBe('https://pb.example.com/api/files/media/rec1/img.jpg?token=tok&thumb=200x200');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('returns relative URL when VITE_PB_URL is empty (proxy handles same-origin)', () => {
+    vi.stubEnv('VITE_PB_URL', '');
+    try {
+      (pb.authStore as any).token = 'tok';
+      const url = getMediaFileUrl('rec1', 'img.jpg');
+      expect(url).toBe('/api/files/media/rec1/img.jpg?token=tok');
     } finally {
       vi.unstubAllEnvs();
     }

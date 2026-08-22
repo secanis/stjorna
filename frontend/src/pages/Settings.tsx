@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import type { Tenant } from '~/types';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -169,7 +170,7 @@ export default function Settings() {
           <button
             type="submit"
             disabled={saving()}
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded disabled:opacity-50"
+            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
           >
             {saving() ? 'Saving...' : 'Save Settings'}
           </button>

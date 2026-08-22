@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: MIT
+# Reusable workflow: collects AI feedback payloads (JSON + diff PNGs) from
+# E2E test runs and uploads them as a GitHub Actions artifact. Downstream
+# OpenCode consumption is manual (see frontend/tests/e2e/AI-FEEDBACK.md).
+#
+# Usage from another workflow:
+#   jobs:
+#     e2e:
+#       uses: ./.github/workflows/e2e-ai-artifact.yml
+#       with:
+#         artifact-name: e2e-ai-payload
+#         payload-dir: frontend/ai-failed-tests
+#     needs: [e2e]
+
+name: E2E AI Artifact
+
+on:
+  workflow_call:
+    inputs:
+      artifact-name:
+        description: 'Artifact name to upload'
+        type: string
+        default: 'e2e-ai-payload'
+      payload-dir:
+        description: 'Directory containing AI payloads and PNGs'
+        type: string
+        default: 'frontend/ai-failed-tests'
+      retention-days:
+        description: 'Days to retain the artifact'
+        type: number
+        default: 7
+    secrets: {}
+
+jobs:
+  upload-ai-payload:
+    name: Upload AI payload
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check payload dir exists
+        run: |
+          if [ -d "${{ inputs.payload-dir }}" ]; then
+            echo "has_payload=true" >> "$GITHUB_OUTPUT"
+            ls -la "${{ inputs.payload-dir }}"
+          else
+            echo "has_payload=false" >> "$GITHUB_OUTPUT"
+            echo "No payload directory found at ${{ inputs.payload-dir }}"
+          fi
+        id: check
+      - name: Upload artifact
+        if: steps.check.outputs.has_payload == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            ${{ inputs.payload-dir }}/*.json
+            ${{ inputs.payload-dir }}/*-actual.png
+            ${{ inputs.payload-dir }}/*-expected.png
+            ${{ inputs.payload-dir }}/*-diff.png
+          retention-days: ${{ inputs.retention-days }}
+          if-no-files-found: ignore

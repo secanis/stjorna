@@ -4,6 +4,7 @@ import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { Save, Download } from 'lucide-solid';
 import { downloadBackup } from '~/services/backup';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 interface InstanceSettings {
   id?: string;
@@ -18,7 +19,7 @@ export default function InstanceSettings() {
 
   const [formData, setFormData] = createSignal<InstanceSettings>({
     instance_name: 'STJÓRNA',
-    instance_url: localStorage.getItem('stjorna_pb_url') || 'http://localhost:8090',
+    instance_url: (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || window.location.origin,
     instance_logo_url: '',
     instance_tagline: '',
   });
@@ -109,7 +110,7 @@ export default function InstanceSettings() {
             type="button"
             disabled={downloading() !== null}
             onClick={() => handleDownload('json')}
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
+            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Download size={14} />
             {downloading() === 'json' ? 'Downloading…' : 'Download JSON'}
@@ -118,7 +119,7 @@ export default function InstanceSettings() {
             type="button"
             disabled={downloading() !== null}
             onClick={() => handleDownload('zip')}
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
+            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Download size={14} />
             {downloading() === 'zip' ? 'Downloading…' : 'Download ZIP (with media)'}
@@ -193,7 +194,7 @@ export default function InstanceSettings() {
           <button
             type="submit"
             disabled={saving()}
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2"
+            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
             {saving() ? 'Saving...' : 'Save Instance Settings'}

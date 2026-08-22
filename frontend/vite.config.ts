@@ -20,4 +20,13 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api/': {
+        target: pbUrl,
+        changeOrigin: true,
+      },
+    },
+  },
 });

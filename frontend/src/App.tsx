@@ -15,6 +15,7 @@ import UserManagement from '~/pages/UserManagement';
 import TenantList from '~/pages/TenantList';
 import TenantSettings from '~/pages/TenantSettings';
 import ApiDocs from '~/pages/ApiDocs';
+import Activities from '~/pages/Activities';
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/tenants" component={TenantList} />
         <Route path="/tenants/:id" component={TenantSettings} />
         <Route path="/api-docs" component={ApiDocs} />
+      <Route path="/activities" component={Activities} />
       </Route>
       <Route path="*" component={() => (
         <div class="min-h-screen bg-gray-900 flex items-center justify-center">

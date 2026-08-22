@@ -2,6 +2,7 @@ import { createSignal, Show } from 'solid-js';
 import type { BackupSource, ImportResult } from '~/services/backup';
 import { importBackup } from '~/services/backup';
 import { Upload, FileWarning, CheckCircle2 } from 'lucide-solid';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 interface Props {
   tenantId: string;
@@ -97,7 +98,7 @@ export default function BackupSection(props: Props) {
           <button
             type="submit"
             disabled={importing() || !file()}
-            class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
+            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Upload size={14} />
             {importing() ? 'Importing…' : 'Import'}

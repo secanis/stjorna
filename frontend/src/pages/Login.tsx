@@ -1,16 +1,32 @@
-import { createSignal, Show, onMount } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { useNavigate, useSearchParams } from '@solidjs/router';
-import { authStore, checkHasAdmins, checkSetupDone } from '~/stores/auth';
-import { recreatePb } from '~/services/pocketbase';
+import { authStore } from '~/stores/auth';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+
+function describeError(err: any): string {
+  if (!err) return 'Login failed';
+  if (err.status === 0 || err.isAbort) {
+    return 'Cannot reach PocketBase server. Check that it is running and reachable.';
+  }
+  const status = err.status ?? err.response?.status;
+  const msg = err.response?.message || err.originalError?.message || err.message;
+  if (status && status >= 500) {
+    return `Server error (${status}): ${msg || 'check PB logs for the underlying cause.'}`;
+  }
+  if (status === 404 && /Failed to authenticate/i.test(msg || '')) {
+    return 'User not found or password incorrect.';
+  }
+  return msg || `Login failed (${status || 'unknown'})`;
+}
 
 export default function Login() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [pbUrlInput, setPbUrlInput] = createSignal(localStorage.getItem('stjorna_pb_url') || 'http://localhost:8090');
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
   const [error, setError] = createSignal('');
+  const [errorHint, setErrorHint] = createSignal<string | null>(null);
   const [loading, setLoading] = createSignal(false);
   const [isAdminLogin, setIsAdminLogin] = createSignal(searchParams.mode === 'admin');
 
@@ -18,9 +34,7 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setError('');
-
-    const url = pbUrlInput();
-    recreatePb(url);
+    setErrorHint(null);
 
     try {
       if (isAdminLogin()) {
@@ -30,35 +44,15 @@ export default function Login() {
       }
       navigate('/');
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(describeError(err));
+      if (err?.status >= 500) setErrorHint('If this is a fresh PocketBase, run First-time setup below.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCheckSetup = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      recreatePb(pbUrlInput());
-      const hasAdmins = await checkHasAdmins();
-      if (!hasAdmins) {
-        navigate('/setup');
-      }
-    } catch (e: any) {
-      setError('Cannot connect to PocketBase');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  onMount(async () => {
-    recreatePb(pbUrlInput());
-    // No auto-redirect to /setup. The "First-time setup?" button below
-    // is the explicit way to enter the setup wizard. After a logout the
-    // user must land back on /login, not be re-pushed into the setup
-    // flow when the instance happens to have setup_done === false.
-  });
+  // No onMount needed: pb is configured at module load via VITE_PB_URL,
+  // and the "First-time setup?" link below handles setup redirection.
 
   return (
     <div class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
@@ -69,17 +63,6 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleLogin} class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1" for="pb-url">PocketBase URL</label>
-            <input
-              id="pb-url"
-              type="url"
-              value={pbUrlInput()}
-              onInput={(e) => setPbUrlInput(e.currentTarget.value)}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
           <div class="flex gap-2 mb-4">
             <button
               type="button"
@@ -134,14 +117,19 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading()}
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+            class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
           >
             {loading() ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
         <Show when={error()}>
-          <p class="text-red-400 text-sm mt-4">{error()}</p>
+          <div class="mt-4 text-sm">
+            <p class="text-red-400">{error()}</p>
+            <Show when={errorHint()}>
+              <p class="text-gray-400 mt-1">{errorHint()}</p>
+            </Show>
+          </div>
         </Show>
 
         <div class="mt-6 pt-6 border-t border-gray-700">

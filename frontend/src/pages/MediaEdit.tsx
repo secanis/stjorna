@@ -3,9 +3,12 @@ import { useNavigate, useParams } from '@solidjs/router';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
-import { getMediaFileUrl } from '~/utils/mediaUrl';
-import { Upload, X, AlertTriangle } from 'lucide-solid';
+import { getMediaFileUrl, getMediaFileUrlAbsolute } from '~/utils/mediaUrl';
+import { Upload, X, AlertTriangle, Copy, Check } from 'lucide-solid';
 import type { Media } from '~/types';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+
+const MAX_FILE_BYTES = 524288000; // 500 MiB — matches pocketbase/setup.ts media.file.maxSize
 
 export default function MediaEdit() {
   const navigate = useNavigate();
@@ -19,10 +22,11 @@ export default function MediaEdit() {
     original_name: '',
     mime_type: '',
     size: 0,
-    s3_key: '',
-    s3_url: '',
-    thumbnail_url: '',
   });
+
+  // Server-populated URL info (read-only display).
+  const [fileUrl, setFileUrl] = createSignal('');
+  const [thumbUrl, setThumbUrl] = createSignal('');
 
   const [pendingFile, setPendingFile] = createSignal<File | null>(null);
   const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
@@ -33,6 +37,7 @@ export default function MediaEdit() {
   const [dragOver, setDragOver] = createSignal(false);
   const [imageError, setImageError] = createSignal<string | null>(null);
   const [loadError, setLoadError] = createSignal<string | null>(null);
+  const [copied, setCopied] = createSignal<'file' | 'thumb' | null>(null);
 
   onMount(async () => {
     await authStore.init();
@@ -50,25 +55,7 @@ export default function MediaEdit() {
     if (isEditing()) {
       try {
         const record = await pb.collection('media').getOne<Media>(params.id!);
-        const baseUrl = import.meta.env.VITE_PB_URL || 'http://localhost:8090';
-        // Backfill URLs for records created before the URL fix. The actual
-        // access at display time uses getMediaFileUrl which adds the auth token.
-        const canonicalFileUrl = record.file
-          ? `${baseUrl}/api/files/media/${record.id}/${record.file}`
-          : '';
-        const canonicalThumbUrl = canonicalFileUrl
-          ? `${canonicalFileUrl}?thumb=200x200`
-          : '';
-        setFormData({
-          file: record.file || '',
-          filename: record.filename || '',
-          original_name: record.original_name || '',
-          mime_type: record.mime_type || '',
-          size: record.size || 0,
-          s3_key: record.s3_key || '',
-          s3_url: record.s3_url || canonicalFileUrl,
-          thumbnail_url: record.thumbnail_url || canonicalThumbUrl,
-        });
+        applyRecord(record);
       } catch (e: any) {
         setLoadError(`Record not found: ${e.status} ${e.message}`);
         setError(`Could not load media record ${params.id}`);
@@ -84,6 +71,13 @@ export default function MediaEdit() {
   });
 
   const setFile = (file: File) => {
+    setError('');
+    if (file.size > MAX_FILE_BYTES) {
+      const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+      const limitMb = Math.round(MAX_FILE_BYTES / (1024 * 1024));
+      setError(`File is ${sizeMb} MB — the maximum allowed size is ${limitMb} MB.`);
+      return;
+    }
     if (previewUrl()) {
       URL.revokeObjectURL(previewUrl()!);
     }
@@ -98,6 +92,9 @@ export default function MediaEdit() {
       mime_type: d.mime_type || file.type,
       size: d.size || file.size,
     }));
+    // Reset stale URL info — it will be re-populated after save.
+    setFileUrl('');
+    setThumbUrl('');
   };
 
   const handleFileSelect = (e: Event) => {
@@ -159,18 +156,33 @@ export default function MediaEdit() {
   const showRecordMissingPlaceholder = () =>
     isEditing() && !!loadError();
 
-  // After a file is uploaded (create or update), populate s3_url and
-  // thumbnail_url with the canonical PB file URLs so the form has the
-  // right values immediately. The actual access at display time uses
-  // getMediaFileUrl which adds the auth token.
-  const setCanonicalUrls = async (recordId: string, filename: string) => {
-    const baseUrl = import.meta.env.VITE_PB_URL || 'http://localhost:8090';
-    const fileUrl = `${baseUrl}/api/files/media/${recordId}/${filename}`;
-    const thumbUrl = `${fileUrl}?thumb=200x200`;
-    await pb.collection('media').update(recordId, {
-      s3_url: fileUrl,
-      thumbnail_url: thumbUrl,
+  const applyRecord = (record: Media) => {
+    setFormData({
+      file: record.file || '',
+      filename: record.filename || '',
+      original_name: record.original_name || '',
+      mime_type: record.mime_type || '',
+      size: record.size || 0,
     });
+    if (record.file) {
+      setFileUrl(getMediaFileUrlAbsolute(record.id, record.file));
+      setThumbUrl(getMediaFileUrlAbsolute(record.id, record.file, { thumb: '200x200' }));
+    } else {
+      setFileUrl('');
+      setThumbUrl('');
+    }
+  };
+
+  const copyUrl = async (kind: 'file' | 'thumb') => {
+    const url = kind === 'file' ? fileUrl() : thumbUrl();
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(kind);
+      setTimeout(() => setCopied(c => (c === kind ? null : c)), 1500);
+    } catch {
+      // best-effort: clipboard may be denied
+    }
   };
 
   const handleSubmit = async (e: Event) => {
@@ -202,7 +214,6 @@ export default function MediaEdit() {
         form.append('tenant', tenant);
 
         const created = await pb.collection('media').create(form);
-        await setCanonicalUrls(created.id, created.file);
         sidebarStore.bump();
         navigate(`/media/${created.id}`);
         return;
@@ -210,8 +221,6 @@ export default function MediaEdit() {
         const updateData: any = {
           filename: formData().filename,
           original_name: formData().original_name,
-          s3_url: formData().s3_url,
-          thumbnail_url: formData().thumbnail_url,
           tenant,
         };
 
@@ -223,19 +232,18 @@ export default function MediaEdit() {
               form.append(key, String(value));
             }
           });
-          const updated = await pb.collection('media').update(params.id!, form);
-          // Re-set URLs based on the actual filename PB assigned (which may
-          // differ from the original filename if PB normalises it).
-          await setCanonicalUrls(updated.id, updated.file);
+          const updated = await pb.collection('media').update<Media>(params.id!, form);
+          applyRecord(updated);
         } else {
-          await pb.collection('media').update(params.id!, updateData);
+          const updated = await pb.collection('media').update<Media>(params.id!, updateData);
+          applyRecord(updated);
         }
         sidebarStore.bump();
         setSuccess(true);
         setTimeout(() => navigate('/media'), 800);
       }
     } catch (e: any) {
-      setError(e.message || 'Failed to save');
+      setError(describeApiError(e));
     } finally {
       setSaving(false);
     }
@@ -368,7 +376,7 @@ export default function MediaEdit() {
                 <p class="text-white text-sm font-medium mb-1">
                   {pendingFile() ? 'Drop another file to replace' : (isNew() ? 'Drop file here or click to browse' : 'Drop new file to replace')}
                 </p>
-                <p class="text-gray-400 text-xs">JPEG, PNG, WebP, GIF, MP4, WebM — max 10MB</p>
+                <p class="text-gray-400 text-xs">JPEG, PNG, WebP, GIF, MP4, WebM — max 500 MB</p>
                 <input
                   id="media-file"
                   type="file"
@@ -432,29 +440,47 @@ export default function MediaEdit() {
               </div>
             </div>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1" for="media-s3-url">S3 URL</label>
-              <input
-                id="media-s3-url"
-                type="url"
-                value={formData().s3_url}
-                onInput={(e) => setFormData(d => ({ ...d, s3_url: e.currentTarget.value }))}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
-                placeholder="https://s3..."
-              />
-            </div>
+            <Show when={fileUrl()}>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">
+                  File URL
+                </label>
+                <div class="flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-2">
+                  <code class="flex-1 text-xs text-gray-300 truncate" title={fileUrl()}>{fileUrl()}</code>
+                  <button
+                    type="button"
+                    onClick={() => copyUrl('file')}
+                    class="shrink-0 text-gray-400 hover:text-white"
+                    title="Copy URL"
+                  >
+                    <Show when={copied() === 'file'} fallback={<Copy size={14} />}>
+                      <Check size={14} class="text-green-400" />
+                    </Show>
+                  </button>
+                </div>
+              </div>
+            </Show>
 
-            <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1" for="media-thumb-url">Thumbnail URL</label>
-              <input
-                id="media-thumb-url"
-                type="url"
-                value={formData().thumbnail_url}
-                onInput={(e) => setFormData(d => ({ ...d, thumbnail_url: e.currentTarget.value }))}
-                class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
-                placeholder="https://..."
-              />
-            </div>
+            <Show when={thumbUrl()}>
+              <div>
+                <label class="block text-sm font-medium text-gray-300 mb-1">
+                  Thumbnail URL
+                </label>
+                <div class="flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-2">
+                  <code class="flex-1 text-xs text-gray-300 truncate" title={thumbUrl()}>{thumbUrl()}</code>
+                  <button
+                    type="button"
+                    onClick={() => copyUrl('thumb')}
+                    class="shrink-0 text-gray-400 hover:text-white"
+                    title="Copy URL"
+                  >
+                    <Show when={copied() === 'thumb'} fallback={<Copy size={14} />}>
+                      <Check size={14} class="text-green-400" />
+                    </Show>
+                  </button>
+                </div>
+              </div>
+            </Show>
           </div>
 
           <div class="bg-gray-800 rounded-lg p-6">
@@ -478,7 +504,7 @@ export default function MediaEdit() {
             <button
               type="submit"
               disabled={saving() || (isNew() && !pendingFile())}
-              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded disabled:opacity-50"
+              class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
               {saving() ? 'Saving...' : isNew() ? 'Upload' : 'Save Changes'}
             </button>
@@ -494,4 +520,13 @@ export default function MediaEdit() {
       </Show>
     </div>
   );
+}
+
+function describeApiError(err: any): string {
+  if (!err) return 'Failed to save';
+  if (err.status === 0 || err.isAbort) {
+    return 'Cannot reach PocketBase server.';
+  }
+  const msg = err.response?.message || err.message;
+  return msg || `Failed to save (${err.status || 'unknown'})`;
 }

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/solid-query';
 import { Suspense } from 'solid-js';
 import App from './App';
 import './index.css';
+import './styles/colors.css';
 
 const queryClient = new QueryClient({
   defaultOptions: {

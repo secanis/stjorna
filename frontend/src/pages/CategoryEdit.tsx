@@ -5,7 +5,9 @@ import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
 import { getMediaFileUrl } from '~/utils/mediaUrl';
+import MediaThumb from '~/components/media/MediaThumb';
 import type { Media } from '~/types';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 async function fetchMedia() {
   const tenant = getCurrentTenant();
@@ -128,8 +130,17 @@ export default function CategoryEdit() {
         description: formData().description,
         active: formData().active,
         sort_order: formData().sort_order,
-        media: formData().media || '',
       };
+      // Only include the media field when the user has actually picked one.
+      // Use null (not '') for a relation field — PB treats '' as a value
+      // for a text field, not a relation unset. For edit mode, omitting
+      // the field entirely would also work (PB would not touch it), but
+      // being explicit makes the intent clear.
+      if (formData().media) {
+        payload.media = formData().media;
+      } else {
+        payload.media = null;
+      }
 
       if (isNewCategory && tenant) {
         payload.tenant = tenant;
@@ -144,7 +155,11 @@ export default function CategoryEdit() {
       setSuccess(true);
       setTimeout(() => navigate('/categories'), 1500);
     } catch (e: any) {
-      setError(e.message || 'Failed to save');
+      // Show the actual PB error response (e.response.message has the real
+      // server-side reason, e.message is usually the generic SDK fallback).
+      const detail = e?.response?.message || e?.message || 'Failed to save';
+      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+      setError(`${detail}${fields}`);
     } finally {
       setSaving(false);
     }
@@ -265,18 +280,45 @@ export default function CategoryEdit() {
             <Show when={selectedMedia()}>
               <div
                 data-testid="cat-selected-media"
-                data-loaded={selectedMedia()!.mime_type?.startsWith('image/') ? 'pending' : 'no'}
+                data-loaded={selectedMedia()!.mime_type?.startsWith('image/') || selectedMedia()!.mime_type?.startsWith('video/') ? 'pending' : 'no'}
                 class="bg-gray-700 rounded p-3 mb-3 flex items-center gap-3 min-h-24"
               >
                 <Show
                   when={selectedMedia()!.mime_type?.startsWith('image/')}
                   fallback={
-                    <div
-                      data-testid="cat-selected-media-fallback"
-                      class="w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center"
+                    <Show
+                      when={selectedMedia()!.mime_type?.startsWith('video/') && selectedMedia()!.file}
+                      fallback={
+                        <div
+                          data-testid="cat-selected-media-fallback"
+                          class="w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center"
+                        >
+                          {selectedMedia()!.filename}
+                        </div>
+                      }
                     >
-                      {selectedMedia()!.filename}
-                    </div>
+                      <video
+                        src={getMediaFileUrl(selectedMedia()!.id, selectedMedia()!.file || '')}
+                        class="w-24 h-24 object-cover rounded bg-black"
+                        muted
+                        playsinline
+                        preload="metadata"
+                        onLoadedMetadata={(e) => {
+                          (e.currentTarget.parentElement as HTMLElement).dataset.loaded = 'yes';
+                        }}
+                        onError={(e) => {
+                          const v = e.currentTarget as HTMLVideoElement;
+                          const parent = v.parentElement as HTMLElement;
+                          if (!parent) return;
+                          parent.dataset.loaded = 'error';
+                          const placeholder = document.createElement('div');
+                          placeholder.setAttribute('data-testid', 'cat-selected-media-fallback');
+                          placeholder.className = 'w-24 h-24 bg-gray-600 rounded flex items-center justify-center text-xs text-gray-300 p-2 text-center';
+                          placeholder.textContent = selectedMedia()!.filename || '';
+                          v.replaceWith(placeholder);
+                        }}
+                      />
+                    </Show>
                   }
                 >
                   <img
@@ -314,11 +356,14 @@ export default function CategoryEdit() {
             </Show>
 
             <Show when={!media.loading && (media()?.items?.length || 0) > 0}>
-              <p class="text-xs text-gray-500 mb-2">Pick one (replaces current):</p>
               <div
                 data-testid="cat-media-picker"
-                class="grid grid-cols-6 gap-2 max-h-48 overflow-y-auto p-1"
+                class="border border-gray-700 rounded bg-gray-900/40 max-h-96 overflow-y-auto p-2"
               >
+                <p class="text-xs text-gray-500 mb-2 sticky top-0 bg-gray-900/95 py-1 -mt-1 z-10">
+                  Pick one (replaces current):
+                </p>
+                <div class="grid grid-cols-6 gap-2">
                 <For each={media()?.items || []}>
                   {(m) => (
                     <Show when={m.file}>
@@ -333,23 +378,12 @@ export default function CategoryEdit() {
                         }`}
                         title={m.filename}
                       >
-                        <Show when={m.mime_type?.startsWith('image/')}>
-                          <img
-                            src={getMediaFileUrl(m.id, m.file!, { thumb: '100x100' })}
-                            alt={m.filename || ''}
-                            class="w-full h-16 object-cover"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
-                        </Show>
-                        <Show when={!m.mime_type?.startsWith('image/')}>
-                          <div class="w-full h-16 bg-gray-700 flex items-center justify-center text-xs text-gray-400 p-1 truncate">
-                            {m.filename}
-                          </div>
-                        </Show>
+                        <MediaThumb media={m} thumb="100x100" class="w-full h-16 object-cover" />
                       </button>
                     </Show>
                   )}
                 </For>
+                </div>
               </div>
             </Show>
 
@@ -364,7 +398,7 @@ export default function CategoryEdit() {
             <button
               type="submit"
               disabled={saving()}
-              class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded disabled:opacity-50"
+              class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
               {saving() ? 'Saving...' : 'Save Category'}
             </button>

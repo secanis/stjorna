@@ -1,6 +1,6 @@
 import { createSignal, onMount, Show, For, createEffect } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
-import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen } from 'lucide-solid';
+import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
@@ -10,6 +10,7 @@ const navItems = [
   { path: '/media', label: 'Media', icon: Image, showCount: true, roles: ['editor', 'admin'] as const },
   { path: '/categories', label: 'Categories', icon: Folder, showCount: true, roles: ['editor', 'admin'] as const },
   { path: '/products', label: 'Products', icon: Package, showCount: true, roles: ['editor', 'admin'] as const },
+  { path: '/activities', label: 'Activities', icon: History, roles: ['editor', 'admin', 'pb_admin'] as const },
   { path: '/api-docs', label: 'API Docs', icon: BookOpen, roles: ['editor', 'admin', 'pb_admin'] as const },
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/users', label: 'Users', icon: Users, roles: ['pb_admin'] as const, showCount: true },

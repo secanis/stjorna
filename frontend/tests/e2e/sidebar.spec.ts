@@ -1,7 +1,7 @@
 import { test, expect, getContext } from './helpers/test-context';
 
 test.describe('Sidebar', () => {
-  test('PB admin sees dashboard, settings, users, tenants', async ({ page }) => {
+  test('PB admin sees dashboard, settings, users, tenants, activities', async ({ page }) => {
     const context = getContext(page);
     await context.loginAsAdmin();
     await context.waitForDashboard();
@@ -14,12 +14,13 @@ test.describe('Sidebar', () => {
     await expect(sidebar.locator('text=Settings')).toBeVisible();
     await expect(sidebar.locator('text=Users')).toBeVisible();
     await expect(sidebar.locator('text=Tenants')).toBeVisible();
+    await expect(sidebar.locator('a[href="/activities"]')).toBeVisible();
 
     const tenantsCount = sidebar.locator('a[href="/tenants"] span').first();
     await expect(tenantsCount).toBeVisible();
   });
 
-  test('regular user sees dashboard, media, categories, products, settings', async ({ page }) => {
+  test('regular user sees dashboard, media, categories, products, activities, settings', async ({ page }) => {
     const context = getContext(page);
     await context.loginAsUser();
     await page.waitForSelector('aside');
@@ -30,6 +31,7 @@ test.describe('Sidebar', () => {
     await expect(sidebar.locator('a[href="/media"]')).toBeVisible();
     await expect(sidebar.locator('a[href="/categories"]')).toBeVisible();
     await expect(sidebar.locator('a[href="/products"]')).toBeVisible();
+    await expect(sidebar.locator('a[href="/activities"]')).toBeVisible();
     await expect(sidebar.locator('text=Settings')).toBeVisible();
     await expect(sidebar.locator('a[href="/users"]')).toBeHidden();
     await expect(sidebar.locator('a[href="/tenants"]')).toBeHidden();

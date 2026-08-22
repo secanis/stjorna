@@ -2,6 +2,7 @@ import { createSignal, Show, onMount, createEffect } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import PocketBase from 'pocketbase';
 import { checkHasAdmins } from '~/stores/auth';
+import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 type Step = 'connect' | 'admin' | 'storage' | 'collections' | 'tenant' | 'link' | 'done';
 
@@ -42,6 +43,7 @@ const collectionsToCreate = [
       { name: 'description', type: 'text' },
       { name: 'active', type: 'bool' },
       { name: 'sort_order', type: 'number' },
+      { name: 'media', type: 'relation', options: { collectionId: 'media', maxSelect: 1, cascadeDelete: false } },
     ],
     listRule: '@request.auth.id != ""',
     viewRule: '@request.auth.id != ""',
@@ -73,7 +75,7 @@ const collectionsToCreate = [
     name: 'media',
     schema: [
       { name: 'tenant', type: 'relation', options: { collectionId: 'tenants', maxSelect: 1, cascadeDelete: false } },
-      { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: 10485760, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
+      { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: 524288000, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
       { name: 'filename', type: 'text' },
       { name: 'original_name', type: 'text' },
       { name: 'mime_type', type: 'text' },
@@ -252,10 +254,11 @@ export default function Setup() {
   const navigate = useNavigate();
 
   onMount(async () => {
-    const savedUrl = localStorage.getItem('stjorna_pb_url');
-    if (savedUrl) {
+    const envUrl = (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '');
+    const initialUrl = envUrl || '';
+    if (initialUrl) {
       try {
-        const checkPb = new PocketBase(savedUrl);
+        const checkPb = new PocketBase(initialUrl);
         try {
           const settings = await checkPb.collection('instance_settings').getList(1, 1);
           if (settings.items.length > 0 && settings.items[0].setup_done === true) {
@@ -270,7 +273,9 @@ export default function Setup() {
   });
 
   const [step, setStep] = createSignal<Step>('connect');
-  const [pbUrl, setPbUrl] = createSignal('http://localhost:8090');
+  const [pbUrl, setPbUrl] = createSignal(
+    ((import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || 'http://localhost:8090')
+  );
   const [adminEmail, setAdminEmail] = createSignal('');
   const [adminPassword, setAdminPassword] = createSignal('');
   const [adminPasswordConfirm, setAdminPasswordConfirm] = createSignal('');
@@ -614,7 +619,6 @@ export default function Setup() {
         });
       }
 
-      localStorage.setItem('stjorna_pb_url', pbUrl());
       setStep('done');
       setTimeout(() => navigate('/login'), 1500);
     } catch (e: any) {
@@ -671,7 +675,7 @@ export default function Setup() {
             <button
               onClick={handleConnect}
               disabled={loading()}
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Connecting...' : 'Connect'}
             </button>
@@ -713,7 +717,7 @@ export default function Setup() {
             <button
               onClick={handleCreateAdmin}
               disabled={loading() || !adminEmail() || !adminPassword() || adminPassword() !== adminPasswordConfirm()}
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Setting up...' : 'Continue'}
             </button>
@@ -870,7 +874,7 @@ export default function Setup() {
             <button
               onClick={handleConfigureStorage}
               disabled={!isS3Valid() || (storageType() === 's3' && !s3TestPassed())}
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               Continue
             </button>
@@ -901,7 +905,7 @@ export default function Setup() {
             <button
               onClick={handleCreateTenant}
               disabled={loading() || !tenantName() || !tenantSlug()}
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Creating...' : 'Create Tenant'}
             </button>
@@ -914,7 +918,7 @@ export default function Setup() {
             <button
               onClick={handleLinkAdmin}
               disabled={loading()}
-              class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class="w-full ${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Linking...' : 'Complete Setup'}
             </button>
