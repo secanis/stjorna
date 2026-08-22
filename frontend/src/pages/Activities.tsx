@@ -80,7 +80,13 @@ export default function Activities() {
     setNameFilter('');
   };
 
-  const columns = activityColumns;
+  // Read PB admin status reactively: authStore.init() runs inside onMount
+// and flips isPBAdmin true *after* the component body has already
+// finished evaluating. A plain `const columns = activityColumns()`
+// would snapshot the flag at component-init time (false) and never
+// add the Tenant column for admins. The createMemo re-runs once
+// authStore.init completes, growing the column list re-actively.
+const columns = createMemo(() => activityColumns());
 
   return (
     <div class="space-y-6">
@@ -208,7 +214,7 @@ export default function Activities() {
           fallback={<div class="p-4 text-gray-500 dark:text-gray-400">Loading activities…</div>}
         >
           <Table
-            columns={columns}
+            columns={columns()}
             data={filtered()}
             onRowClick={(row) => {
               const e = row as ActivityEvent;

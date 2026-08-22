@@ -12,8 +12,13 @@ export interface ActivityEvent {
   name: string;
   id: string;
   at: string;
-  // For tenant filtering (admin only). Undefined = no tenant scope.
+  // Tenant ID where the event happened. For type==='tenant' this equals
+  // the entity ID itself (the activity IS a tenant lifecycle event).
+  // Undefined for events that aren't tenant-scoped.
   tenant?: string;
+  // Resolved tenant display name (admin only). Lets the admin view
+  // show *which* tenant an event happened in without an extra lookup.
+  tenantName?: string;
 }
 
 const getItemName = (item: any, type: ActivityType): string => {
@@ -55,13 +60,21 @@ async function fetchCollectionEvents(
   collection: string,
   type: ActivityType,
   perType: number,
-  filter?: string
+  filter?: string,
+  tenantMap?: Map<string, string>
 ): Promise<ActivityEvent[]> {
   const [byCreated, byUpdated] = await Promise.all([
     pb.collection(collection).getList(1, perType, { filter, sort: '-created' }),
     pb.collection(collection).getList(1, perType, { filter, sort: '-updated' }),
   ]);
   const events: ActivityEvent[] = [];
+  // For type==='tenant' the affected tenant IS the entity itself, so
+  // resolve the name straight from the item rather than the lookup map.
+  const resolveName = (item: any): string | undefined => {
+    if (type === 'tenant') return item.name;
+    if (item.tenant && tenantMap) return tenantMap.get(item.tenant);
+    return undefined;
+  };
   byCreated.items.forEach((item: any) => {
     events.push({
       type,
@@ -70,6 +83,7 @@ async function fetchCollectionEvents(
       id: item.id,
       at: item.created,
       tenant: item.tenant || undefined,
+      tenantName: resolveName(item),
     });
   });
   byUpdated.items.forEach((item: any) => {
@@ -81,10 +95,27 @@ async function fetchCollectionEvents(
         id: item.id,
         at: item.updated,
         tenant: item.tenant || undefined,
+        tenantName: resolveName(item),
       });
     }
   });
   return events;
+}
+
+// Fetch every tenant once so we can label events by tenant name.
+// Only useful when the viewer spans multiple tenants (PB admin) —
+// normal users only ever see one tenant, so skip the request.
+async function fetchTenantNameMap(): Promise<Map<string, string> | undefined> {
+  if (!authStore.isPBAdmin) return undefined;
+  try {
+    const items = await pb.collection('tenants').getFullList({ fields: 'id,name' });
+    const m = new Map<string, string>();
+    for (const t of items) m.set(t.id, t.name || t.id);
+    return m;
+  } catch (e: any) {
+    console.warn('[fetchActivity] failed to load tenant names:', e?.message);
+    return undefined;
+  }
 }
 
 // Viewer-scoped collection types: which types a viewer is allowed to see.
@@ -112,9 +143,12 @@ export async function fetchActivity(query: ActivityQuery = {}): Promise<Activity
     .map((t) => ({ type: t, collection: COLLECTIONS_BY_TYPE[t] }))
     .filter(({ type }) => authStore.isPBAdmin || !tenantScopedTypes().includes(type) || filter);
 
+  // Single round-trip to label events with tenant names. PB admin only.
+  const tenantMap = await fetchTenantNameMap();
+
   const results = await Promise.all(
     collectionsToFetch.map(({ type, collection }) =>
-      fetchCollectionEvents(collection, type, perType, filter).catch(() => [])
+      fetchCollectionEvents(collection, type, perType, filter, tenantMap).catch(() => [])
     )
   );
 
