@@ -152,7 +152,7 @@ export default function Activities() {
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Type</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
             <div class="flex flex-wrap gap-1.5">
               <For each={ALL_ACTIVITY_TYPES}>
                 {(t) => {
@@ -166,7 +166,7 @@ export default function Activities() {
                       classList={{
                         'px-2.5 py-1 rounded text-xs font-medium transition-colors': true,
                         [ENTITY_TYPE_COLORS[t]]: isOn(),
-                        'text-gray-900 dark:text-white': isOn(),
+                        'text-white': isOn(),
                         'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600': !isOn(),
                       }}
                     >
@@ -179,7 +179,7 @@ export default function Activities() {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Action</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Action</label>
             <div class="flex gap-1.5">
               <For each={['created', 'updated'] as ActivityAction[]}>
                 {(a) => {
@@ -190,7 +190,7 @@ export default function Activities() {
                       onClick={() => toggleAction(a)}
                       classList={{
                         'px-2.5 py-1 rounded text-xs font-medium transition-colors': true,
-                        'bg-blue-600 text-gray-900 dark:text-white': isOn(),
+                        'bg-blue-600 text-white': isOn(),
                         'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600': !isOn(),
                       }}
                     >
@@ -203,7 +203,7 @@ export default function Activities() {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" for="act-from">From</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-from">From</label>
             <input
               id="act-from"
               type="date"
@@ -215,7 +215,7 @@ export default function Activities() {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" for="act-to">To</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-to">To</label>
             <input
               id="act-to"
               type="date"
@@ -229,7 +229,7 @@ export default function Activities() {
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1" for="act-search">Name contains</label>
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-search">Name contains</label>
           <input
             id="act-search"
             type="text"

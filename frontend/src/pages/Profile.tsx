@@ -252,7 +252,7 @@ export default function Profile() {
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Appearance</h2>
         </div>
 
-        <p class="text-sm text-gray-600 dark:text-gray-300 mb-3">
+        <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
           Choose how the app should look. <strong>System</strong> follows your operating system
           preference and reacts to changes live.
         </p>
@@ -272,7 +272,7 @@ export default function Profile() {
                 classList={{
                   'flex items-center gap-2 px-4 py-2 text-sm transition-colors': true,
                   'bg-blue-600 text-white': isActive(),
-                  'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActive(),
+                  'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActive(),
                   'border-r': m !== 'system',
                 }}
               >
@@ -283,7 +283,7 @@ export default function Profile() {
           })}
         </div>
 
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">
+        <p class="text-xs text-gray-600 dark:text-gray-400 mt-3">
           Currently: <span data-testid="theme-effective">{effectiveLabel()}</span>
         </p>
       </section>

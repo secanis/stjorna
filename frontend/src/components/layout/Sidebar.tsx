@@ -110,7 +110,7 @@ export default function Sidebar() {
                   <span
                     classList={{
                       'text-xs px-2 py-0.5 rounded-full': true,
-                      'bg-blue-700 text-blue-800 dark:text-blue-200': isActive(),
+                      'bg-blue-700 text-white': isActive(),
                       'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
                     }}
                   >
@@ -121,7 +121,7 @@ export default function Sidebar() {
                   <span
                     classList={{
                       'text-xs px-2 py-0.5 rounded-full': true,
-                      'bg-blue-700 text-blue-800 dark:text-blue-200': isActive(),
+                      'bg-blue-700 text-white': isActive(),
                       'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
                     }}
                   >
@@ -132,7 +132,7 @@ export default function Sidebar() {
                   <span
                     classList={{
                       'text-xs px-2 py-0.5 rounded-full': true,
-                      'bg-blue-700 text-blue-800 dark:text-blue-200': isActive(),
+                      'bg-blue-700 text-white': isActive(),
                       'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
                     }}
                   >
@@ -143,7 +143,7 @@ export default function Sidebar() {
                   <span
                     classList={{
                       'text-xs px-2 py-0.5 rounded-full': true,
-                      'bg-blue-700 text-blue-800 dark:text-blue-200': isActive(),
+                      'bg-blue-700 text-white': isActive(),
                       'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
                     }}
                   >
@@ -154,7 +154,7 @@ export default function Sidebar() {
                   <span
                     classList={{
                       'text-xs px-2 py-0.5 rounded-full': true,
-                      'bg-blue-700 text-blue-800 dark:text-blue-200': isActive(),
+                      'bg-blue-700 text-white': isActive(),
                       'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
                     }}
                   >
