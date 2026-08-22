@@ -159,7 +159,15 @@ var STATS_BODY = "" +
     "var _cats=_byTenant(_loadAll('categories'),_tenantId);" +
     "var _prods=_byTenant(_loadAll('products'),_tenantId);" +
     "var _mediaRows=_byTenant(_loadAll('media'),_tenantId);" +
-    "var _users=_byTenant(_loadAll('users'),_tenantId);" +
+    // Tenant user count comes from `user_tenants`, NOT `users` — STJÓRN A's
+    // `users` collection is PB's built-in `_pb_users_auth_`, where every
+    // non-auth field (including `tenant`) is silently dropped on create.
+    // Tenant membership is tracked in the `user_tenants` join table (see
+    // frontend/src/stores/auth.ts:loadTenants). PB superusers live in
+    // `_admins` and are intentionally NOT counted per-tenant — they have
+    // cross-tenant access and adding them to every tenant's user count
+    // would mislead.
+    "var _userMemberships=_byTenant(_loadAll('user_tenants'),_tenantId);" +
     // ---- Storage aggregation -------------------------------------------
     "var _mediaBytes=0;" +
     "var _largest=null;" +
@@ -224,7 +232,7 @@ var STATS_BODY = "" +
             "categories:_cats.length," +
             "products:_prods.length," +
             "media:_mediaCount," +
-            "users:_users.length" +
+            "users:_userMemberships.length" +
         "}," +
         "storage:{" +
             "media_bytes:_mediaBytes," +

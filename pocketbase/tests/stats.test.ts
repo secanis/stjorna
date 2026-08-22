@@ -84,9 +84,27 @@ describe('STJÓRNA stats — per-tenant aggregation', () => {
     await pb.collection('media').create(createMediaFixture(tenant.id, { mime_type: 'image/png', size: 5000 }));
     await pb.collection('media').create(createMediaFixture(tenant.id, { mime_type: 'video/mp4', size: 3000 }));
 
+    // Two tenant users (one admin, one viewer). STJÓRN A's users table
+    // is PB's built-in auth collection (no `tenant` field); tenant
+    // membership lives in `user_tenants`. Counting that table is the
+    // canonical "how many users does this tenant have" answer.
+    const userA = await pb.collection('users').create({
+      email: `stats-a-${Date.now()}@stjorna.test`, password: 'test1234567abcd', passwordConfirm: 'test1234567abcd', name: 'Stats User A',
+    });
+    const userB = await pb.collection('users').create({
+      email: `stats-b-${Date.now()}@stjorna.test`, password: 'test1234567abcd', passwordConfirm: 'test1234567abcd', name: 'Stats User B',
+    });
+    await pb.collection('user_tenants').create({ user: userA.id, tenant: tenant.id, role: 'admin' });
+    await pb.collection('user_tenants').create({ user: userB.id, tenant: tenant.id, role: 'viewer' });
+
     // A second tenant — must NOT bleed into our counts.
     const other = await pb.collection('tenants').create(createTenantFixture({ name: 'Other Tenant' }));
     await pb.collection('media').create(createMediaFixture(other.id, { size: 999_999 }));
+    // Membership on the other tenant — also must NOT bleed in.
+    const userC = await pb.collection('users').create({
+      email: `stats-c-${Date.now()}@stjorna.test`, password: 'test1234567abcd', passwordConfirm: 'test1234567abcd', name: 'Stats User C',
+    });
+    await pb.collection('user_tenants').create({ user: userC.id, tenant: other.id, role: 'editor' });
 
     const { res, body } = await adminStats(tenant.id);
     expect(res.status).toBe(200);
@@ -94,9 +112,8 @@ describe('STJÓRNA stats — per-tenant aggregation', () => {
     expect(body.counts.products).toBe(3);
     expect(body.counts.media).toBe(4);
 
-    // users: pb.admins (PB superusers) live in a different table; the
-    // `users` collection holds STJÓRN A tenant users. We seeded none here.
-    expect(body.counts.users).toBe(0);
+    // Two users belong to this tenant. The third belongs to `other`.
+    expect(body.counts.users).toBe(2);
 
     expect(body.storage.media_bytes).toBe(11000);
     expect(body.storage.media_count).toBe(4);
