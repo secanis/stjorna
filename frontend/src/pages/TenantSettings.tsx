@@ -44,9 +44,9 @@ export default function TenantSettings() {
   const [tenantUsers, setTenantUsers] = createSignal<TenantUser[]>([]);
   const [usersLoading, setUsersLoading] = createSignal(true);
   const [showAddUser, setShowAddUser] = createSignal(false);
-  const [newUserEmail, setNewUserEmail] = createSignal('');
-  const [newUserName, setNewUserName] = createSignal('');
-  const [newUserPassword, setNewUserPassword] = createSignal('');
+  const [availableUsers, setAvailableUsers] = createSignal<{ id: string; email: string; name: string }[]>([]);
+  const [availableLoading, setAvailableLoading] = createSignal(true);
+  const [selectedUserId, setSelectedUserId] = createSignal('');
   const [newUserRole, setNewUserRole] = createSignal('editor');
   const [addingUser, setAddingUser] = createSignal(false);
   const [editingUserId, setEditingUserId] = createSignal<string | null>(null);
@@ -79,6 +79,30 @@ export default function TenantSettings() {
       console.error('Failed to load tenant users:', e);
     } finally {
       setUsersLoading(false);
+    }
+    // Refresh the dropdown too — anything now in tenantUsers is no
+    // longer a candidate.
+    await loadAvailableUsers();
+  };
+
+  // Lists every user on the system minus the ones already linked to
+  // this tenant. PB admin sees all users; non-admin scope is irrelevant
+  // because TenantSettings requires PB admin (already gated upstream).
+  const loadAvailableUsers = async () => {
+    if (!tenantId()) return;
+    setAvailableLoading(true);
+    try {
+      const all = await pb.collection('users').getFullList({ fields: 'id,email,name' });
+      const takenIds = new Set(tenantUsers().map((u) => u.id));
+      setAvailableUsers(
+        all
+          .filter((u: any) => !takenIds.has(u.id))
+          .map((u: any) => ({ id: u.id, email: u.email || '', name: u.name || '' }))
+      );
+    } catch (e: any) {
+      console.error('Failed to load available users:', e);
+    } finally {
+      setAvailableLoading(false);
     }
   };
 
@@ -170,44 +194,30 @@ export default function TenantSettings() {
 
   const handleAddUser = async (e: Event) => {
     e.preventDefault();
-    if (!tenantId() || !newUserEmail() || !newUserPassword()) return;
+    if (!tenantId() || !selectedUserId()) return;
 
     setAddingUser(true);
     setError('');
 
     try {
-      let user: any;
-      const existingUsers = await pb.collection('users').getList(1, 1, {
-        filter: `email = "${newUserEmail()}"`,
-      });
-
-      if (existingUsers.items.length > 0) {
-        user = existingUsers.items[0];
-      } else {
-        user = await pb.collection('users').create({
-          email: newUserEmail(),
-          password: newUserPassword(),
-          passwordConfirm: newUserPassword(),
-          name: newUserName() || newUserEmail().split('@')[0],
-        });
-      }
-
+      // Just create the user_tenants link — the user record itself
+      // already exists. New user creation lives on /users.
       const roleId = await getRoleId(newUserRole());
       await pb.collection('user_tenants').create({
-        user: user.id,
+        user: selectedUserId(),
         tenant: tenantId(),
         role: roleId,
       });
 
       setShowAddUser(false);
-      setNewUserEmail('');
-      setNewUserName('');
-      setNewUserPassword('');
+      setSelectedUserId('');
       setNewUserRole('editor');
       sidebarStore.bump();
       await loadTenantUsers();
     } catch (e: any) {
-      setError(e.message || 'Failed to add user');
+      const detail = e?.response?.message || e?.message || 'Failed to add user';
+      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+      setError(`${detail}${fields}`);
     } finally {
       setAddingUser(false);
     }
@@ -372,50 +382,51 @@ export default function TenantSettings() {
 
           <Show when={showAddUser()}>
             <form onSubmit={handleAddUser} class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-3">
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={newUserEmail()}
-                    onInput={(e) => setNewUserEmail(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={newUserName()}
-                    onInput={(e) => setNewUserName(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                  />
-                </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-user">
+                  Assign existing user
+                </label>
+                <select
+                  id="ts-existing-user"
+                  value={selectedUserId()}
+                  onChange={(e) => setSelectedUserId(e.currentTarget.value)}
+                  disabled={availableLoading()}
+                  required
+                  class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="" disabled>— Select a user —</option>
+                  <For each={availableUsers()}>
+                    {(u) => (
+                      <option value={u.id}>
+                        {u.name ? `${u.name} <${u.email}>` : u.email}
+                      </option>
+                    )}
+                  </For>
+                </select>
+                <Show when={!availableLoading() && availableUsers().length === 0}>
+                  <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">
+                    No users available. Go to{' '}
+                    <a href="/users" class="text-blue-600 dark:text-blue-400 hover:underline">
+                      User Management
+                    </a>{' '}
+                    to create a new one.
+                  </p>
+                </Show>
               </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Password</label>
-                  <input
-                    type="password"
-                    value={newUserPassword()}
-                    onInput={(e) => setNewUserPassword(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                    required
-                  />
-                </div>
-                <div>
-                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Role</label>
-                  <select
-                    value={newUserRole()}
-                    onChange={(e) => setNewUserRole(e.currentTarget.value)}
-                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-role">
+                  Role
+                </label>
+                <select
+                  id="ts-existing-role"
+                  value={newUserRole()}
+                  onChange={(e) => setNewUserRole(e.currentTarget.value)}
+                  class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
               <Show when={error()}>
                 <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
@@ -423,14 +434,14 @@ export default function TenantSettings() {
               <div class="flex gap-2">
                 <button
                   type="submit"
-                  disabled={addingUser()}
+                  disabled={addingUser() || !selectedUserId() || availableUsers().length === 0}
                   class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm disabled:opacity-50`}
                 >
-                  {addingUser() ? 'Adding...' : 'Add'}
+                  {addingUser() ? 'Adding...' : 'Add to tenant'}
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setShowAddUser(false); setError(''); }}
+                  onClick={() => { setShowAddUser(false); setSelectedUserId(''); setError(''); }}
                   class="bg-gray-100 dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm"
                 >
                   Cancel
