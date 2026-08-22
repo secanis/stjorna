@@ -160,6 +160,18 @@ describe('API Keys — collection (PB admin only)', () => {
     expect(me.status).toBe(401);
   });
 
+  it('LIST degrades gracefully on a fresh deployment (zero rows)', async () => {
+    // PB admin re-auth (any test that issued keys left rows behind).
+    await pb.admins.authWithPassword('admin@test.stjorna.local', 'admin12345678test');
+    const res = await fetch(getPbUrl() + '/api/stjorna/api-keys?perPage=50', {
+      headers: { Authorization: 'Bearer ' + pb.authStore.token },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(Array.isArray(body.items)).toBe(true);
+  });
+
   it('expires: introspect rejects an expired key', async () => {
     const past = new Date(Date.now() - 60_000).toISOString();
     const issue = await fetch(getPbUrl() + '/api/stjorna/api-keys', {

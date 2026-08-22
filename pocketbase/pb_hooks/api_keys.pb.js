@@ -165,6 +165,11 @@ console.log("[stjorna-apikeys] registered POST /api/stjorna/api-keys");
 var LIST_BODY = "" +
     ADMIN_AUTH_FN +
     JSON_REPLY_FN +
+    // Single outer try/catch — anything thrown inside this body (a missing
+    // collection, a PB JSVM quirk, a malformed field) is converted into a
+    // clean 500 with the actual error message so the FE has something
+    // useful to show instead of "Something went wrong".
+    "try{" +
     "var _page=parseInt(c.queryParam('page')||'1',10);" +
     "var _perPage=parseInt(c.queryParam('perPage')||'50',10);" +
     "var _tenantId=String(c.queryParam('tenant')||'');" +
@@ -177,16 +182,24 @@ var LIST_BODY = "" +
         // paginate in JS so the row count stays in our hands regardless of
         // pagination niceties inside the expression engine.
         "_rows=$app.dao().findRecordsByExpr('api_keys');" +
-    "}catch(_el){_reply(500,{ok:false,error:{code:500,message:'list failed: '+(_el.message||_el)}});return;}" +
+    "}catch(_el){_reply(500,{ok:false,error:{code:500,message:'list query failed: '+(_el.message||_el)}});return;}" +
     // JS-side filter (tenant match + not revoked) + sort + paginate.
     "var _filtered=[];" +
     "for(var _i=0;_i<(_rows||[]).length;_i++){" +
         "var _r=_rows[_i];" +
-        "if(_r.get('revoked'))continue;" +
-        "if(_tenantId&&String(_r.get('tenant'))!==_tenantId)continue;" +
+        "if(!_r||typeof _r.get!=='function')continue;" +
+        // Skip revoked rows AND rows missing a usable prefix. The prefix
+        // is the only thing the introspect handler uses to look up a
+        // record, so anything without a valid stjorna_* prefix is junk
+        // from the caller's perspective. This also shields the FE from
+        // rows left behind by partial upgrades or buggy tooling.
+        "try{if(_r.get('revoked'))continue;}catch(_eRev){}" +
+        "var _rp='';try{_rp=String(_r.get('prefix')||'');}catch(_eP){}" +
+        "if(_rp.indexOf('stjorna_')!==0)continue;" +
+        "if(_tenantId){var _rt='';try{_rt=String(_r.get('tenant'));}catch(_eT){}if(_rt!==_tenantId)continue;}" +
         "_filtered.push(_r);" +
     "}" +
-    "_filtered.sort(function(a,b){var _ca=String(a.get('created')||'');var _cb=String(b.get('created')||'');return _cb.localeCompare(_ca);});" +
+    "_filtered.sort(function(a,b){var _ca='';var _cb='';try{_ca=String(a.get('created')||'');}catch(_ea){}try{_cb=String(b.get('created')||'');}catch(_eb){}return _cb.localeCompare(_ca);});" +
     "var _total=_filtered.length;" +
     "var _start=(_page-1)*_perPage;_rows=_filtered.slice(_start,_start+_perPage);" +
     "var _items=(_rows||[]).map(function(r){" +
@@ -194,17 +207,18 @@ var LIST_BODY = "" +
         "try{var _p=r.get('permissions');if(_p&&typeof _p==='string')_perms=JSON.parse(_p);else if(_p)_perms=_p;}catch(_ep){}" +
         "return {" +
             "id:r.id," +
-            "tenant:r.get('tenant')," +
+            "tenant:(function(){try{return r.get('tenant');}catch(_et){return '';}})()," +
             "name:r.get('name')," +
             "prefix:r.get('prefix')," +
             "permissions:_perms," +
             "last_used:r.get('last_used')||null," +
             "expires:r.get('expires')||null," +
-            "revoked:!!r.get('revoked')," +
-            "created:r.get('created')||null" +
+            "revoked:(function(){try{return !!r.get('revoked');}catch(_er){return false;}})()," +
+            "created:(function(){try{return r.get('created')||null;}catch(_ec){return null;}})()" +
         "};" +
     "});" +
-    "_reply(200,{ok:true,items:_items,page:_page,perPage:_perPage,totalItems:_total});";
+    "_reply(200,{ok:true,items:_items,page:_page,perPage:_perPage,totalItems:_total});" +
+    "}catch(_eAll){console.log('[stjorna-apikeys] LIST outer error: '+((_eAll&&_eAll.stack)||(_eAll&&_eAll.message)||_eAll));_reply(500,{ok:false,error:{code:500,message:'list handler crashed: '+((_eAll&&_eAll.message)||String(_eAll))}});return;}" ;
 
 routerAdd("GET", "/api/stjorna/api-keys", new Function("c", LIST_BODY));
 console.log("[stjorna-apikeys] registered GET /api/stjorna/api-keys");
@@ -256,11 +270,12 @@ var INTROSPECT_BODY = "" +
     // PB's `findFirstRecordByFilter`/`findRecordsByFilter` JS bindings are
     // unreliable across v0.21→0.22 for this hook's goja-level access.
     "var _all=null;try{_all=$app.dao().findRecordsByExpr('api_keys');}catch(_e1){}" +
-    "if(_all){for(var _i2=0;_i2<_all.length;_i2++){var _r=_all[_i2];if(String(_r.get('prefix'))===_prefix&&!_r.get('revoked')){_rec=_r;break;}}}" +
+    "var _getR=function(_r,_k){try{return _r.get(_k);}catch(_eg){return null;}};" +
+    "if(_all){for(var _i2=0;_i2<_all.length;_i2++){var _r=_all[_i2];if(!_r||typeof _r.get!=='function')continue;if(String(_getR(_r,'prefix'))===_prefix&&!_getR(_r,'revoked')){_rec=_r;break;}}}" +
     "if(!_rec){_reply(401,{ok:false,error:{code:401,message:'invalid API key'}});return;}" +
-    "var _stored=String(_rec.get('key_hash')||'');" +
+    "var _stored=String(_getR(_rec,'key_hash')||'');" +
     "if(!_constEq(_computedHash,_stored)){_reply(401,{ok:false,error:{code:401,message:'invalid API key'}});return;}" +
-    "var _exp=_rec.get('expires');" +
+    "var _exp=_getR(_rec,'expires');" +
     "if(_exp){" +
         // PB returns dates as a goja time.Time bridged into a wrapper object
         // (not a JS Date and not a plain string). Normalise to ms either way:
@@ -281,10 +296,10 @@ var INTROSPECT_BODY = "" +
     // Best-effort last_used update.
     "try{_rec.set('last_used',new Date().toISOString().replace('T',' ').replace(/\\..*$/,'Z'));$app.dao().saveRecord(_rec);}catch(_eu){}" +
     "var _permsOut=null;" +
-    "try{var _pp=_rec.get('permissions');if(_pp&&typeof _pp==='string')_permsOut=JSON.parse(_pp);else if(_pp)_permsOut=_pp;}catch(_ep2){}" +
+    "try{var _pp=_getR(_rec,'permissions');if(_pp&&typeof _pp==='string')_permsOut=JSON.parse(_pp);else if(_pp)_permsOut=_pp;}catch(_ep2){}" +
     "_reply(200,{" +
         "ok:true," +
-        "tenant:_rec.get('tenant')," +
+        "tenant:_getR(_rec,'tenant')," +
         "id:_rec.id," +
         "prefix:_prefix," +
         "permissions:_permsOut," +

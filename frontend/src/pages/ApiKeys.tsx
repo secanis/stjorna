@@ -28,8 +28,17 @@ interface TenantOption {
 }
 
 async function listKeys(): Promise<ApiKeyRow[]> {
-  const r = await pb.send('/api/stjorna/api-keys', { method: 'GET' });
-  return (r?.items || []) as ApiKeyRow[];
+  try {
+    const r = await pb.send('/api/stjorna/api-keys', { method: 'GET' });
+    return (r?.items || []) as ApiKeyRow[];
+  } catch (e: any) {
+    // The pocketbase SDK wraps the response; surface the actual server
+    // message so the user can debug from the FE (e.g. "list query
+    // failed: …") instead of just "Something went wrong".
+    const detail = e?.response?.message || e?.message || 'unknown error';
+    const url = e?.url || '/api/stjorna/api-keys';
+    throw new Error(`${e?.status || ''} ${url}: ${detail}`);
+  }
 }
 
 async function listTenants(): Promise<TenantOption[]> {
@@ -271,6 +280,12 @@ export default function ApiKeys() {
       </Show>
 
       <Show when={!keys.loading} fallback={<div class="text-gray-500 dark:text-gray-400">Loading keys…</div>}>
+        <Show when={keys.error}>
+          <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm mb-3">
+            <div class="font-medium mb-1">Failed to load API keys</div>
+            <code class="text-xs break-all">{String((keys.error as any)?.message || keys.error)}</code>
+          </div>
+        </Show>
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns}
