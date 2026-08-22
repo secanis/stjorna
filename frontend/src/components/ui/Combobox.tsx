@@ -199,9 +199,12 @@ export default function Combobox(props: ComboboxProps) {
                   role="option"
                   aria-selected={props.value === opt.value}
                   data-testid={props.testId ? `${props.testId}-option-${opt.value || 'none'}` : undefined}
-                  class={`px-3 py-2 cursor-pointer text-sm ${
-                    i() === activeIdx() ? 'bg-blue-600 text-gray-900 dark:text-white' : 'text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  } ${props.value === opt.value && opt.value !== '' ? 'font-medium' : ''}`}
+                  classList={{
+                    'px-3 py-2 cursor-pointer text-sm': true,
+                    'bg-blue-600 text-gray-900 dark:text-white': i() === activeIdx(),
+                    'text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700': i() !== activeIdx(),
+                    'font-medium': props.value === opt.value && opt.value !== '',
+                  }}
                   onMouseDown={(e) => { e.preventDefault(); pick(opt.value); }}
                   onMouseEnter={() => setActiveIdx(i())}
                 >

@@ -269,11 +269,12 @@ export default function Profile() {
                 aria-checked={isActive()}
                 data-testid={`theme-${m}`}
                 onClick={() => setTheme(m)}
-                class={`flex items-center gap-2 px-4 py-2 text-sm transition-colors ${
-                  isActive()
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                } ${m === 'light' ? 'border-r' : ''} ${m === 'dark' ? 'border-r' : ''} border-gray-300 dark:border-gray-600`}
+                classList={{
+                  'flex items-center gap-2 px-4 py-2 text-sm transition-colors': true,
+                  'bg-blue-600 text-white': isActive(),
+                  'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActive(),
+                  'border-r': m !== 'system',
+                }}
               >
                 <Icon size={14} />
                 {label}

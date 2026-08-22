@@ -163,9 +163,12 @@ export default function Activities() {
                     <button
                       type="button"
                       onClick={() => toggleType(t)}
-                      class={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                        isOn() ? `${ENTITY_TYPE_COLORS[t]} text-gray-900 dark:text-white` : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                      }`}
+                      classList={{
+                        'px-2.5 py-1 rounded text-xs font-medium transition-colors': true,
+                        [ENTITY_TYPE_COLORS[t]]: isOn(),
+                        'text-gray-900 dark:text-white': isOn(),
+                        'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600': !isOn(),
+                      }}
                     >
                       {ENTITY_TYPE_LABELS[t]}
                     </button>
@@ -185,9 +188,11 @@ export default function Activities() {
                     <button
                       type="button"
                       onClick={() => toggleAction(a)}
-                      class={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                        isOn() ? 'bg-blue-600 text-gray-900 dark:text-white' : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                      }`}
+                      classList={{
+                        'px-2.5 py-1 rounded text-xs font-medium transition-colors': true,
+                        'bg-blue-600 text-gray-900 dark:text-white': isOn(),
+                        'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600': !isOn(),
+                      }}
                     >
                       {a}
                     </button>
