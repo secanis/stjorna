@@ -68,7 +68,7 @@ export default function MediaList() {
       key: 'file',
       label: 'Preview',
       render: (v, row) => (
-        <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-black">
+        <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-gray-900 dark:bg-black">
           <Show when={row.mime_type?.startsWith('image/') && v}>
             <img
               src={getMediaFileUrl(row.id, v, { thumb: '100x100' })}
@@ -87,11 +87,11 @@ export default function MediaList() {
                 preload="metadata"
                 onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
               />
-              <Video size={20} class="absolute text-white drop-shadow pointer-events-none" />
+              <Video size={20} class="absolute text-gray-900 dark:text-white drop-shadow pointer-events-none" />
             </div>
           </Show>
           <Show when={!v || (!row.mime_type?.startsWith('image/') && !row.mime_type?.startsWith('video/'))}>
-            <FileText size={16} class="text-gray-400" />
+            <FileText size={16} class="text-gray-500 dark:text-gray-400" />
           </Show>
         </div>
       ),
@@ -122,14 +122,14 @@ export default function MediaList() {
         <div class="flex gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/media/${row.id}`); }}
-            class="text-blue-400 hover:text-blue-300 text-sm"
+            class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
           >
             Edit
           </button>
           <Show when={authStore.isEditorOrAbove()}>
             <button
               onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
-              class="text-red-400 hover:text-red-300 text-sm"
+              class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
             >
               Delete
             </button>
@@ -142,9 +142,9 @@ export default function MediaList() {
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-white">Media</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Media</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} text-white px-4 py-2 rounded font-medium transition-colors`}>
+          <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
             + Add Media
           </A>
         </Show>
@@ -154,7 +154,7 @@ export default function MediaList() {
         <select
           value={filterType()}
           onChange={(e) => setFilterType(e.currentTarget.value)}
-          class="bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm"
+          class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
         >
           <option value="">All types</option>
           <option value="image">Images</option>
@@ -164,9 +164,9 @@ export default function MediaList() {
 
       <Show
         when={!data.loading}
-        fallback={<div class="text-gray-400">Loading media...</div>}
+        fallback={<div class="text-gray-500 dark:text-gray-400">Loading media...</div>}
       >
-        <div class="bg-gray-800 rounded-lg overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns}
             data={data()?.items || []}
@@ -183,17 +183,17 @@ export default function MediaList() {
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page() === 1}
-              class="px-3 py-1 bg-gray-700 rounded text-white disabled:opacity-50"
+              class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
               Previous
             </button>
-            <span class="text-gray-400 py-1 px-3">
+            <span class="text-gray-500 dark:text-gray-400 py-1 px-3">
               Page {page()} of {data()?.totalPages || 1}
             </span>
             <button
               onClick={() => setPage(p => p + 1)}
               disabled={page() >= (data()?.totalPages || 1)}
-              class="px-3 py-1 bg-gray-700 rounded text-white disabled:opacity-50"
+              class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
               Next
             </button>

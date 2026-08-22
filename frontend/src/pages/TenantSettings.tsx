@@ -219,66 +219,66 @@ export default function TenantSettings() {
       <div class="flex items-center gap-4">
         <button
           onClick={() => navigate('/tenants')}
-          class="text-gray-400 hover:text-white flex items-center gap-1"
+          class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex items-center gap-1"
         >
           <ArrowLeft size={16} />
           Back to Tenants
         </button>
-        <h1 class="text-2xl font-bold text-white">Tenant Settings</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenant Settings</h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
       </Show>
 
       <Show when={notFound()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           Tenant not found.
         </div>
       </Show>
 
       <Show when={error() && !loading() && !notFound() && !addingUser()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
       </Show>
 
       <Show when={success()}>
-        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-400 text-sm">
+        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Settings saved successfully!
         </div>
       </Show>
 
       <Show when={!loading() && !notFound()}>
-        <form onSubmit={handleSubmit} class="bg-gray-800 rounded-lg p-6 space-y-4">
+        <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Company Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
             <input
               type="text"
               value={formData().name}
               onInput={(e) => setFormData(d => ({ ...d, name: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Slug</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
             <input
               type="text"
               value={formData().slug}
               onInput={(e) => setFormData(d => ({ ...d, slug: e.currentTarget.value.toLowerCase().replace(/\s+/g, '-') }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Plan</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
             <select
               value={formData().plan}
               onChange={(e) => setFormData(d => ({ ...d, plan: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
             >
               <option value="free">Free</option>
               <option value="starter">Starter</option>
@@ -288,23 +288,23 @@ export default function TenantSettings() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Custom Domain</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom Domain</label>
             <input
               type="text"
               value={formData().custom_domain}
               onInput={(e) => setFormData(d => ({ ...d, custom_domain: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               placeholder="media.example.com"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Theme Config (JSON)</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Theme Config (JSON)</label>
             <textarea
               value={formData().theme_config}
               onInput={(e) => setFormData(d => ({ ...d, theme_config: e.currentTarget.value }))}
               rows={4}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
               placeholder='{"primaryColor": "#000000"}'
             />
           </div>
@@ -312,7 +312,7 @@ export default function TenantSettings() {
           <button
             type="submit"
             disabled={saving()}
-            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
+            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
             {saving() ? 'Saving...' : 'Save Settings'}
@@ -325,12 +325,12 @@ export default function TenantSettings() {
       </Show>
 
       <Show when={!loading() && !notFound()}>
-        <div class="bg-gray-800 rounded-lg p-6 space-y-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-white">Tenant Users</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Tenant Users</h2>
             <button
               onClick={() => setShowAddUser(true)}
-              class={`${PRIMARY_BUTTON_CLASSES} text-white px-3 py-1.5 rounded text-sm flex items-center gap-1`}
+              class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-3 py-1.5 rounded text-sm flex items-center gap-1`}
             >
               <UserPlus size={14} />
               Add User
@@ -338,45 +338,45 @@ export default function TenantSettings() {
           </div>
 
           <Show when={showAddUser()}>
-            <form onSubmit={handleAddUser} class="bg-gray-700 rounded-lg p-4 space-y-3">
+            <form onSubmit={handleAddUser} class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-3">
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-xs text-gray-400 mb-1">Email</label>
+                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Email</label>
                   <input
                     type="email"
                     value={newUserEmail()}
                     onInput={(e) => setNewUserEmail(e.currentTarget.value)}
-                    class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-1.5 text-white text-sm"
+                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label class="block text-xs text-gray-400 mb-1">Name</label>
+                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Name</label>
                   <input
                     type="text"
                     value={newUserName()}
                     onInput={(e) => setNewUserName(e.currentTarget.value)}
-                    class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-1.5 text-white text-sm"
+                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
                   />
                 </div>
               </div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
-                  <label class="block text-xs text-gray-400 mb-1">Password</label>
+                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Password</label>
                   <input
                     type="password"
                     value={newUserPassword()}
                     onInput={(e) => setNewUserPassword(e.currentTarget.value)}
-                    class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-1.5 text-white text-sm"
+                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
                     required
                   />
                 </div>
                 <div>
-                  <label class="block text-xs text-gray-400 mb-1">Role</label>
+                  <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Role</label>
                   <select
                     value={newUserRole()}
                     onChange={(e) => setNewUserRole(e.currentTarget.value)}
-                    class="w-full bg-gray-600 border border-gray-500 rounded px-3 py-1.5 text-white text-sm"
+                    class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
                   >
                     <option value="viewer">Viewer</option>
                     <option value="editor">Editor</option>
@@ -385,20 +385,20 @@ export default function TenantSettings() {
                 </div>
               </div>
               <Show when={error()}>
-                <p class="text-red-400 text-sm">{error()}</p>
+                <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
               </Show>
               <div class="flex gap-2">
                 <button
                   type="submit"
                   disabled={addingUser()}
-                  class={`${PRIMARY_BUTTON_CLASSES} text-white px-4 py-1.5 rounded text-sm disabled:opacity-50`}
+                  class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm disabled:opacity-50`}
                 >
                   {addingUser() ? 'Adding...' : 'Add'}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowAddUser(false); setError(''); }}
-                  class="bg-gray-600 hover:bg-gray-500 text-white px-4 py-1.5 rounded text-sm"
+                  class="bg-gray-100 dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm"
                 >
                   Cancel
                 </button>
@@ -407,31 +407,31 @@ export default function TenantSettings() {
           </Show>
 
           <Show when={usersLoading()}>
-            <div class="text-gray-400 text-sm">Loading users...</div>
+            <div class="text-gray-500 dark:text-gray-400 text-sm">Loading users...</div>
           </Show>
 
           <Show when={!usersLoading() && tenantUsers().length === 0}>
-            <div class="text-gray-500 text-sm">No users in this tenant</div>
+            <div class="text-gray-600 dark:text-gray-500 text-sm">No users in this tenant</div>
           </Show>
 
           <Show when={!usersLoading() && tenantUsers().length > 0}>
             <div class="space-y-2">
               <For each={tenantUsers()}>
                 {(user) => (
-                  <div class="flex items-center justify-between bg-gray-700 rounded px-3 py-2">
+                  <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded px-3 py-2">
                     <div>
-                      <div class="text-white text-sm">{user.name || 'Unknown'}</div>
-                      <div class="text-gray-400 text-xs">{user.email}</div>
+                      <div class="text-gray-900 dark:text-white text-sm">{user.name || 'Unknown'}</div>
+                      <div class="text-gray-500 dark:text-gray-400 text-xs">{user.email}</div>
                     </div>
                     <div class="flex items-center gap-3">
                       <Show
                         when={editingUserId() === user.userTenantId}
                         fallback={
                           <>
-                            <span class="text-xs text-gray-400 bg-gray-600 px-2 py-0.5 rounded">{user.role}</span>
+                            <span class="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-2 py-0.5 rounded">{user.role}</span>
                             <button
                               onClick={() => startEditRole(user)}
-                              class="text-blue-400 hover:text-blue-300 text-xs"
+                              class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs"
                             >
                               Change
                             </button>
@@ -441,7 +441,7 @@ export default function TenantSettings() {
                         <select
                           value={editingRole()}
                           onChange={(e) => setEditingRole(e.currentTarget.value)}
-                          class="bg-gray-600 border border-gray-500 rounded px-2 py-0.5 text-white text-xs"
+                          class="bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-2 py-0.5 text-gray-900 dark:text-white text-xs"
                         >
                           <option value="viewer">Viewer</option>
                           <option value="editor">Editor</option>
@@ -449,20 +449,20 @@ export default function TenantSettings() {
                         </select>
                         <button
                           onClick={() => handleRoleChange(user.userTenantId, editingRole())}
-                          class="text-green-400 hover:text-green-300 text-xs"
+                          class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-xs"
                         >
                           Save
                         </button>
                         <button
                           onClick={() => setEditingUserId(null)}
-                          class="text-gray-400 hover:text-gray-300 text-xs"
+                          class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-xs"
                         >
                           Cancel
                         </button>
                       </Show>
                       <button
                         onClick={() => handleRemoveUser(user.userTenantId)}
-                        class="text-red-400 hover:text-red-300"
+                        class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                       >
                         <X size={14} />
                       </button>

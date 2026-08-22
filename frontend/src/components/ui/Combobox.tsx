@@ -31,7 +31,7 @@ const defaultHighlight = (label: string, query: string): JSX.Element => {
   return (
     <>
       {label.slice(0, idx)}
-      <mark class="bg-yellow-500/40 text-white rounded px-0.5">
+      <mark class="bg-yellow-500/40 text-gray-900 dark:text-white rounded px-0.5">
         {label.slice(idx, idx + query.length)}
       </mark>
       {label.slice(idx + query.length)}
@@ -153,7 +153,7 @@ export default function Combobox(props: ComboboxProps) {
           onFocus={onFocus}
           onKeyDown={onKeyDown}
           onClick={openDropdown}
-          class="w-full bg-gray-700 border border-gray-600 rounded pl-3 pr-16 py-2 text-white focus:outline-none focus:border-blue-500"
+          class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded pl-3 pr-16 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
         />
         <div class="absolute inset-y-0 right-1 flex items-center gap-1">
           <Show when={showClear()}>
@@ -161,7 +161,7 @@ export default function Combobox(props: ComboboxProps) {
               type="button"
               tabIndex={-1}
               onClick={(e) => { e.stopPropagation(); pick(''); }}
-              class="text-gray-400 hover:text-white p-1"
+              class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1"
               title="Clear selection"
               aria-label="Clear selection"
             >
@@ -172,7 +172,7 @@ export default function Combobox(props: ComboboxProps) {
             type="button"
             tabIndex={-1}
             onClick={(e) => { e.stopPropagation(); open() ? closeDropdown() : openDropdown(); focusInput(); }}
-            class="text-gray-400 hover:text-white p-1"
+            class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1"
             aria-label="Toggle options"
           >
             <ChevronDown size={14} />
@@ -182,13 +182,13 @@ export default function Combobox(props: ComboboxProps) {
 
       <Show when={open()}>
         <ul
-          class="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-gray-800 border border-gray-600 rounded shadow-lg"
+          class="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg"
           role="listbox"
         >
           <Show
             when={allItems().length > 0}
             fallback={
-              <li class="px-3 py-2 text-gray-400 text-sm">
+              <li class="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">
                 {props.emptyMessage ?? 'No matches'}
               </li>
             }
@@ -200,7 +200,7 @@ export default function Combobox(props: ComboboxProps) {
                   aria-selected={props.value === opt.value}
                   data-testid={props.testId ? `${props.testId}-option-${opt.value || 'none'}` : undefined}
                   class={`px-3 py-2 cursor-pointer text-sm ${
-                    i() === activeIdx() ? 'bg-blue-600 text-white' : 'text-gray-200 hover:bg-gray-700'
+                    i() === activeIdx() ? 'bg-blue-600 text-gray-900 dark:text-white' : 'text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                   } ${props.value === opt.value && opt.value !== '' ? 'font-medium' : ''}`}
                   onMouseDown={(e) => { e.preventDefault(); pick(opt.value); }}
                   onMouseEnter={() => setActiveIdx(i())}

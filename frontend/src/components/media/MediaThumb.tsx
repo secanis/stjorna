@@ -20,7 +20,7 @@ export default function MediaThumb(props: MediaThumbProps) {
 
   return (
     <Show when={props.media.file} fallback={
-      <div class={`bg-gray-700 flex items-center justify-center text-gray-400 ${props.class ?? 'w-full h-16'}`}>
+      <div class={`bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 ${props.class ?? 'w-full h-16'}`}>
         <FileText size={20} class={props.iconClass} />
       </div>
     }>
@@ -42,11 +42,11 @@ export default function MediaThumb(props: MediaThumbProps) {
             preload="metadata"
             onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
           />
-          <Video size={18} class="absolute inset-0 m-auto text-white drop-shadow pointer-events-none" />
+          <Video size={18} class="absolute inset-0 m-auto text-gray-900 dark:text-white drop-shadow pointer-events-none" />
         </div>
       </Show>
       <Show when={!isImage() && !isVideo()}>
-        <div class={`bg-gray-700 flex items-center justify-center text-xs text-gray-400 p-1 truncate ${props.class ?? 'w-full h-16'}`}>
+        <div class={`bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400 p-1 truncate ${props.class ?? 'w-full h-16'}`}>
           {props.media.filename}
         </div>
       </Show>

@@ -108,7 +108,7 @@ export default function Dashboard() {
       key: 'type',
       label: 'Type',
       render: (v) => (
-        <span class={`px-2 py-1 rounded text-xs font-medium ${ENTITY_TYPE_COLORS[v as ActivityType] ?? 'bg-gray-600'} text-white`}>
+        <span class={`px-2 py-1 rounded text-xs font-medium ${ENTITY_TYPE_COLORS[v as ActivityType] ?? 'bg-gray-100 dark:bg-gray-600'} text-gray-900 dark:text-white`}>
           {ENTITY_TYPE_LABELS[v as ActivityType] ?? v}
         </span>
       ),
@@ -117,7 +117,7 @@ export default function Dashboard() {
       key: 'action',
       label: 'Action',
       render: (v) => {
-        const c = ACTION_COLORS[v as ActivityAction] ?? { bg: 'bg-gray-500/20', text: 'text-gray-300' };
+        const c = ACTION_COLORS[v as ActivityAction] ?? { bg: 'bg-gray-100/50 dark:bg-gray-500/20', text: 'text-gray-700 dark:text-gray-300' };
         return (
           <span class={`px-2 py-1 rounded text-xs font-medium ${c.bg} ${c.text}`}>
             {v}
@@ -131,10 +131,10 @@ export default function Dashboard() {
 
   return (
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-white">Dashboard</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
 
       <Show when={statsLoading()}>
-        <div class="text-gray-400">Loading stats...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading stats...</div>
       </Show>
 
       <Show when={stats()}>
@@ -151,22 +151,22 @@ export default function Dashboard() {
 
       <div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-white">Quick Actions</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Quick Actions</h2>
         </div>
         <div class="flex gap-3">
           <Show when={authStore.isPBAdmin}>
-            <A href="/tenants/add" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/tenants/add" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
               + Add Tenant
             </A>
           </Show>
           <Show when={!authStore.isPBAdmin && authStore.isEditorOrAbove()}>
-            <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
               + Add Category
             </A>
-            <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
               + Add Media
             </A>
-            <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
               + Add Product
             </A>
           </Show>
@@ -174,11 +174,11 @@ export default function Dashboard() {
       </div>
 
       <div>
-        <h2 class="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-        <div class="bg-gray-800 rounded-lg overflow-hidden">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
+        <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Show
             when={!recentLoading()}
-            fallback={<div class="p-4 text-gray-400">Loading...</div>}
+            fallback={<div class="p-4 text-gray-500 dark:text-gray-400">Loading...</div>}
           >
             <Table
               columns={activityColumns}
@@ -205,13 +205,13 @@ function StatCard(props: { label: string; value: number; icon: any }) {
   const typeFromLabel = labelToEntityType(props.label);
   const iconClass = typeFromLabel
     ? ENTITY_TYPE_TEXT_COLORS[typeFromLabel]
-    : 'text-gray-400';
+    : 'text-gray-500 dark:text-gray-400';
   return (
-    <div class="bg-gray-800 rounded-lg p-4 flex items-center gap-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg p-4 flex items-center gap-4">
       <Icon size={28} class={iconClass} />
       <div>
-        <div class="text-2xl font-bold text-white">{props.value}</div>
-        <div class="text-gray-400 text-sm">{props.label}</div>
+        <div class="text-2xl font-bold text-gray-900 dark:text-white">{props.value}</div>
+        <div class="text-gray-500 dark:text-gray-400 text-sm">{props.label}</div>
       </div>
     </div>
   );

@@ -6,7 +6,8 @@ test.describe('Auth flows', () => {
     await context.loginAsAdmin();
     await context.waitForDashboard();
 
-    const statCards = page.locator('.bg-gray-800.rounded-lg.p-4');
+    // Stat cards use a class that swaps background between light and dark mode.
+    const statCards = page.locator('div.bg-white.rounded-lg.p-4, div.dark\\:bg-gray-800.rounded-lg.p-4');
     await expect(statCards).toHaveCount(5);
 
     const dashboardText = await page.locator('body').textContent();
@@ -49,7 +50,7 @@ test.describe('Auth flows', () => {
     await page.getByLabel('Password').fill(context.credentials.adminPassword);
     await page.getByRole('button', { name: 'Sign In' }).click();
 
-    await expect(page.locator('.text-red-400')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.text-red-700, .dark\\:text-red-400')).toBeVisible({ timeout: 10000 });
   });
 
   test.skip('setup page redirects to login when setup_done=true', async ({ page }) => {

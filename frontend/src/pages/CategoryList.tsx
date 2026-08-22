@@ -76,13 +76,13 @@ export default function CategoryList() {
         const m: any = (row as any).expand?.media;
         if (!m || !m.file) {
           return (
-            <div class="w-12 h-12 bg-gray-700 rounded flex items-center justify-center" title="No media">
-              <ImageOff size={16} class="text-gray-500" />
+            <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center" title="No media">
+              <ImageOff size={16} class="text-gray-600 dark:text-gray-500" />
             </div>
           );
         }
         return (
-          <div class="w-12 h-12 rounded overflow-hidden bg-black">
+          <div class="w-12 h-12 rounded overflow-hidden bg-gray-900 dark:bg-black">
             <MediaThumb media={m} thumb="100x100" class="w-12 h-12 object-cover" />
           </div>
         );
@@ -99,7 +99,7 @@ export default function CategoryList() {
         <button
           onClick={(e) => { e.stopPropagation(); handleToggleActive(row.id, v); }}
           class={`px-2 py-1 rounded text-xs font-medium ${
-            v ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-300'
+            v ? 'bg-green-600 text-gray-900 dark:text-white' : 'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
           }`}
         >
           {v ? 'Yes' : 'No'}
@@ -125,14 +125,14 @@ export default function CategoryList() {
         <div class="flex gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/categories/${row.id}`); }}
-            class="text-blue-400 hover:text-blue-300 text-sm"
+            class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
           >
             Edit
           </button>
           <Show when={authStore.isEditorOrAbove()}>
             <button
               onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
-              class="text-red-400 hover:text-red-300 text-sm"
+              class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
             >
               Delete
             </button>
@@ -145,9 +145,9 @@ export default function CategoryList() {
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-white">Categories</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} text-white px-4 py-2 rounded font-medium transition-colors`}>
+          <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
             + Add Category
           </A>
         </Show>
@@ -155,9 +155,9 @@ export default function CategoryList() {
 
       <Show
         when={!data.loading}
-        fallback={<div class="text-gray-400">Loading categories...</div>}
+        fallback={<div class="text-gray-500 dark:text-gray-400">Loading categories...</div>}
       >
-        <div class="bg-gray-800 rounded-lg overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns}
             data={data()?.items || []}
@@ -174,17 +174,17 @@ export default function CategoryList() {
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page() === 1}
-              class="px-3 py-1 bg-gray-700 rounded text-white disabled:opacity-50"
+              class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
               Previous
             </button>
-            <span class="text-gray-400 py-1 px-3">
+            <span class="text-gray-500 dark:text-gray-400 py-1 px-3">
               Page {page()} of {data()?.totalPages || 1}
             </span>
             <button
               onClick={() => setPage(p => p + 1)}
               disabled={page() >= (data()?.totalPages || 1)}
-              class="px-3 py-1 bg-gray-700 rounded text-white disabled:opacity-50"
+              class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
               Next
             </button>

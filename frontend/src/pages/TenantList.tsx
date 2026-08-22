@@ -66,7 +66,7 @@ export default function TenantList() {
       render: (_, row) => (
         <button
           onClick={(e) => { e.stopPropagation(); handleSettings(row.id); }}
-          class="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1"
+          class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm flex items-center gap-1"
         >
           <Settings size={14} />
           Settings
@@ -78,14 +78,14 @@ export default function TenantList() {
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-white">Tenants</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenants</h1>
       </div>
 
       <Show
         when={!data.loading && data()}
-        fallback={<div class="text-gray-400">Loading tenants...</div>}
+        fallback={<div class="text-gray-500 dark:text-gray-400">Loading tenants...</div>}
       >
-        <div class="bg-gray-800 rounded-lg overflow-hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns}
             data={data()?.items || []}
@@ -96,7 +96,7 @@ export default function TenantList() {
       </Show>
 
       <Show when={data()}>
-        <p class="text-gray-500 text-sm">
+        <p class="text-gray-600 dark:text-gray-500 text-sm">
           Total: {data()?.totalItems || 0} tenants
         </p>
       </Show>

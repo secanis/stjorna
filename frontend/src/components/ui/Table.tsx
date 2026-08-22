@@ -27,18 +27,18 @@ export default function Table(props: TableProps) {
   return (
     <div class="overflow-x-auto">
       <table class="w-full text-sm text-left">
-        <thead class="text-xs text-gray-400 uppercase bg-gray-700">
+        <thead class="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700">
           <tr>
             <For each={props.columns}>
               {(col) => (
                 <th
-                  class={`px-4 py-3 ${col.sortable ? 'cursor-pointer hover:text-white' : ''}`}
+                  class={`px-4 py-3 ${col.sortable ? 'cursor-pointer hover:text-gray-900 dark:text-white' : ''}`}
                   onClick={() => handleSort(col.key)}
                 >
                   <div class="flex items-center gap-2">
                     {col.label}
                     <Show when={col.sortable && props.sortKey === col.key}>
-                      <span class="text-blue-400">{props.sortDir === 'asc' ? '↑' : '↓'}</span>
+                      <span class="text-blue-600 dark:text-blue-400">{props.sortDir === 'asc' ? '↑' : '↓'}</span>
                     </Show>
                   </div>
                 </th>
@@ -46,12 +46,12 @@ export default function Table(props: TableProps) {
             </For>
           </tr>
         </thead>
-        <tbody class="divide-y divide-gray-700">
+        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
           <Show
             when={props.data.length > 0}
             fallback={
               <tr>
-                <td colspan={props.columns.length} class="px-4 py-8 text-center text-gray-500">
+                <td colspan={props.columns.length} class="px-4 py-8 text-center text-gray-600 dark:text-gray-500">
                   {props.emptyMessage || 'No data'}
                 </td>
               </tr>
@@ -60,12 +60,12 @@ export default function Table(props: TableProps) {
             <For each={props.data}>
               {(row) => (
                 <tr
-                  class={`bg-gray-800 hover:bg-gray-750 ${props.onRowClick ? 'cursor-pointer' : ''}`}
+                  class={`bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 ${props.onRowClick ? 'cursor-pointer' : ''}`}
                   onClick={() => props.onRowClick?.(row)}
                 >
                   <For each={props.columns}>
                     {(col) => (
-                      <td class="px-4 py-3 text-white">
+                      <td class="px-4 py-3 text-gray-900 dark:text-white">
                         {col.render
                           ? col.render(row[col.key], row)
                           : String(row[col.key] ?? '')}

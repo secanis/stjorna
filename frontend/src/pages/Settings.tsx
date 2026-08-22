@@ -84,59 +84,59 @@ export default function Settings() {
 
   return (
     <div class="space-y-6 max-w-2xl">
-      <h1 class="text-2xl font-bold text-white">Tenant Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenant Settings</h1>
 
       <Show when={loading()}>
-        <div class="text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
       </Show>
 
       <Show when={error() && !loading()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
         <Show when={!authStore.isPBAdmin && !authStore.currentTenant}>
-          <p class="text-gray-400 text-sm">
+          <p class="text-gray-500 dark:text-gray-400 text-sm">
             Use the tenant selector in the header to select a tenant.
           </p>
         </Show>
       </Show>
 
       <Show when={success()}>
-        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-400 text-sm">
+        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Settings saved successfully!
         </div>
       </Show>
 
       <Show when={!loading() && !error()}>
-        <form onSubmit={handleSubmit} class="bg-gray-800 rounded-lg p-6 space-y-4">
+        <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Company Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
             <input
               type="text"
               value={formData().name}
               onInput={(e) => setFormData(d => ({ ...d, name: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Slug</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
             <input
               type="text"
               value={formData().slug}
               onInput={(e) => setFormData(d => ({ ...d, slug: e.currentTarget.value.toLowerCase().replace(/\s+/g, '-') }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               required
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Plan</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
             <select
               value={formData().plan}
               onChange={(e) => setFormData(d => ({ ...d, plan: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
             >
               <option value="free">Free</option>
               <option value="starter">Starter</option>
@@ -146,23 +146,23 @@ export default function Settings() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Custom Domain</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom Domain</label>
             <input
               type="text"
               value={formData().custom_domain}
               onInput={(e) => setFormData(d => ({ ...d, custom_domain: e.currentTarget.value }))}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               placeholder="media.example.com"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-300 mb-1">Theme Config (JSON)</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Theme Config (JSON)</label>
             <textarea
               value={formData().theme_config}
               onInput={(e) => setFormData(d => ({ ...d, theme_config: e.currentTarget.value }))}
               rows={4}
-              class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
               placeholder='{"primaryColor": "#000000"}'
             />
           </div>
@@ -170,7 +170,7 @@ export default function Settings() {
           <button
             type="submit"
             disabled={saving()}
-            class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
+            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
           >
             {saving() ? 'Saving...' : 'Save Settings'}
           </button>

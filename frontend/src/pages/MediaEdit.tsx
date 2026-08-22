@@ -252,43 +252,43 @@ export default function MediaEdit() {
   return (
     <div class="space-y-6 max-w-3xl">
       <div class="flex items-center gap-4">
-        <button onClick={() => navigate('/media')} class="text-gray-400 hover:text-white">
+        <button onClick={() => navigate('/media')} class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
           ← Back
         </button>
-        <h1 class="text-2xl font-bold text-white">
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
           {isEditing() ? 'Edit Media' : 'Upload Media'}
         </h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
       </Show>
 
       <Show when={error()}>
-        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-400 text-sm">
+        <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
           {error()}
         </div>
       </Show>
 
       <Show when={success()}>
-        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-400 text-sm">
+        <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Media saved successfully!
         </div>
       </Show>
 
       <Show when={!loading()}>
         <form onSubmit={handleSubmit} class="space-y-6">
-          <div class="bg-gray-800 rounded-lg p-6">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6">
             <Show when={showRecordMissingPlaceholder()}>
               <div class="border-2 border-red-500/50 rounded-lg p-6 bg-red-500/5">
                 <div class="flex items-start gap-3">
-                  <AlertTriangle size={24} class="text-red-400 shrink-0 mt-1" />
+                  <AlertTriangle size={24} class="text-red-600 dark:text-red-400 shrink-0 mt-1" />
                   <div>
-                    <h3 class="text-white font-semibold mb-1">Media record not found</h3>
-                    <p class="text-gray-300 text-sm mb-2">
-                      Record ID: <code class="text-red-300">{params.id}</code>
+                    <h3 class="text-gray-900 dark:text-white font-semibold mb-1">Media record not found</h3>
+                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-2">
+                      Record ID: <code class="text-red-700 dark:text-red-300">{params.id}</code>
                     </p>
-                    <p class="text-gray-400 text-sm">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">
                       {loadError()}
                     </p>
                   </div>
@@ -299,14 +299,14 @@ export default function MediaEdit() {
             <Show when={showMissingFilePlaceholder()}>
               <div class="border-2 border-yellow-500/50 rounded-lg p-6 bg-yellow-500/5">
                 <div class="flex items-start gap-3">
-                  <AlertTriangle size={24} class="text-yellow-400 shrink-0 mt-1" />
+                  <AlertTriangle size={24} class="text-yellow-600 dark:text-yellow-400 shrink-0 mt-1" />
                   <div>
-                    <h3 class="text-white font-semibold mb-1">File missing</h3>
-                    <p class="text-gray-300 text-sm mb-3">
-                      This media record exists but has no file attached (the <code class="text-yellow-300">file</code> field is empty).
+                    <h3 class="text-gray-900 dark:text-white font-semibold mb-1">File missing</h3>
+                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-3">
+                      This media record exists but has no file attached (the <code class="text-yellow-700 dark:text-yellow-300">file</code> field is empty).
                       This can happen if the file was deleted on the server, or if the record was created without uploading a file.
                     </p>
-                    <p class="text-gray-400 text-sm">
+                    <p class="text-gray-500 dark:text-gray-400 text-sm">
                       Drop a file below to upload a replacement.
                     </p>
                   </div>
@@ -341,7 +341,7 @@ export default function MediaEdit() {
                   <button
                     type="button"
                     onClick={clearPendingFile}
-                    class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white p-1.5 rounded"
+                    class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-gray-900 dark:text-white p-1.5 rounded"
                     title="Remove file"
                   >
                     <X size={16} />
@@ -353,10 +353,10 @@ export default function MediaEdit() {
             <Show when={imageError()}>
               <div class="border-2 border-red-500/50 rounded-lg p-4 bg-red-500/5 mt-3">
                 <div class="flex items-start gap-3">
-                  <AlertTriangle size={20} class="text-red-400 shrink-0 mt-0.5" />
+                  <AlertTriangle size={20} class="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div class="flex-1 min-w-0">
-                    <h4 class="text-white font-medium text-sm mb-1">Image failed to load</h4>
-                    <p class="text-red-300 text-xs break-all">{imageError()}</p>
+                    <h4 class="text-gray-900 dark:text-white font-medium text-sm mb-1">Image failed to load</h4>
+                    <p class="text-red-700 dark:text-red-300 text-xs break-all">{imageError()}</p>
                   </div>
                 </div>
               </div>
@@ -366,17 +366,17 @@ export default function MediaEdit() {
               <label
                 for="media-file"
                 class={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors ${
-                  dragOver() ? 'border-blue-500 bg-gray-700' : 'border-gray-600 hover:border-gray-500'
+                  dragOver() ? 'border-blue-500 bg-gray-50 dark:bg-gray-700' : 'border-gray-300 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                 }`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
               >
-                <Upload size={32} class="text-gray-400 mb-2" />
-                <p class="text-white text-sm font-medium mb-1">
+                <Upload size={32} class="text-gray-500 dark:text-gray-400 mb-2" />
+                <p class="text-gray-900 dark:text-white text-sm font-medium mb-1">
                   {pendingFile() ? 'Drop another file to replace' : (isNew() ? 'Drop file here or click to browse' : 'Drop new file to replace')}
                 </p>
-                <p class="text-gray-400 text-xs">JPEG, PNG, WebP, GIF, MP4, WebM — max 500 MB</p>
+                <p class="text-gray-500 dark:text-gray-400 text-xs">JPEG, PNG, WebP, GIF, MP4, WebM — max 500 MB</p>
                 <input
                   id="media-file"
                   type="file"
@@ -388,73 +388,73 @@ export default function MediaEdit() {
             </div>
           </div>
 
-          <div class="bg-gray-800 rounded-lg p-6 space-y-4">
-            <h2 class="text-lg font-semibold text-white">Details</h2>
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Details</h2>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1" for="media-filename">Filename</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-filename">Filename</label>
                 <input
                   id="media-filename"
                   type="text"
                   value={formData().filename}
                   onInput={(e) => setFormData(d => ({ ...d, filename: e.currentTarget.value }))}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1" for="media-original-name">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-original-name">
                   Original Name
-                  <span class="ml-2 text-xs text-gray-500">(set on upload, not editable)</span>
+                  <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">(set on upload, not editable)</span>
                 </label>
                 <input
                   id="media-original-name"
                   type="text"
                   value={formData().original_name}
                   readOnly
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white opacity-70 cursor-not-allowed"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white opacity-70 cursor-not-allowed"
                 />
               </div>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1" for="media-mime">MIME Type</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-mime">MIME Type</label>
                 <input
                   id="media-mime"
                   type="text"
                   value={formData().mime_type}
                   onInput={(e) => setFormData(d => ({ ...d, mime_type: e.currentTarget.value }))}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1" for="media-size">Size (bytes)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-size">Size (bytes)</label>
                 <input
                   id="media-size"
                   type="number"
                   value={formData().size}
                   onInput={(e) => setFormData(d => ({ ...d, size: parseInt(e.currentTarget.value) || 0 }))}
-                  class="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
 
             <Show when={fileUrl()}>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   File URL
                 </label>
-                <div class="flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-2">
-                  <code class="flex-1 text-xs text-gray-300 truncate" title={fileUrl()}>{fileUrl()}</code>
+                <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
+                  <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={fileUrl()}>{fileUrl()}</code>
                   <button
                     type="button"
                     onClick={() => copyUrl('file')}
-                    class="shrink-0 text-gray-400 hover:text-white"
+                    class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
                     title="Copy URL"
                   >
                     <Show when={copied() === 'file'} fallback={<Copy size={14} />}>
-                      <Check size={14} class="text-green-400" />
+                      <Check size={14} class="text-green-600 dark:text-green-400" />
                     </Show>
                   </button>
                 </div>
@@ -463,19 +463,19 @@ export default function MediaEdit() {
 
             <Show when={thumbUrl()}>
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Thumbnail URL
                 </label>
-                <div class="flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-2">
-                  <code class="flex-1 text-xs text-gray-300 truncate" title={thumbUrl()}>{thumbUrl()}</code>
+                <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
+                  <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={thumbUrl()}>{thumbUrl()}</code>
                   <button
                     type="button"
                     onClick={() => copyUrl('thumb')}
-                    class="shrink-0 text-gray-400 hover:text-white"
+                    class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
                     title="Copy URL"
                   >
                     <Show when={copied() === 'thumb'} fallback={<Copy size={14} />}>
-                      <Check size={14} class="text-green-400" />
+                      <Check size={14} class="text-green-600 dark:text-green-400" />
                     </Show>
                   </button>
                 </div>
@@ -483,20 +483,20 @@ export default function MediaEdit() {
             </Show>
           </div>
 
-          <div class="bg-gray-800 rounded-lg p-6">
-            <h2 class="text-lg font-semibold text-white mb-2">Image Editing</h2>
-            <p class="text-gray-400 text-sm mb-3">
+          <div class="bg-white dark:bg-gray-800 rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Image Editing</h2>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-3">
               Crop and shape tools coming soon. Planned features:
             </p>
             <div class="flex flex-wrap gap-2">
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Free crop</span>
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Square (1:1)</span>
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Landscape (16:9)</span>
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Landscape (4:3)</span>
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Portrait (9:16)</span>
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Portrait (3:4)</span>
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Resize</span>
-              <span class="px-3 py-1 bg-gray-700 text-gray-400 rounded text-sm">Rotate</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Free crop</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Square (1:1)</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Landscape (16:9)</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Landscape (4:3)</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Portrait (9:16)</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Portrait (3:4)</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Resize</span>
+              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Rotate</span>
             </div>
           </div>
 
@@ -504,14 +504,14 @@ export default function MediaEdit() {
             <button
               type="submit"
               disabled={saving() || (isNew() && !pendingFile())}
-              class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
+              class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
               {saving() ? 'Saving...' : isNew() ? 'Upload' : 'Save Changes'}
             </button>
             <button
               type="button"
               onClick={() => navigate('/media')}
-              class="bg-gray-700 hover:bg-gray-600 text-white font-medium py-2 px-6 rounded"
+              class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-6 rounded"
             >
               Cancel
             </button>
