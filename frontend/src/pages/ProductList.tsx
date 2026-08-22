@@ -4,6 +4,7 @@ import Table, { Column } from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
+import { tenantStore } from '~/stores/tenant';
 import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
@@ -39,8 +40,13 @@ export default function ProductList() {
   const [sortKey, setSortKey] = createSignal('sort_order');
   const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('asc');
 
+  // tenantStore.version inside the source accessor ensures the table
+  // refetches when the active tenant changes — without this, the
+  // imperative getCurrentTenant() inside fetchProducts would read a
+  // stale value and no refetch would ever fire after a tenant
+  // switch.
   const [data, { refetch }] = createResource(
-    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir() }),
+    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), tenantVersion: tenantStore.version }),
     fetchProducts
   );
 

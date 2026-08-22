@@ -1,9 +1,10 @@
-import { createSignal, Show, onMount } from 'solid-js';
+import { createSignal, Show, onMount, createEffect } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
 import Table from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { tenantStore } from '~/stores/tenant';
 import { fetchRecentActivity, type ActivityEvent, type ActivityType } from '~/utils/activity';
 import {
   ENTITY_TYPE_TEXT_COLORS,
@@ -99,6 +100,23 @@ export default function Dashboard() {
     const r = await fetchRecentActivity();
     setRecentActivity(r);
     setRecentLoading(false);
+  });
+
+  // Stats reader is imperative (non-createResource) — re-run on any
+  // tenant change so the cards reflect the newly-active tenant.
+  createEffect(() => {
+    tenantStore.version;
+    if (!authStore.isAuthenticated()) return;
+    (async () => {
+      setStatsLoading(true);
+      setRecentLoading(true);
+      const s = await fetchStats();
+      setStats(s);
+      setStatsLoading(false);
+      const r = await fetchRecentActivity();
+      setRecentActivity(r);
+      setRecentLoading(false);
+    })();
   });
 
   const activityColumns = dashboardActivityColumns;

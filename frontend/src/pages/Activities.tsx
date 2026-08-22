@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import { History, Filter, X, RefreshCw } from 'lucide-solid';
 import Table from '~/components/ui/Table';
 import { authStore } from '~/stores/auth';
+import { tenantStore } from '~/stores/tenant';
 import {
   fetchActivity,
   type ActivityEvent,
@@ -46,11 +47,15 @@ export default function Activities() {
     setActions([]);
   });
 
+  // tenantStore.version keeps the activity feed in step with tenant
+  // switches — fetchActivity reads getCurrentTenant() for non-admin
+  // scopes, but the imperative call wouldn't trigger a refetch.
   const queryKey = createMemo(() => ({
     types: types(),
     actions: actions(),
     from: from() || undefined,
     to: to() || undefined,
+    tenantVersion: tenantStore.version,
   }));
 
   const [events, { refetch }] = createResource(queryKey, (q) =>
@@ -81,12 +86,12 @@ export default function Activities() {
   };
 
   // Read PB admin status reactively: authStore.init() runs inside onMount
-// and flips isPBAdmin true *after* the component body has already
-// finished evaluating. A plain `const columns = activityColumns()`
-// would snapshot the flag at component-init time (false) and never
-// add the Tenant column for admins. The createMemo re-runs once
-// authStore.init completes, growing the column list re-actively.
-const columns = createMemo(() => activityColumns());
+  // and flips isPBAdmin true *after* the component body has already
+  // finished evaluating. A plain `const columns = activityColumns()`
+  // would snapshot the false value and never add the Tenant column
+  // for admins. The createMemo re-runs once authStore.init completes,
+  // growing the column list re-actively.
+  const columns = createMemo(() => activityColumns());
 
   return (
     <div class="space-y-6">

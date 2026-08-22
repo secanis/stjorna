@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
+import { tenantStore } from '~/stores/tenant';
 import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
@@ -114,10 +115,15 @@ export default function UserManagement() {
     }
   });
 
-  const [users, { refetch }] = createResource(initialized, (ready) => {
-    if (!ready) return undefined;
-    return fetchUsers();
-  });
+  // tenantStore.version inside the source key keeps the user list in
+  // step with tenant switches — particularly for non-admin viewers
+  // whose query is filtered by getCurrentTenant(); without this
+  // subscription a switch to a different tenant left the table
+  // showing the previous tenant's user_tenants rows.
+  const [users, { refetch }] = createResource(
+    () => ({ ready: initialized(), tenantVersion: tenantStore.version }),
+    ({ ready }) => (ready ? fetchUsers() : undefined)
+  );
 
   const [showInvite, setShowInvite] = createSignal(false);
   const [inviteEmail, setInviteEmail] = createSignal('');

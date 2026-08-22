@@ -5,6 +5,7 @@ import Table, { Column } from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
+import { tenantStore } from '~/stores/tenant';
 import { getMediaFileUrl } from '~/utils/mediaUrl';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Media } from '~/types';
@@ -42,8 +43,13 @@ export default function MediaList() {
   const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('desc');
   const [filterType, setFilterType] = createSignal('');
 
+  // tenantStore.version inside the source accessor makes the resource
+  // re-fire whenever the active tenant changes — without this, the
+  // imperative getCurrentTenant() call inside fetchMedia wouldn't
+  // trigger a refetch and the page would still show the previous
+  // tenant's records after the user switched tenant via the header.
   const [data, { refetch }] = createResource(
-    () => ({ filterType: filterType() }),
+    () => ({ filterType: filterType(), tenantVersion: tenantStore.version }),
     ({ filterType }) => fetchMedia(filterType)
   );
 
