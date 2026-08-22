@@ -16,7 +16,7 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/users', label: 'Users', icon: Users, roles: ['pb_admin'] as const, showCount: true },
   { path: '/tenants', label: 'Tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
-  { path: '/api-keys', label: 'API Keys', icon: KeyRound, roles: ['pb_admin'] as const },
+  { path: '/api-keys', label: 'API Keys', icon: KeyRound, roles: ['pb_admin'] as const, showCount: true },
 ];
 
 export default function Sidebar() {
@@ -26,6 +26,7 @@ export default function Sidebar() {
   const [categoriesCount, setCategoriesCount] = createSignal<number | null>(null);
   const [productsCount, setProductsCount] = createSignal<number | null>(null);
   const [tenantsCount, setTenantsCount] = createSignal<number | null>(null);
+  const [apiKeysCount, setApiKeysCount] = createSignal<number | null>(null);
 
   const fetchCounts = async () => {
     await authStore.init();
@@ -45,6 +46,12 @@ export default function Sidebar() {
         const products = await pb.collection('products').getList(1, 1);
         setProductsCount(products.totalItems);
       } catch (e: any) { console.warn('[Sidebar] products count:', e?.message); }
+      try {
+        // Custom hook — totalItems in the response body, same shape as the
+        // SDK's getList result so the UI doesn't need a new component.
+        const r = await pb.send('/api/stjorna/api-keys', { method: 'GET', query: { perPage: '1' } });
+        setApiKeysCount(Number(r?.totalItems ?? 0));
+      } catch (e: any) { console.warn('[Sidebar] api keys count:', e?.message); }
     } else {
       const filter = tenant ? `tenant = "${tenant}"` : '';
       if (authStore.isEditorOrAbove()) {
@@ -167,6 +174,17 @@ export default function Sidebar() {
                     }}
                   >
                     {tenantsCount() ?? '-'}
+                  </span>
+                </Show>
+                <Show when={item.showCount && item.path === '/api-keys'}>
+                  <span
+                    classList={{
+                      'text-xs px-2 py-0.5 rounded-full': true,
+                      'bg-blue-700 text-white': isActive(),
+                      'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
+                    }}
+                  >
+                    {apiKeysCount() ?? '-'}
                   </span>
                 </Show>
               </A>

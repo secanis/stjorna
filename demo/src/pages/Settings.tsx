@@ -55,7 +55,7 @@ export default function Settings() {
               placeholder="http://localhost:8090"
               value={url()}
               onInput={(e) => setUrl(e.currentTarget.value)}
-              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm"
+              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm"
             />
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Persistence: <code>localStorage.demo_pb_url</code>. Proxies <code>/api/*</code> via Vite when same-origin.
@@ -69,7 +69,7 @@ export default function Settings() {
               placeholder={'paste STJÓRNA user JWT, PB admin JWT, or STJÓRNA API key (stjorna_…)…'}
               value={token()}
               onInput={(e) => setToken(e.currentTarget.value)}
-              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm font-mono"
+              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm font-mono"
             />
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Stored as <code>localStorage.demo_pb_token</code>, applied via <code>pb.authStore.save(token, null)</code>.

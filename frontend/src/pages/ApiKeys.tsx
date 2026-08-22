@@ -225,7 +225,7 @@ export default function ApiKeys() {
                 value={newTenant()}
                 onChange={(e) => setNewTenant(e.currentTarget.value)}
                 required
-                class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm"
+                class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 text-sm"
               >
                 <option value="">— pick tenant —</option>
                 <For each={tenants()}>
@@ -242,7 +242,7 @@ export default function ApiKeys() {
                 placeholder="e.g. storefront-prod"
                 required
                 maxLength={200}
-                class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm"
+                class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm"
               />
             </div>
             <div>
@@ -251,7 +251,7 @@ export default function ApiKeys() {
                 type="datetime-local"
                 value={newExpires()}
                 onInput={(e) => setNewExpires(e.currentTarget.value)}
-                class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm"
+                class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 text-sm"
               />
             </div>
           </div>
