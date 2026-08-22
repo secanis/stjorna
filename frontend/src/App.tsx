@@ -40,7 +40,7 @@ export default function App() {
         <Route path="/tenants" component={TenantList} />
         <Route path="/tenants/:id" component={TenantSettings} />
         <Route path="/api-docs" component={ApiDocs} />
-      <Route path="/activities" component={Activities} />
+        <Route path="/activities" component={Activities} />
         <Route path="/profile" component={Profile} />
       </Route>
       <Route path="*" component={() => (
