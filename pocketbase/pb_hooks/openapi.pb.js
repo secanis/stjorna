@@ -230,6 +230,57 @@ var SPEC = {
                     "401": { $ref: "#/components/responses/Unauthorized" }
                 }
             }
+        },
+        "/stjorna/stats": {
+            get: {
+                tags: ["Private", "Admin"],
+                summary: "Per-tenant statistics — counts, media storage (sum/largest/per-mime-type), and last-30-day activity. Admin callers must pass ?tenant=<id>. Tenant-user callers are locked to their own tenant regardless of ?tenant=.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "tenant", in: "query", required: false, schema: { type: "string" },
+                      description: "Tenant id. REQUIRED for PB-superuser callers. IGNORED for tenant-user callers (always uses their own tenant)." }
+                ],
+                responses: {
+                    "200": {
+                        description: "Stats snapshot",
+                        content: { "application/json": { schema: {
+                            type: "object",
+                            properties: {
+                                ok: { type: "boolean" },
+                                tenant: { type: "object", properties: {
+                                    id: { type: "string" }, name: { type: "string" }, slug: { type: "string" },
+                                    plan: { type: "string" }, custom_domain: { type: "string" }
+                                } },
+                                counts: { type: "object", properties: {
+                                    categories: { type: "integer" }, products: { type: "integer" },
+                                    media: { type: "integer" }, users: { type: "integer" }
+                                } },
+                                storage: { type: "object", properties: {
+                                    media_bytes: { type: "integer" },
+                                    media_count: { type: "integer" },
+                                    avg_media_bytes: { type: "integer" },
+                                    largest_media: { type: "object", nullable: true, properties: {
+                                        id: { type: "string" }, filename: { type: "string" },
+                                        bytes: { type: "integer" }, mime_type: { type: "string" }
+                                    } },
+                                    by_mime_type: { type: "array", items: { type: "object", properties: {
+                                        mime_type: { type: "string" }, count: { type: "integer" }, bytes: { type: "integer" }
+                                    } } }
+                                } },
+                                activity_30d: { type: "object", properties: {
+                                    products_created: { type: "integer" }, products_updated: { type: "integer" },
+                                    media_uploaded: { type: "integer" }, categories_created: { type: "integer" }
+                                } },
+                                generated_at: { type: "string", format: "date-time" }
+                            }
+                        } } }
+                    },
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            }
         }
     }
 };

@@ -271,6 +271,19 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
     },
     {
+      // STJÓRN A's tenant-membership join table. PB's built-in
+      // `_pb_users_auth_` (which is what `users` aliases to) ignores any
+      // `tenant` field on create — so tenant membership lives here.
+      name: 'user_tenants',
+      type: 'base',
+      schema: [
+        { name: 'user', type: 'text', required: true },
+        { name: 'tenant', type: 'text', required: true },
+        { name: 'role', type: 'text', required: true },
+      ],
+      listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
+    },
+    {
       name: 'users',
       type: 'base',
       schema: [
@@ -341,6 +354,39 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         // best-effort: don't fail the test on patch errors
       }
     }
+  }
+
+  // Roles collection — STJÓRN A tracks role as a text slug on user_tenants,
+  // but the e2e harness uses a proper `roles` collection for FK integrity.
+  // Mirror the same shape here so the test infra matches production.
+  if (!existingNames.includes('roles')) {
+    try {
+      await pb.collections.create({
+        name: 'roles',
+        type: 'base',
+        schema: [{ name: 'name', type: 'text', required: true }],
+        listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
+      });
+      await pb.collection('roles').create({ name: 'viewer' });
+      await pb.collection('roles').create({ name: 'editor' });
+      await pb.collection('roles').create({ name: 'admin' });
+    } catch {
+    }
+  }
+
+  // Patch `last_tenant` onto the built-in auth collection — same as the
+  // e2e global-setup does. The auth record's last_tenant is STJÓRN A's
+  // tiebreaker for users in multiple tenants (see auth.ts:switchTenant).
+  try {
+    const authCol = await pb.collections.getOne('_pb_users_auth_');
+    const hasLastTenant = (authCol.schema || []).some((f: any) => f.name === 'last_tenant');
+    if (!hasLastTenant) {
+      await pb.collections.update(authCol.id, {
+        schema: [...authCol.schema, { name: 'last_tenant', type: 'text' }],
+      });
+    }
+  } catch {
+    // best-effort
   }
 
   // Second pass: resolve `_COLLECTION_ID_` placeholders in relation fields.

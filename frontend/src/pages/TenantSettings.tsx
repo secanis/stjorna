@@ -1,10 +1,10 @@
 import { createSignal, Show, onMount, For } from 'solid-js';
-import { useNavigate, useParams, useLocation } from '@solidjs/router';
+import { useNavigate, useParams, useLocation, A } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import type { Tenant } from '~/types';
-import { ArrowLeft, Save, UserPlus, X } from 'lucide-solid';
+import { ArrowLeft, Save, UserPlus, X, BarChart3 } from 'lucide-solid';
 import BackupSection from '~/components/backup/BackupSection';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -365,6 +365,22 @@ export default function TenantSettings() {
 
       <Show when={!loading() && !notFound() && !isNew()}>
         <BackupSection tenantId={tenantId()!} />
+
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-4 flex items-center justify-between">
+          <div>
+            <div class="text-sm font-semibold text-gray-900 dark:text-white">Statistics</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400">
+              Counts, storage usage and last-30-day activity for this tenant.
+            </div>
+          </div>
+          <A
+            href={`/tenants/${tenantId()}/stats`}
+            class="inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
+          >
+            <BarChart3 size={14} />
+            View stats
+          </A>
+        </div>
       </Show>
 
       <Show when={!loading() && !notFound() && !isNew()}>
