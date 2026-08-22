@@ -1,6 +1,6 @@
 import { createSignal, onMount, Show, For, createEffect } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
-import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History } from 'lucide-solid';
+import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
@@ -16,6 +16,7 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: Settings },
   { path: '/users', label: 'Users', icon: Users, roles: ['pb_admin'] as const, showCount: true },
   { path: '/tenants', label: 'Tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
+  { path: '/api-keys', label: 'API Keys', icon: KeyRound, roles: ['pb_admin'] as const },
 ];
 
 export default function Sidebar() {

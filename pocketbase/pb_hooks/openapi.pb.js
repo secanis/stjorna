@@ -190,6 +190,46 @@ var SPEC = {
                     "404": { $ref: "#/components/responses/NotFound" }
                 }
             }
+        },
+        "/stjorna/api-keys": {
+            post: { tags: ["Admin"], summary: "Issue a new API key for a tenant (PB superuser only). Plaintext returned EXACTLY ONCE in the response.", security: [{ bearerAuth: [] }],
+                requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["tenant", "name"], properties: { tenant: { type: "string", description: "Tenant id" }, name: { type: "string" }, permissions: { type: "object", description: "Free-form permissions bag (e.g. scopes)" }, expires: { type: "string", format: "date-time" } } } } } },
+                responses: {
+                    "200": { description: "Key issued. plaintext field is shown only here.", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, apiKey: { type: "object" }, plaintext: { type: "string", description: "Plaintext API key. STORE NOW; never recoverable." }, warning: { type: "string" } } } } } },
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            },
+            get: { tags: ["Admin"], summary: "List API key metadata (never the secret). PB superuser only.", security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+                    { name: "perPage", in: "query", schema: { type: "integer", default: 50 } },
+                    { name: "tenant", in: "query", schema: { type: "string", description: "Filter by tenant id" } }
+                ],
+                responses: {
+                    "200": { description: "List of API key records", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, items: { type: "array", items: { type: "object" } }, page: { type: "integer" }, perPage: { type: "integer" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/stjorna/api-keys/{id}": {
+            parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+            delete: { tags: ["Admin"], summary: "Revoke an API key (PB superuser only). Sets revoked=true; row kept for audit.", security: [{ bearerAuth: [] }],
+                responses: {
+                    "200": { description: "Revoked", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, id: { type: "string" }, revoked: { type: "boolean" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/stjorna/api-keys/me": {
+            get: { tags: ["Public"], summary: "Introspect the bearer API key. Any caller — needs a valid, non-expired, non-revoked key.",
+                responses: {
+                    "200": { description: "Tenant + metadata for the verified key", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, tenant: { type: "string" }, id: { type: "string" }, prefix: { type: "string" }, permissions: { type: "object" }, expires: { type: "string", format: "date-time" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
         }
     }
 };

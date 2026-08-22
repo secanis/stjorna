@@ -256,13 +256,19 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       name: 'api_keys',
       type: 'base',
       schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'name', type: 'text', required: true },
-        { name: 'key_hash', type: 'text', required: true },
-        { name: 'permissions', type: 'json', options: { maxSize: 2000000 } },
+        { name: 'tenant', type: 'text', required: true, options: { min: 1, maxLen: 100 } },
+        { name: 'name', type: 'text', required: true, options: { min: 1, maxLen: 200 } },
+        { name: 'prefix', type: 'text', required: true, options: { min: 1, maxLen: 32, pattern: '^[a-zA-Z0-9_]+$' } },
+        { name: 'key_hash', type: 'text', required: true, options: { min: 1, maxLen: 256 } },
+        { name: 'permissions', type: 'json', options: { maxSize: 4096 } },
         { name: 'last_used', type: 'date' },
         { name: 'expires', type: 'date' },
+        { name: 'revoked', type: 'bool' },
+        { name: 'created_by', type: 'text', options: { maxLen: 100 } },
       ],
+      // All four rules locked to null: access is exclusively through
+      // the admin-only custom routes registered in pb_hooks/api_keys.pb.js.
+      listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
     },
     {
       name: 'users',

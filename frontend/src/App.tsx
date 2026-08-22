@@ -17,6 +17,7 @@ import TenantSettings from '~/pages/TenantSettings';
 import ApiDocs from '~/pages/ApiDocs';
 import Activities from '~/pages/Activities';
 import Profile from '~/pages/Profile';
+import ApiKeys from '~/pages/ApiKeys';
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/api-docs" component={ApiDocs} />
         <Route path="/activities" component={Activities} />
         <Route path="/profile" component={Profile} />
+        <Route path="/api-keys" component={ApiKeys} />
       </Route>
       <Route path="*" component={() => (
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
