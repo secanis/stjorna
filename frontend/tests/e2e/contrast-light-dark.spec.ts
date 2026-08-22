@@ -172,6 +172,46 @@ test.describe('Color contrast (light mode)', () => {
     }
   });
 
+  test('Dashboard Recent Activity table: Type badges use white text (regression for shared columns bug)', async ({ page }) => {
+    const ctx = getContext(page);
+    await ctx.loginAsUser();
+    await page.goto(ctx.frontendUrl + '/');
+    await page.waitForTimeout(1500);
+    await page.waitForSelector('h2:has-text("Recent Activity")', { timeout: 5000 });
+    await page.waitForSelector('table', { timeout: 5000 });
+
+    // The "Recent Activity" card uses the same Type/Action renderers as
+    // /activities, but its inline columns were never updated.
+    const badges = await page.locator('table tbody tr span').filter({ hasText: /^(Tenant|User|Product|Media|Category)$/ }).all();
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) {
+      const info = await badge.evaluate(el => ({
+        text: el.textContent,
+        bg: getComputedStyle(el).backgroundColor,
+        color: getComputedStyle(el).color,
+      }));
+      expect(info.color, `${info.text} recent-activity badge text`).toBe(WHITE);
+    }
+
+    // Action badges in the same table
+    const checks: Array<[RegExp, string, string]> = [
+      [/^created$/, 'rgb(220, 252, 231)', 'rgb(21, 128, 61)'],   // bg-green-100, text-green-700
+      [/^updated$/, 'rgb(219, 234, 254)', 'rgb(29, 78, 216)'],   // bg-blue-100, text-blue-700
+      [/^deleted$/, 'rgb(254, 226, 226)', 'rgb(185, 28, 28)'],   // bg-red-100, text-red-700
+    ];
+    for (const [re, expectedBg, expectedColor] of checks) {
+      const badge = page.locator('table tbody tr span').filter({ hasText: re }).first();
+      if ((await badge.count()) > 0) {
+        const info = await badge.evaluate(el => ({
+          bg: getComputedStyle(el).backgroundColor,
+          color: getComputedStyle(el).color,
+        }));
+        expect(info.bg, `Dashboard ${re.source} bg`).toBe(expectedBg);
+        expect(info.color, `Dashboard ${re.source} text`).toBe(expectedColor);
+      }
+    }
+  });
+
   test('Activities: row Action badges use dark text-700 on pale solid bg (light mode)', async ({ page }) => {
     const ctx = getContext(page);
     await ctx.loginAsUser();

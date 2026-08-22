@@ -1,18 +1,16 @@
 import { createSignal, Show, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
-import Table, { Column } from '~/components/ui/Table';
+import Table from '~/components/ui/Table';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
-import { fetchRecentActivity, type ActivityEvent, type ActivityType, type ActivityAction } from '~/utils/activity';
+import { fetchRecentActivity, type ActivityEvent, type ActivityType } from '~/utils/activity';
 import {
-  ENTITY_TYPE_COLORS,
-  ENTITY_TYPE_LABELS,
   ENTITY_TYPE_TEXT_COLORS,
   ENTITY_TYPE_BUTTON_CLASSES,
   PRIMARY_BUTTON_CLASSES,
-  ACTION_COLORS,
 } from '~/styles/colors';
+import { dashboardActivityColumns } from '~/utils/activityColumns';
 
 async function fetchStats() {
   const tenant = getCurrentTenant();
@@ -103,31 +101,7 @@ export default function Dashboard() {
     setRecentLoading(false);
   });
 
-  const activityColumns: Column[] = [
-    {
-      key: 'type',
-      label: 'Type',
-      render: (v) => (
-        <span class={`px-2 py-1 rounded text-xs font-medium ${ENTITY_TYPE_COLORS[v as ActivityType] ?? 'bg-gray-100 dark:bg-gray-600'} text-gray-900 dark:text-white`}>
-          {ENTITY_TYPE_LABELS[v as ActivityType] ?? v}
-        </span>
-      ),
-    },
-    {
-      key: 'action',
-      label: 'Action',
-      render: (v) => {
-        const c = ACTION_COLORS[v as ActivityAction] ?? { bg: 'bg-gray-100/50 dark:bg-gray-500/20', text: 'text-gray-700 dark:text-gray-300' };
-        return (
-          <span class={`px-2 py-1 rounded text-xs font-medium ${c.bg} ${c.text}`}>
-            {v}
-          </span>
-        );
-      },
-    },
-    { key: 'name', label: 'Name' },
-    { key: 'at', label: 'When', render: (v) => v ? new Date(v).toLocaleString() : '-' },
-  ];
+  const activityColumns = dashboardActivityColumns;
 
   return (
     <div class="space-y-6">

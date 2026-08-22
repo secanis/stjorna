@@ -1,7 +1,7 @@
 import { createSignal, createResource, createMemo, For, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { History, Filter, X, RefreshCw } from 'lucide-solid';
-import Table, { Column } from '~/components/ui/Table';
+import Table from '~/components/ui/Table';
 import { authStore } from '~/stores/auth';
 import {
   fetchActivity,
@@ -13,8 +13,8 @@ import {
 import {
   ENTITY_TYPE_COLORS,
   ENTITY_TYPE_LABELS,
-  ACTION_COLORS,
 } from '~/styles/colors';
+import { activityColumns, recordHref } from '~/utils/activityColumns';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -80,46 +80,7 @@ export default function Activities() {
     setNameFilter('');
   };
 
-  const columns: Column[] = [
-    {
-      key: 'type',
-      label: 'Type',
-      render: (v) => (
-        <span class={`px-2 py-1 rounded text-xs font-medium ${ENTITY_TYPE_COLORS[v as ActivityType] ?? 'bg-gray-100 dark:bg-gray-600'} text-white`}>
-          {ENTITY_TYPE_LABELS[v as ActivityType] ?? v}
-        </span>
-      ),
-    },
-    {
-      key: 'action',
-      label: 'Action',
-      render: (v) => {
-        const a = v as ActivityAction;
-        const c = ACTION_COLORS[a] ?? { bg: 'bg-gray-100/50 dark:bg-gray-500/20', text: 'text-gray-700 dark:text-gray-300' };
-        return (
-          <span class={`px-2 py-1 rounded text-xs font-medium ${c.bg} ${c.text}`}>
-            {a}
-          </span>
-        );
-      },
-    },
-    { key: 'name', label: 'Name' },
-    {
-      key: 'id',
-      label: 'Record',
-      render: (v, row) => {
-        const e = row as ActivityEvent;
-        const href = recordHref(e);
-        if (!href) return <span class="text-gray-600 dark:text-gray-500 text-xs font-mono">{String(v).slice(0, 8)}</span>;
-        return (
-          <a href={href} class="text-blue-600 dark:text-blue-400 hover:underline text-xs font-mono">
-            {String(v).slice(0, 8)}
-          </a>
-        );
-      },
-    },
-    { key: 'at', label: 'When', render: (v) => v ? new Date(v).toLocaleString() : '-' },
-  ];
+  const columns = activityColumns;
 
   return (
     <div class="space-y-6">
@@ -271,14 +232,4 @@ export default function Activities() {
       </Show>
     </div>
   );
-}
-
-function recordHref(e: ActivityEvent): string | null {
-  switch (e.type) {
-    case 'product': return `/products/${e.id}`;
-    case 'category': return `/categories/${e.id}`;
-    case 'media': return `/media/${e.id}`;
-    case 'user': return null; // user list/detail not navigable in this app
-    case 'tenant': return `/tenants/${e.id}`;
-  }
 }
