@@ -144,7 +144,7 @@ export default function MediaList() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Media</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
+          <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} px-4 py-2 rounded font-medium transition-colors`}>
             + Add Media
           </A>
         </Show>

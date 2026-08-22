@@ -155,18 +155,18 @@ export default function Dashboard() {
         </div>
         <div class="flex gap-3">
           <Show when={authStore.isPBAdmin}>
-            <A href="/tenants/add" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/tenants/add" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}>
               + Add Tenant
             </A>
           </Show>
           <Show when={!authStore.isPBAdmin && authStore.isEditorOrAbove()}>
-            <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} px-4 py-2 rounded font-medium transition-colors`}>
               + Add Category
             </A>
-            <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} px-4 py-2 rounded font-medium transition-colors`}>
               + Add Media
             </A>
-            <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
+            <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} px-4 py-2 rounded font-medium transition-colors`}>
               + Add Product
             </A>
           </Show>

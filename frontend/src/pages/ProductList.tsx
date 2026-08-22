@@ -176,7 +176,7 @@ export default function ProductList() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Products</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
+          <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} px-4 py-2 rounded font-medium transition-colors`}>
             + Add Product
           </A>
         </Show>

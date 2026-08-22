@@ -85,7 +85,7 @@ export default function Activities() {
       key: 'type',
       label: 'Type',
       render: (v) => (
-        <span class={`px-2 py-1 rounded text-xs font-medium ${ENTITY_TYPE_COLORS[v as ActivityType] ?? 'bg-gray-100 dark:bg-gray-600'} text-gray-900 dark:text-white`}>
+        <span class={`px-2 py-1 rounded text-xs font-medium ${ENTITY_TYPE_COLORS[v as ActivityType] ?? 'bg-gray-100 dark:bg-gray-600'} text-white`}>
           {ENTITY_TYPE_LABELS[v as ActivityType] ?? v}
         </span>
       ),

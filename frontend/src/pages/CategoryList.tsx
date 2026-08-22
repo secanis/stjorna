@@ -147,7 +147,7 @@ export default function CategoryList() {
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
         <Show when={authStore.isEditorOrAbove()}>
-          <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}>
+          <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} px-4 py-2 rounded font-medium transition-colors`}>
             + Add Category
           </A>
         </Show>

@@ -100,6 +100,105 @@ test.describe('Color contrast (light mode)', () => {
     expect(info.color).toBe(WHITE);
   });
 
+  test('+ Add buttons: text is white in light mode (not gray-900)', async ({ page }) => {
+    const ctx = getContext(page);
+    await ctx.loginAsUser();
+
+    // Categories page
+    await page.goto(ctx.frontendUrl + '/categories');
+    await page.waitForTimeout(800);
+    let btn = page.locator('a[href="/categories/new"]:has-text("+ Add Category")');
+    if ((await btn.count()) > 0) {
+      const info = await btn.first().evaluate(el => ({
+        bg: getComputedStyle(el).backgroundColor,
+        color: getComputedStyle(el).color,
+      }));
+      expect(info.color, '+ Add Category text').toBe(WHITE);
+      expect(info.bg).toBe('rgb(147, 51, 234)'); // purple-600
+    }
+
+    // Media page
+    await page.goto(ctx.frontendUrl + '/media');
+    await page.waitForTimeout(800);
+    btn = page.locator('a[href="/media/new"]:has-text("+ Add Media")');
+    if ((await btn.count()) > 0) {
+      const info = await btn.first().evaluate(el => ({
+        bg: getComputedStyle(el).backgroundColor,
+        color: getComputedStyle(el).color,
+      }));
+      expect(info.color, '+ Add Media text').toBe(WHITE);
+      expect(info.bg).toBe('rgb(37, 99, 235)'); // blue-600
+    }
+
+    // Dashboard (Quick Actions) — test all entity colors
+    await page.goto(ctx.frontendUrl + '/');
+    await page.waitForTimeout(800);
+    const dashChecks: Array<[string, string]> = [
+      ['+ Add Category', 'rgb(147, 51, 234)'],  // purple-600
+      ['+ Add Media', 'rgb(37, 99, 235)'],     // blue-600
+      ['+ Add Product', 'rgb(5, 150, 105)'],   // emerald-600
+    ];
+    for (const [label, expectedBg] of dashChecks) {
+      btn = page.locator(`a:has-text("${label}")`).first();
+      const info = await btn.evaluate(el => ({
+        bg: getComputedStyle(el).backgroundColor,
+        color: getComputedStyle(el).color,
+      }));
+      expect(info.color, `${label} text`).toBe(WHITE);
+      expect(info.bg, `${label} bg`).toBe(expectedBg);
+    }
+  });
+
+  test('Activities: row Type badges use white text on entity color (light mode)', async ({ page }) => {
+    const ctx = getContext(page);
+    await ctx.loginAsUser();
+    await page.goto(ctx.frontendUrl + '/activities');
+    await page.waitForTimeout(1500);
+    await page.waitForSelector('tbody tr', { timeout: 5000 });
+
+    const badges = await page.locator('tbody tr span').filter({ hasText: /^(Tenant|User|Product|Media|Category)$/ }).all();
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) {
+      const info = await badge.evaluate(el => ({
+        text: el.textContent,
+        bg: getComputedStyle(el).backgroundColor,
+        color: getComputedStyle(el).color,
+      }));
+      // Light mode entity color backgrounds are saturated (orange, cyan,
+      // emerald, blue, purple) → white text. Skip gray-100 fallback case.
+      if (!info.bg.startsWith('rgb(243, 244, 246)') && !info.bg.startsWith('rgb(243')) {
+        expect(info.color, `${info.text} row badge text`).toBe(WHITE);
+      }
+    }
+  });
+
+  test('Activities: row Action badges use dark text-700 on pale solid bg (light mode)', async ({ page }) => {
+    const ctx = getContext(page);
+    await ctx.loginAsUser();
+    await page.goto(ctx.frontendUrl + '/activities');
+    await page.waitForTimeout(1500);
+    await page.waitForSelector('tbody tr', { timeout: 5000 });
+
+    // 'created' on a green-100 bg should be green-700 text (dark enough to read on pale green)
+    const expected: Array<[RegExp, string, string]> = [
+      [/^created$/, 'rgb(220, 252, 231)', 'rgb(21, 128, 61)'],   // bg-green-100, text-green-700
+      [/^updated$/, 'rgb(219, 234, 254)', 'rgb(29, 78, 216)'],   // bg-blue-100, text-blue-700
+      [/^deleted$/, 'rgb(254, 226, 226)', 'rgb(185, 28, 28)'],   // bg-red-100, text-red-700
+    ];
+
+    for (const [textRe, expectedBg, expectedColor] of expected) {
+      const badge = page.locator('tbody tr span').filter({ hasText: textRe }).first();
+      if ((await badge.count()) > 0) {
+        const info = await badge.evaluate(el => ({
+          bg: getComputedStyle(el).backgroundColor,
+          color: getComputedStyle(el).color,
+        }));
+        expect(info.bg, `${textRe.source} bg`).toBe(expectedBg);
+        expect(info.color, `${textRe.source} text`).toBe(expectedColor);
+      }
+    }
+  });
+
   test('Sidebar: inactive nav badges keep low-contrast gray (not changed)', async ({ page }) => {
     const ctx = getContext(page);
     await ctx.loginAsUser();
@@ -144,6 +243,40 @@ test.describe('Color contrast (dark mode)', () => {
     }));
     expect(info.bg).toBe(BLUE_700);
     expect(info.color).toBe(WHITE);
+  });
+
+  test('+ Add buttons: text is white in dark mode too', async ({ page }) => {
+    const ctx = getContext(page);
+    await ctx.loginAsUser();
+
+    await page.goto(ctx.frontendUrl + '/categories');
+    await page.waitForTimeout(800);
+    const btn = page.locator('a[href="/categories/new"]:has-text("+ Add Category")').first();
+    if ((await btn.count()) > 0) {
+      const color = await btn.evaluate(el => getComputedStyle(el).color);
+      expect(color).toBe(WHITE);
+    }
+  });
+
+  test('Activities: row Action badges keep light text-300 in dark mode', async ({ page }) => {
+    const ctx = getContext(page);
+    await ctx.loginAsUser();
+    await page.goto(ctx.frontendUrl + '/activities');
+    await page.waitForTimeout(1500);
+    await page.waitForSelector('tbody tr', { timeout: 5000 });
+
+    const checks: Array<[RegExp, string]> = [
+      [/^created$/, 'rgb(134, 239, 172)'],   // green-300
+      [/^updated$/, 'rgb(147, 197, 253)'],   // blue-300
+      [/^deleted$/, 'rgb(252, 165, 165)'],   // red-300
+    ];
+    for (const [re, expectedColor] of checks) {
+      const badge = page.locator('tbody tr span').filter({ hasText: re }).first();
+      if ((await badge.count()) > 0) {
+        const color = await badge.evaluate(el => getComputedStyle(el).color);
+        expect(color, re.source).toBe(expectedColor);
+      }
+    }
   });
 
   test('Activities: entity chip active uses white text on entity color (dark mode)', async ({ page }) => {
