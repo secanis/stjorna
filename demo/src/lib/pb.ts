@@ -18,17 +18,12 @@ export function hasSavedUrl() {
 export let pb: PocketBase = initialUrl ? new PocketBase(initialUrl) : new PocketBase('/');
 pb.autoCancellation(false);
 
-// Apply a saved token (if any) so the SDK sends Authorization: Bearer on every request.
-(function applyToken() {
-  const t = localStorage.getItem(TOKEN_KEY);
-  if (t) {
-    try {
-      pb.authStore.save(t, null);
-    } catch {
-      // ignore corrupt token
-    }
-  }
-})();
+// NOTE: we deliberately do NOT auto-load TOKEN_KEY into authStore at
+// module load time. A stale or invalid JWT would otherwise persist
+// across page reloads and silently cause /api/collections/* requests
+// to return 200 / items: []. The token is applied only when the user
+// explicitly saves via saveToken() or when recreatePb() rebuilds the
+// client after a URL change.
 
 // One-time fetch monkey-patch for the live API log.
 startApiLog();
@@ -39,6 +34,10 @@ export function recreatePb(url: string) {
   setPbUrl(clean);
   pb = new PocketBase(clean);
   pb.autoCancellation(false);
+  // Re-apply whatever's in localStorage — this is the one place where
+  // we honor the saved token without going through the full
+  // exchange/validation flow. The Settings page always overrides this
+  // by calling saveToken() after recreatePb().
   const t = localStorage.getItem(TOKEN_KEY);
   if (t) {
     try {
@@ -120,8 +119,15 @@ export async function saveToken(raw: string): Promise<void> {
       setTimeout(() => setAuthStatus(''), 3000);
     } catch (e: any) {
       const msg = String(e?.message || e);
+      // Wipe the authStore so we don't leave a stale (and now-invalid)
+      // JWT that would still send 200/empty on subsequent requests.
+      // The caller will see the error in the form.
+      pb.authStore.clear();
+      localStorage.removeItem(TOKEN_KEY);
+      // Note: keep API_KEY_KEY around so the user can see their
+      // original key in the textarea. They can clear it via the
+      // "Clear saved token" button.
       setAuthStatus('Exchange failed: ' + msg);
-      // Don't persist — fall back to the previous state.
       throw e;
     }
     return;
