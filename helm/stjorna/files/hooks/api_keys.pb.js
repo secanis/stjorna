@@ -147,17 +147,12 @@ var ISSUE_BODY = "" +
     "try{" +
         "_svcPassword=_rand(40);" +
         "_svcEmail='svc-'+_tid+'-'+_rand(8)+'@stjorna.internal';" +
-        // PB auth records require `username` (auto-derived from email
-        // when going through the SDK, but the DAO Record path needs
-        // it set explicitly — save fails with "unable to save auth
-        // record without username" otherwise).
-        "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
         // Find or create the auth collection. `users` in STJÓRN A IS
         // `_pb_users_auth_` — every non-auth field on a base record
         // there is silently dropped, but we only set email + password
         // which are the auth fields PB itself owns.
         "var _authCol=$app.dao().findCollectionByNameOrId('_pb_users_auth_');" +
-        "var _authCollName=_authCol?_authCol.name||'_pb_users_auth_':'_pb_users_auth_';" +
+        "var _authCollName=$authCol?_authCol.name||'_pb_users_auth_':'_pb_users_auth_';" +
         "_authCol=$app.dao().findCollectionByNameOrId(_authCollName);" +
         "var _existingUser=null;" +
         "try{_existingUser=$app.dao().findFirstRecordByFilter(_authCollName,'email={:e}',{e:_svcEmail});}catch(_eu){}" +
@@ -169,21 +164,14 @@ var ISSUE_BODY = "" +
             // set('password', ...) on an auth collection doesn't
             // hash it; the SDK's auth path is the only documented
             // way, but Record.setPassword exists too on this build.
-            "_u.setUsername(_svcUsername);" +
             "_u.setEmail(_svcEmail);" +
             "_u.setPassword(_svcPassword);" +
             // verified=false is fine — the user will never log in
             // interactively, only via this exchange flow.
             "_u.setVerified(true);" +
-            // Stamp the tenant on the auth record so STJÓRN A's
-            // collection rules (`@request.auth.tenant = tenant`)
-            // can evaluate to true. PB silently drops non-auth
-            // fields on regular `set(...)` calls, so use the typed
-            // helper if available, otherwise fall back to set().
-            "try{if(typeof _u.set==='function')_u.set('tenant',_tenantId);else if(typeof _u.tenant!=='undefined')_u.tenant=_tenantId;}catch(_es){}" +
-            "try{$app.dao().saveRecord(_u);_svcUserId=String(_u.id||'');}catch(_esu){console.log('[stjorna-apikeys] svc user save failed: '+(_esu&&_esu.message))}" +
+            "try{$app.dao().saveRecord(_u);_svcUserId=String(_u.id||'');}catch(_esu){}" +
         "}" +
-    "}catch(_eSvc){console.log('[stjorna-apikeys] svc user block error: '+(_eSvc&&_eSvc.message))}" +
+    "}catch(_eSvc){}" +
     // ---- Persist the api_keys row ----
     "var _coll=$app.dao().findCollectionByNameOrId('api_keys');" +
     "var _rec=new Record(_coll);" +

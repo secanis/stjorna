@@ -265,6 +265,15 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         { name: 'expires', type: 'date' },
         { name: 'revoked', type: 'bool' },
         { name: 'created_by', type: 'text', options: { maxLen: 100 } },
+        // Service-user exchange (see migration 1737200000): per-tenant
+        // STJÓRN A auth record + the plaintext password needed to call
+        // pb.collection('users').authWithPassword from a non-admin caller.
+        // Stored on api_keys because the api_keys collection rules are
+        // null — STJÓRN A user JWTs can't read this; only PB admins and
+        // the custom exchange route can.
+        { name: 'service_user_id', type: 'text', options: { maxLen: 100 } },
+        { name: 'service_user_email', type: 'text', options: { maxLen: 255 } },
+        { name: 'service_user_password', type: 'text', options: { maxLen: 255 } },
       ],
       // All four rules locked to null: access is exclusively through
       // the admin-only custom routes registered in pb_hooks/api_keys.pb.js.
@@ -377,12 +386,19 @@ async function setupCollections(pb: PocketBase): Promise<void> {
   // Patch `last_tenant` onto the built-in auth collection — same as the
   // e2e global-setup does. The auth record's last_tenant is STJÓRN A's
   // tiebreaker for users in multiple tenants (see auth.ts:switchTenant).
+  // We also patch `tenant` here so STJÓRN A's test rules
+  // (`@request.auth.tenant = tenant`) can actually fire against auth
+  // users — without this, PB silently drops every non-auth field on
+  // create and the rules always evaluate to false.
   try {
     const authCol = await pb.collections.getOne('_pb_users_auth_');
-    const hasLastTenant = (authCol.schema || []).some((f: any) => f.name === 'last_tenant');
-    if (!hasLastTenant) {
+    const fields = (authCol.schema || []).map((f: any) => f.name);
+    const additions: any[] = [];
+    if (!fields.includes('last_tenant')) additions.push({ name: 'last_tenant', type: 'text' });
+    if (!fields.includes('tenant'))      additions.push({ name: 'tenant',      type: 'text' });
+    if (additions.length > 0) {
       await pb.collections.update(authCol.id, {
-        schema: [...authCol.schema, { name: 'last_tenant', type: 'text' }],
+        schema: [...authCol.schema, ...additions],
       });
     }
   } catch {
