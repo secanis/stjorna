@@ -415,13 +415,44 @@ var EXCHANGE_BODY = "" +
         "else{var _str=String(_exp).replace(' ','T');_ms=Date.parse(_str);}" +
         "if(_ms&&!isNaN(_ms)&&_ms<Date.now()){_reply(401,{ok:false,error:{code:401,message:'expired'}});return;}" +
     "}" +
-    // Look up service-user credentials. If the api_keys row predates
-    // the exchange feature, return 409 so the caller knows to re-issue.
+    // Resolve tenant_id from the api_keys row. Needed both for the
+    // legacy-backfill path below (we have to mint a fresh service
+    // user pinned to this tenant) and for the response.
+    "var _tenantId=String(_getR(_rec,'tenant')||'');" +
+    "if(!_tenantId){_reply(500,{ok:false,error:{code:500,message:'api_keys row missing tenant'}});return;}" +
+    // Lazy backfill: keys issued before this feature shipped have no
+    // service_user_* fields. Instead of bouncing the caller with a
+    // 409, mint a fresh service user now and stamp the credentials on
+    // the existing row. Equivalent to a re-issue minus the new
+    // plaintext (the user already has their existing key).
     "var _svcId=String(_getR(_rec,'service_user_id')||'');" +
     "var _svcEmail=String(_getR(_rec,'service_user_email')||'');" +
     "var _svcPassword=String(_getR(_rec,'service_user_password')||'');" +
+    "var _backfilled=false;" +
     "if(!_svcId||!_svcEmail||!_svcPassword){" +
-        "_reply(409,{ok:false,error:{code:409,message:'API key was issued before the exchange flow existed. Revoke and re-issue this key.',legacy:true}});return;" +
+        "try{" +
+            // Mirror the service-user minting from the ISSUE handler.
+            "_svcPassword=_rand(40);" +
+            "var _tid=String(_tenantId).replace(/[^a-zA-Z0-9]/g,'').slice(0,6).toLowerCase()||'tenant';" +
+            "_svcEmail='svc-'+_tid+'-'+_rand(8)+'@stjorna.internal';" +
+            "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
+            "var _authCol=$app.dao().findCollectionByNameOrId('_pb_users_auth_');" +
+            "var _u=new Record(_authCol);" +
+            "_u.setUsername(_svcUsername);" +
+            "_u.setEmail(_svcEmail);" +
+            "_u.setPassword(_svcPassword);" +
+            "_u.setVerified(true);" +
+            "$app.dao().saveRecord(_u);" +
+            "_svcId=String(_u.id||'');" +
+            // Persist onto the existing api_keys row.
+            "_rec.set('service_user_id',_svcId);" +
+            "_rec.set('service_user_email',_svcEmail);" +
+            "_rec.set('service_user_password',_svcPassword);" +
+            "$app.dao().saveRecord(_rec);" +
+            "_backfilled=true;" +
+        "}catch(_eBack){" +
+            "_reply(500,{ok:false,error:{code:500,message:'legacy backfill failed: '+(_eBack&&_eBack.message||_eBack)}});return;" +
+        "}" +
     "}" +
     // Verify the auth record still exists (defensive — could have been
     // wiped by an admin manually). If missing, refuse rather than mint
@@ -444,6 +475,7 @@ var EXCHANGE_BODY = "" +
         "tenant:_tenantOut," +
         "email:_svcEmail," +
         "password:_svcPassword," +
+        "backfilled:_backfilled," +
         "instructions:'POST these credentials to /api/collections/users/auth-with-password to receive a JWT, then send that JWT as Bearer for /api/collections/* requests.' ," +
         "permissions:_permsOut" +
     "});";

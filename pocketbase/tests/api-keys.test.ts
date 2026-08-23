@@ -276,4 +276,53 @@ describe('API Keys — collection (PB admin only)', () => {
     });
     expect(r.status).toBe(401);
   });
+
+  it('exchange: lazily backfills service-user credentials on legacy api_keys rows', async () => {
+    // Issue a key, then strip the service-user fields to simulate a
+    // pre-exchange-feature row that was around before the upgrade.
+    const issue = await fetch(getPbUrl() + '/api/stjorna/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pb.authStore.token },
+      body: JSON.stringify({ tenant: tenantId, name: 'legacy-backfill' }),
+    });
+    const { apiKey, plaintext } = await issue.json();
+
+    // Wipe the service-user fields. The api_keys collection rules are
+    // null so only PB admin can do this — same trust level as the
+    // hook itself.
+    await pb.collection('api_keys').update(apiKey.id, {
+      service_user_id: '',
+      service_user_email: '',
+      service_user_password: '',
+    });
+
+    // Exchange should now lazy-mint a service user and succeed.
+    const ex = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + plaintext },
+    });
+    expect(ex.status).toBe(200);
+    const body = await ex.json();
+    expect(body.ok).toBe(true);
+    expect(body.backfilled).toBe(true);
+    expect(body.email).toMatch(/^svc-/);
+    expect(typeof body.password).toBe('string');
+    expect(body.password.length).toBeGreaterThanOrEqual(16);
+
+    // And the auth-with-password round-trip should work with the
+    // new credentials.
+    const auth = await fetch(getPbUrl() + '/api/collections/users/auth-with-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identity: body.email, password: body.password }),
+    });
+    expect(auth.status).toBe(200);
+    const authBody = await auth.json();
+    expect(typeof authBody.token).toBe('string');
+
+    // The api_keys row should now have the fields populated.
+    const reread = await pb.collection('api_keys').getOne(apiKey.id);
+    expect(typeof reread.service_user_id).toBe('string');
+    expect(reread.service_user_id.length).toBeGreaterThan(0);
+  });
 });

@@ -147,12 +147,17 @@ var ISSUE_BODY = "" +
     "try{" +
         "_svcPassword=_rand(40);" +
         "_svcEmail='svc-'+_tid+'-'+_rand(8)+'@stjorna.internal';" +
+        // PB auth records require `username` (auto-derived from email
+        // when going through the SDK, but the DAO Record path needs
+        // it set explicitly — save fails with "unable to save auth
+        // record without username" otherwise).
+        "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
         // Find or create the auth collection. `users` in STJÓRN A IS
         // `_pb_users_auth_` — every non-auth field on a base record
         // there is silently dropped, but we only set email + password
         // which are the auth fields PB itself owns.
         "var _authCol=$app.dao().findCollectionByNameOrId('_pb_users_auth_');" +
-        "var _authCollName=$authCol?_authCol.name||'_pb_users_auth_':'_pb_users_auth_';" +
+        "var _authCollName=_authCol?_authCol.name||'_pb_users_auth_':'_pb_users_auth_';" +
         "_authCol=$app.dao().findCollectionByNameOrId(_authCollName);" +
         "var _existingUser=null;" +
         "try{_existingUser=$app.dao().findFirstRecordByFilter(_authCollName,'email={:e}',{e:_svcEmail});}catch(_eu){}" +
@@ -164,14 +169,21 @@ var ISSUE_BODY = "" +
             // set('password', ...) on an auth collection doesn't
             // hash it; the SDK's auth path is the only documented
             // way, but Record.setPassword exists too on this build.
+            "_u.setUsername(_svcUsername);" +
             "_u.setEmail(_svcEmail);" +
             "_u.setPassword(_svcPassword);" +
             // verified=false is fine — the user will never log in
             // interactively, only via this exchange flow.
             "_u.setVerified(true);" +
-            "try{$app.dao().saveRecord(_u);_svcUserId=String(_u.id||'');}catch(_esu){}" +
+            // Stamp the tenant on the auth record so STJÓRN A's
+            // collection rules (`@request.auth.tenant = tenant`)
+            // can evaluate to true. PB silently drops non-auth
+            // fields on regular `set(...)` calls, so use the typed
+            // helper if available, otherwise fall back to set().
+            "try{if(typeof _u.set==='function')_u.set('tenant',_tenantId);else if(typeof _u.tenant!=='undefined')_u.tenant=_tenantId;}catch(_es){}" +
+            "try{$app.dao().saveRecord(_u);_svcUserId=String(_u.id||'');}catch(_esu){console.log('[stjorna-apikeys] svc user save failed: '+(_esu&&_esu.message))}" +
         "}" +
-    "}catch(_eSvc){}" +
+    "}catch(_eSvc){console.log('[stjorna-apikeys] svc user block error: '+(_eSvc&&_eSvc.message))}" +
     // ---- Persist the api_keys row ----
     "var _coll=$app.dao().findCollectionByNameOrId('api_keys');" +
     "var _rec=new Record(_coll);" +
@@ -403,13 +415,44 @@ var EXCHANGE_BODY = "" +
         "else{var _str=String(_exp).replace(' ','T');_ms=Date.parse(_str);}" +
         "if(_ms&&!isNaN(_ms)&&_ms<Date.now()){_reply(401,{ok:false,error:{code:401,message:'expired'}});return;}" +
     "}" +
-    // Look up service-user credentials. If the api_keys row predates
-    // the exchange feature, return 409 so the caller knows to re-issue.
+    // Resolve tenant_id from the api_keys row. Needed both for the
+    // legacy-backfill path below (we have to mint a fresh service
+    // user pinned to this tenant) and for the response.
+    "var _tenantId=String(_getR(_rec,'tenant')||'');" +
+    "if(!_tenantId){_reply(500,{ok:false,error:{code:500,message:'api_keys row missing tenant'}});return;}" +
+    // Lazy backfill: keys issued before this feature shipped have no
+    // service_user_* fields. Instead of bouncing the caller with a
+    // 409, mint a fresh service user now and stamp the credentials on
+    // the existing row. Equivalent to a re-issue minus the new
+    // plaintext (the user already has their existing key).
     "var _svcId=String(_getR(_rec,'service_user_id')||'');" +
     "var _svcEmail=String(_getR(_rec,'service_user_email')||'');" +
     "var _svcPassword=String(_getR(_rec,'service_user_password')||'');" +
+    "var _backfilled=false;" +
     "if(!_svcId||!_svcEmail||!_svcPassword){" +
-        "_reply(409,{ok:false,error:{code:409,message:'API key was issued before the exchange flow existed. Revoke and re-issue this key.',legacy:true}});return;" +
+        "try{" +
+            // Mirror the service-user minting from the ISSUE handler.
+            "_svcPassword=_rand(40);" +
+            "var _tid=String(_tenantId).replace(/[^a-zA-Z0-9]/g,'').slice(0,6).toLowerCase()||'tenant';" +
+            "_svcEmail='svc-'+_tid+'-'+_rand(8)+'@stjorna.internal';" +
+            "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
+            "var _authCol=$app.dao().findCollectionByNameOrId('_pb_users_auth_');" +
+            "var _u=new Record(_authCol);" +
+            "_u.setUsername(_svcUsername);" +
+            "_u.setEmail(_svcEmail);" +
+            "_u.setPassword(_svcPassword);" +
+            "_u.setVerified(true);" +
+            "$app.dao().saveRecord(_u);" +
+            "_svcId=String(_u.id||'');" +
+            // Persist onto the existing api_keys row.
+            "_rec.set('service_user_id',_svcId);" +
+            "_rec.set('service_user_email',_svcEmail);" +
+            "_rec.set('service_user_password',_svcPassword);" +
+            "$app.dao().saveRecord(_rec);" +
+            "_backfilled=true;" +
+        "}catch(_eBack){" +
+            "_reply(500,{ok:false,error:{code:500,message:'legacy backfill failed: '+(_eBack&&_eBack.message||_eBack)}});return;" +
+        "}" +
     "}" +
     // Verify the auth record still exists (defensive — could have been
     // wiped by an admin manually). If missing, refuse rather than mint
@@ -432,6 +475,7 @@ var EXCHANGE_BODY = "" +
         "tenant:_tenantOut," +
         "email:_svcEmail," +
         "password:_svcPassword," +
+        "backfilled:_backfilled," +
         "instructions:'POST these credentials to /api/collections/users/auth-with-password to receive a JWT, then send that JWT as Bearer for /api/collections/* requests.' ," +
         "permissions:_permsOut" +
     "});";
