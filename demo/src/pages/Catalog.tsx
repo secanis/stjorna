@@ -194,7 +194,7 @@ function ProductMedia(props: { product: any }) {
           when={list()[0].mime_type?.startsWith?.('video/')}
           fallback={
             <img
-              src={fileUrl(list()[0], list()[0].filename || list()[0].file, { thumb: '300x300' })}
+              src={fileUrl(list()[0], list()[0].file || list()[0].filename, { thumb: '300x300' })}
               alt={list()[0].filename || props.product.name}
               class="w-full h-full object-cover"
               loading="lazy"
@@ -207,7 +207,7 @@ function ProductMedia(props: { product: any }) {
               renders the poster frame. crossorigin="anonymous" so ORB
               doesn't block the cross-origin load from the demo origin. */}
           <video
-            src={fileUrl(list()[0], list()[0].filename || list()[0].file)}
+            src={fileUrl(list()[0], list()[0].file || list()[0].filename)}
             class="w-full h-full object-cover"
             muted
             playsinline
