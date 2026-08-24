@@ -256,13 +256,41 @@ async function setupCollections(pb: PocketBase): Promise<void> {
       name: 'api_keys',
       type: 'base',
       schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'name', type: 'text', required: true },
-        { name: 'key_hash', type: 'text', required: true },
-        { name: 'permissions', type: 'json', options: { maxSize: 2000000 } },
+        { name: 'tenant', type: 'text', required: true, options: { min: 1, maxLen: 100 } },
+        { name: 'name', type: 'text', required: true, options: { min: 1, maxLen: 200 } },
+        { name: 'prefix', type: 'text', required: true, options: { min: 1, maxLen: 32, pattern: '^[a-zA-Z0-9_]+$' } },
+        { name: 'key_hash', type: 'text', required: true, options: { min: 1, maxLen: 256 } },
+        { name: 'permissions', type: 'json', options: { maxSize: 4096 } },
         { name: 'last_used', type: 'date' },
         { name: 'expires', type: 'date' },
+        { name: 'revoked', type: 'bool' },
+        { name: 'created_by', type: 'text', options: { maxLen: 100 } },
+        // Service-user exchange (see migration 1737200000): per-tenant
+        // STJÓRN A auth record + the plaintext password needed to call
+        // pb.collection('users').authWithPassword from a non-admin caller.
+        // Stored on api_keys because the api_keys collection rules are
+        // null — STJÓRN A user JWTs can't read this; only PB admins and
+        // the custom exchange route can.
+        { name: 'service_user_id', type: 'text', options: { maxLen: 100 } },
+        { name: 'service_user_email', type: 'text', options: { maxLen: 255 } },
+        { name: 'service_user_password', type: 'text', options: { maxLen: 255 } },
       ],
+      // All four rules locked to null: access is exclusively through
+      // the admin-only custom routes registered in pb_hooks/api_keys.pb.js.
+      listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
+    },
+    {
+      // STJÓRN A's tenant-membership join table. PB's built-in
+      // `_pb_users_auth_` (which is what `users` aliases to) ignores any
+      // `tenant` field on create — so tenant membership lives here.
+      name: 'user_tenants',
+      type: 'base',
+      schema: [
+        { name: 'user', type: 'text', required: true },
+        { name: 'tenant', type: 'text', required: true },
+        { name: 'role', type: 'text', required: true },
+      ],
+      listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
     },
     {
       name: 'users',
@@ -335,6 +363,46 @@ async function setupCollections(pb: PocketBase): Promise<void> {
         // best-effort: don't fail the test on patch errors
       }
     }
+  }
+
+  // Roles collection — STJÓRN A tracks role as a text slug on user_tenants,
+  // but the e2e harness uses a proper `roles` collection for FK integrity.
+  // Mirror the same shape here so the test infra matches production.
+  if (!existingNames.includes('roles')) {
+    try {
+      await pb.collections.create({
+        name: 'roles',
+        type: 'base',
+        schema: [{ name: 'name', type: 'text', required: true }],
+        listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
+      });
+      await pb.collection('roles').create({ name: 'viewer' });
+      await pb.collection('roles').create({ name: 'editor' });
+      await pb.collection('roles').create({ name: 'admin' });
+    } catch {
+    }
+  }
+
+  // Patch `last_tenant` onto the built-in auth collection — same as the
+  // e2e global-setup does. The auth record's last_tenant is STJÓRN A's
+  // tiebreaker for users in multiple tenants (see auth.ts:switchTenant).
+  // We also patch `tenant` here so STJÓRN A's test rules
+  // (`@request.auth.tenant = tenant`) can actually fire against auth
+  // users — without this, PB silently drops every non-auth field on
+  // create and the rules always evaluate to false.
+  try {
+    const authCol = await pb.collections.getOne('_pb_users_auth_');
+    const fields = (authCol.schema || []).map((f: any) => f.name);
+    const additions: any[] = [];
+    if (!fields.includes('last_tenant')) additions.push({ name: 'last_tenant', type: 'text' });
+    if (!fields.includes('tenant'))      additions.push({ name: 'tenant',      type: 'text' });
+    if (additions.length > 0) {
+      await pb.collections.update(authCol.id, {
+        schema: [...authCol.schema, ...additions],
+      });
+    }
+  } catch {
+    // best-effort
   }
 
   // Second pass: resolve `_COLLECTION_ID_` placeholders in relation fields.

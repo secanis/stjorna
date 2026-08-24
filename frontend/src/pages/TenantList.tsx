@@ -1,6 +1,6 @@
 import { createSignal, createResource, Show, For, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
-import { Settings } from 'lucide-solid';
+import { Settings, BarChart3 } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import Table, { Column } from '~/components/ui/Table';
@@ -49,6 +49,9 @@ export default function TenantList() {
   const handleSettings = (tenantId: string) => {
     navigate(`/tenants/${tenantId}`);
   };
+  const handleStats = (tenantId: string) => {
+    navigate(`/tenants/${tenantId}/stats`);
+  };
 
   const columns: Column[] = [
     { key: 'name', label: 'Name', sortable: true },
@@ -65,13 +68,23 @@ export default function TenantList() {
       key: 'actions',
       label: '',
       render: (_, row) => (
-        <button
-          onClick={(e) => { e.stopPropagation(); handleSettings(row.id); }}
-          class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm flex items-center gap-1"
-        >
-          <Settings size={14} />
-          Settings
-        </button>
+        <div class="flex gap-3 items-center justify-end">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleStats(row.id); }}
+            class="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 text-sm flex items-center gap-1"
+            title="View statistics"
+          >
+            <BarChart3 size={14} />
+            Stats
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleSettings(row.id); }}
+            class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm flex items-center gap-1"
+          >
+            <Settings size={14} />
+            Settings
+          </button>
+        </div>
       ),
     },
   ];

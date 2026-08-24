@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { getMediaFileUrl } from './mediaUrl';
+import { getMediaFileUrl, buildAbsolutePath } from './mediaUrl';
 
 vi.mock('~/services/pocketbase', () => {
   return {
@@ -73,6 +73,36 @@ describe('getMediaFileUrl', () => {
       (pb.authStore as any).token = 'tok';
       const url = getMediaFileUrl('rec1', 'img.jpg');
       expect(url).toBe('/api/files/media/rec1/img.jpg?token=tok');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('drops http:// when page is HTTPS — protocol-relative URL avoids mixed content', () => {
+    expect(buildAbsolutePath('http://pb.internal:8090', '/api/x', 'https:'))
+      .toBe('//pb.internal:8090/api/x');
+  });
+
+  it('keeps https:// origin unchanged when page is HTTPS', () => {
+    expect(buildAbsolutePath('https://pb.example.com', '/api/x', 'https:'))
+      .toBe('https://pb.example.com/api/x');
+  });
+
+  it('keeps http:// origin when page is also HTTP (dev)', () => {
+    expect(buildAbsolutePath('http://localhost:8090', '/api/x', 'http:'))
+      .toBe('http://localhost:8090/api/x');
+  });
+
+  it('returns relative path when origin is empty (proxy handles same-origin)', () => {
+    expect(buildAbsolutePath('', '/api/x', 'https:')).toBe('/api/x');
+    expect(buildAbsolutePath('', '/api/x', 'http:')).toBe('/api/x');
+  });
+
+  it('keeps http:// origin when page is also HTTP (dev)', () => {
+    vi.stubEnv('VITE_PB_URL', 'http://localhost:8090');
+    try {
+      const url = getMediaFileUrl('rec1', 'img.jpg');
+      expect(url).toBe('http://localhost:8090/api/files/media/rec1/img.jpg');
     } finally {
       vi.unstubAllEnvs();
     }
