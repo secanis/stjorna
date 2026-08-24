@@ -18,10 +18,6 @@ const navItems = [
     { path: '/users', label: 'Users', icon: Users, roles: ['pb_admin'] as const, showCount: true },
     { path: '/tenants', label: 'Tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
     { path: '/api-keys', label: 'API Keys', icon: KeyRound, roles: ['pb_admin'] as const, showCount: true },
-    // No `roles` array → visible to every authenticated user (PB admin,
-    // tenant admin, editor, viewer). The About page is informational and
-    // safe to expose to every login tier.
-    { path: '/about', label: 'About STJÓRNA', icon: Info },
 ];
 
 export default function Sidebar() {
@@ -213,6 +209,24 @@ export default function Sidebar() {
                     }}
                 </For>
             </nav>
+
+            {/* Small footer link to the About page. Lives below the main
+                nav so it doesn't compete with the everyday actions; the
+                text is dimmed and smaller to match "part of the product
+                chrome" rather than a primary destination. */}
+            <div class="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <A
+                    href="/about"
+                    classList={{
+                        'flex items-center gap-2 px-3 py-1.5 rounded-md text-xs transition-colors': true,
+                        'text-blue-600 dark:text-blue-400': location.pathname === '/about',
+                        'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white': location.pathname !== '/about',
+                    }}
+                >
+                    <Info size={14} />
+                    <span>About STJÓRNA</span>
+                </A>
+            </div>
         </aside>
     );
 }

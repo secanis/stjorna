@@ -11,9 +11,12 @@
 //   3. `node -p "require('../package.json').version"` — last-resort
 //      fallback (matches the `stjorna-frontend` package version).
 //
-// The script also writes a `commit` (short SHA) and `buildTime`
-// (ISO timestamp). It runs before `vite build` (wired in
-// package.json `scripts.build`).
+// Wired into `npm run build` (and `build:remote`) but NOT into `dev`
+// — local `npm run dev` falls back to the checked-in placeholder
+// version.json ("0.0.0-dev") so the About page always renders
+// something sensible without running a build step.
+//
+// Also writes `commit` (short SHA) and `buildTime` (ISO timestamp).
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';

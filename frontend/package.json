@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node scripts/generate-version.mjs && vite",
-    "dev:remote": "node scripts/generate-version.mjs && vite --mode remote",
+    "dev": "vite",
+    "dev:remote": "vite --mode remote",
     "build": "node scripts/generate-version.mjs && vite build",
     "build:remote": "node scripts/generate-version.mjs && vite build --mode remote",
     "preview": "vite preview",
