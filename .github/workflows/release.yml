@@ -128,6 +128,13 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=release-${{ matrix.name }}
+          # Stamp public/version.json with the release tag + commit
+          # (frontend image only — PB's Dockerfile ignores these
+          # args). Done conditionally here rather than via the matrix
+          # include because actionlint forbids ${{ steps.* }} inside
+          # matrix entries (matrix is built before steps run).
+          build-args: |
+            ${{ matrix.name == 'frontend' && format('STJORNA_VERSION={0}\nSTJORNA_COMMIT={1}', steps.version.outputs.tag, github.sha) || '' }}
 
   # -------------------------------------------------------------------------
   # 2. Bootstrap the gh-pages branch (orphan + empty commit) so that

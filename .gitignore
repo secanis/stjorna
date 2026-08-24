@@ -60,3 +60,6 @@ _site/
 _site/**
 .jekyll-cache/
 .jekyll-metadata
+
+# Build-time generated version stamp (regenerated on every npm run build)
+frontend/public/version.json
