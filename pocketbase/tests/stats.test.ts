@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { getPb, getPbUrl } from './setup.ts';
-import { createAdminClient, createTenantUser } from './helpers/client.ts';
+import { createAdminClient, createTenantUser, getRoleId } from './helpers/client.ts';
 import {
   createTenantFixture,
   createCategoryFixture,
@@ -94,8 +94,11 @@ describe('STJÓRNA stats — per-tenant aggregation', () => {
     const userB = await pb.collection('users').create({
       email: `stats-b-${Date.now()}@stjorna.test`, password: 'test1234567abcd', passwordConfirm: 'test1234567abcd', name: 'Stats User B',
     });
-    await pb.collection('user_tenants').create({ user: userA.id, tenant: tenant.id, role: 'admin' });
-    await pb.collection('user_tenants').create({ user: userB.id, tenant: tenant.id, role: 'viewer' });
+    // user_tenants.role is a FK relation to `roles`; look up the IDs.
+    const roleAdminId = await getRoleId('admin');
+    const roleViewerId = await getRoleId('viewer');
+    await pb.collection('user_tenants').create({ user: userA.id, tenant: tenant.id, role: roleAdminId });
+    await pb.collection('user_tenants').create({ user: userB.id, tenant: tenant.id, role: roleViewerId });
 
     // A second tenant — must NOT bleed into our counts.
     const other = await pb.collection('tenants').create(createTenantFixture({ name: 'Other Tenant' }));
@@ -104,7 +107,8 @@ describe('STJÓRNA stats — per-tenant aggregation', () => {
     const userC = await pb.collection('users').create({
       email: `stats-c-${Date.now()}@stjorna.test`, password: 'test1234567abcd', passwordConfirm: 'test1234567abcd', name: 'Stats User C',
     });
-    await pb.collection('user_tenants').create({ user: userC.id, tenant: other.id, role: 'editor' });
+    const roleEditorId = await getRoleId('editor');
+    await pb.collection('user_tenants').create({ user: userC.id, tenant: other.id, role: roleEditorId });
 
     const { res, body } = await adminStats(tenant.id);
     expect(res.status).toBe(200);

@@ -1,0 +1,33 @@
+# STJÓRNA — Codacy analysis configuration.
+#
+# STJÓRN A's frontend is SolidJS, not React. Codacy's stock ESLint config
+# applies `eslint-plugin-react` to every `.tsx` file, which fires on
+# SolidJS-only patterns (no React import needed; `class` instead of
+# `className`). Same story for PB migrations: `Dao`, `SchemaField` etc.
+# are PB JSVM globals, so `no-undef` cannot see them.
+---
+engines:
+  eslint:
+    patterns:
+      # SolidJS JSX — React rules don't apply.
+      - id: react_react-in-jsx-scope
+        enabled: false
+      - id: react_no-unknown-property
+        enabled: false
+      # PocketBase JSVM globals — declared by the runtime, not in scope.
+      - id: no-undef
+        paths:
+          - pocketbase/pb_migrations/
+  markdownlint:
+    patterns:
+      # API_KEYS_REPORT.md is a design doc with long prose on purpose.
+      - id: MD013
+        paths:
+          - API_KEYS_REPORT.md
+  PMD:
+    patterns:
+      # PB migrations use empty `catch` blocks for idempotent rollbacks
+      # (best-effort, comment only).
+      - id: category/ecmascript/codestyle/UnnecessaryBlock
+        paths:
+          - pocketbase/pb_migrations/

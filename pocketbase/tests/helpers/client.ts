@@ -1,6 +1,18 @@
 import PocketBase from 'pocketbase';
 import { getPb, getTestAdminCredentials } from '../../setup.ts';
 
+/**
+ * Look up a `roles` record ID by its name slug ('viewer' / 'editor' / 'admin').
+ * Returns empty string if no match. Used to populate the `user_tenants.role`
+ * relation, which is a FK to `roles`, not a free-text field.
+ */
+export async function getRoleId(name: string): Promise<string> {
+  const adminClient = await createAdminClient();
+  const list = await adminClient.collection('roles').getList(1, 50);
+  const hit = list.items.find((r: any) => r.name === name);
+  return hit?.id || '';
+}
+
 export async function createAdminClient(): Promise<PocketBase> {
   const pb = getPb();
   const { email, password } = getTestAdminCredentials();
@@ -45,12 +57,20 @@ export async function createTenantUser(
   }
 
   if (userId) {
+    // `role` here is a name slug ('viewer' / 'editor' / 'admin'). The
+    // user_tenants.role field is a FK relation to the `roles` collection,
+    // so we need the matching record id, not the name.
+    let roleId = '';
+    try {
+      roleId = await getRoleId(role);
+    } catch {
+    }
     // Idempotent: ignore duplicate errors on re-runs.
     try {
       await adminClient.collection('user_tenants').create({
         user: userId,
         tenant: tenantId,
-        role,
+        ...(roleId ? { role: roleId } : {}),
       });
     } catch {
     }

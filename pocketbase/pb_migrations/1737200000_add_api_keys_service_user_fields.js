@@ -60,8 +60,8 @@ migrate((db) => {
   try {
     const apiKeys = dao.findCollectionByNameOrId("api_keys");
     for (const name of ["service_user_password", "service_user_email", "service_user_id"]) {
-      try { apiKeys.schema.removeField(name); } catch (_) {}
+      try { apiKeys.schema.removeField(name); } catch (_) { /* best-effort, field may not exist */ }
     }
     dao.saveCollection(apiKeys);
-  } catch (_) {}
+  } catch (_) { /* best-effort, collection may not exist */ }
 });

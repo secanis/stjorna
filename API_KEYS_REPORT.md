@@ -43,6 +43,7 @@ So the demo I shipped still needs `pb.collection('categories').getList(...)` to 
 ### Option A — treat the key as a STJÓRN A service-user at mint time (recommended)
 
 When admin issues a key:
+
 1. Backend creates (or reuses) a hidden `users` row per tenant with `role='admin'` named like `__apikey__<prefix>` and a long random password.
 2. API key = `stjorna_<prefix>.<hmac(secret, service-user.password)>`.
 3. A custom `/api/stjorna/api-keys/exchange` route accepts the API key, looks up the service user, and uses PB's internal `users.authWithPassword` to mint a real STJÓRN A user JWT, then returns it. Caller swaps the JWT into the bearer for subsequent `/api/collections/*` calls.
@@ -66,6 +67,7 @@ PB doesn't expose a way to inject a fake auth record into `request.auth` for dow
 **Option A**. It's the only path that keeps STJÓRN A's existing rule surface and lets the API key behave like any other STJÓRN A user. The cost (one extra exchange round-trip, a token-leak vector during exchange) is small and well-understood.
 
 Want me to implement Option A as a follow-up? It would touch:
+
 - `pocketbase/pb_hooks/api_keys.pb.js` (new `/exchange` route + service-user lookup)
 - `pocketbase/setup.ts` (new `service_users` collection or `is_service` flag on `users`)
 - `pocketbase/pb_migrations/…` (one for the service-user infrastructure)
@@ -91,7 +93,7 @@ Estimated ~150 LOC plus a handful of new tests.
 
 ## Files in this PR
 
-```
+```text
 demo/README.md                                       (existing, minor text)
 demo/src/pages/Settings.tsx                          (existing, label widened)
 frontend/src/App.tsx                                 (1 line added)

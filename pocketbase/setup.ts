@@ -361,6 +361,34 @@ async function setupCollections(pb: PocketBase): Promise<void> {
     }
   }
 
+  // user_tenants join table — same shape as frontend/src/pages/Setup.tsx.
+  // Tests (stats.test.ts, api-keys.test.ts) and the stats hook rely on
+  // it; without it tenant-user memberships are invisible to the backend
+  // and the stats hook returns 403 for every tenant user.
+  if (!existingNames.includes('user_tenants')) {
+    try {
+      const usersCol = await pb.collections.getOne('_pb_users_auth_');
+      const tenantsCol = await pb.collections.getOne('tenants');
+      const rolesCol = await pb.collections.getOne('roles');
+      await pb.collections.create({
+        name: 'user_tenants',
+        type: 'base',
+        schema: [
+          { name: 'user', type: 'relation', options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: false } },
+          { name: 'tenant', type: 'relation', options: { collectionId: tenantsCol.id, maxSelect: 1, cascadeDelete: false } },
+          { name: 'role', type: 'relation', options: { collectionId: rolesCol.id, maxSelect: 1, cascadeDelete: false } },
+        ],
+        listRule: '@request.auth.admin = true || user.id = @request.auth.id',
+        viewRule: '@request.auth.id != ""',
+        createRule: '@request.auth.admin = true',
+        updateRule: '@request.auth.admin = true',
+        deleteRule: '@request.auth.admin = true',
+      });
+    } catch {
+      // best-effort — never fail the test on schema-patch errors
+    }
+  }
+
   // Patch `last_tenant` onto the built-in auth collection — same as the
   // e2e global-setup does. The auth record's last_tenant is STJÓRN A's
   // tiebreaker for users in multiple tenants (see auth.ts:switchTenant).
