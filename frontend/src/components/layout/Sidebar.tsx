@@ -118,10 +118,18 @@ export default function Sidebar() {
     };
 
     return (
-        <aside class="w-64 bg-white dark:bg-gray-800 min-h-screen p-4 flex flex-col">
+        // Sticky + h-screen keeps the sidebar pinned to the viewport
+        // instead of stretching with the page content. Previously
+        // `min-h-screen` meant it grew as the main column grew, which
+        // pushed the brand + footer link below the fold on tall pages.
+        // `sticky top-0` so it stays visible while scrolling; the inner
+        // `nav` uses `flex-1` + `overflow-y-auto` so a long nav list
+        // still scrolls within the sidebar instead of overflowing the
+        // viewport.
+        <aside class="w-64 bg-white dark:bg-gray-800 sticky top-0 h-screen p-4 flex flex-col">
             <div class="text-2xl font-bold text-gray-900 dark:text-white mb-8">STJÓRNA</div>
 
-            <nav class="flex-1 space-y-1">
+            <nav class="flex-1 space-y-1 overflow-y-auto">
                 <For each={visibleItems()}>
                     {(item) => {
                         const Icon = item.icon;
