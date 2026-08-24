@@ -1,20 +1,30 @@
 import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { pb, recreatePb, saveToken, clearToken, getTokenRaw, pbUrl, toggleTheme, getTheme } from '~/lib/pb';
+import { pb, recreatePb, saveToken, clearToken, getTokenRaw, getApiKeyRaw, pbUrl, toggleTheme, getTheme } from '~/lib/pb';
 export default function Settings() {
   const navigate = useNavigate();
   const [url, setUrl] = createSignal(pbUrl());
-  const [token, setToken] = createSignal(getTokenRaw());
+  const [token, setToken] = createSignal(getApiKeyRaw() || getTokenRaw());
   const [testing, setTesting] = createSignal(false);
   const [testResult, setTestResult] = createSignal<{ ok: boolean; msg: string } | null>(null);
+  const [saving, setSaving] = createSignal(false);
+  const [saveError, setSaveError] = createSignal<string | null>(null);
 
   onMount(() => setUrl(pbUrl()));
 
-  function save(e: Event) {
+  async function save(e: Event) {
     e.preventDefault();
-    recreatePb(url());
-    saveToken(token());
-    navigate('/');
+    setSaving(true);
+    setSaveError(null);
+    try {
+      recreatePb(url());
+      await saveToken(token());
+      navigate('/');
+    } catch (e: any) {
+      setSaveError(String(e?.message || e));
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function testConnection() {
@@ -55,7 +65,7 @@ export default function Settings() {
               placeholder="http://localhost:8090"
               value={url()}
               onInput={(e) => setUrl(e.currentTarget.value)}
-              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm"
+              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm"
             />
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Persistence: <code>localStorage.demo_pb_url</code>. Proxies <code>/api/*</code> via Vite when same-origin.
@@ -69,14 +79,14 @@ export default function Settings() {
               placeholder={'paste STJÓRNA user JWT, PB admin JWT, or STJÓRNA API key (stjorna_…)…'}
               value={token()}
               onInput={(e) => setToken(e.currentTarget.value)}
-              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-sm font-mono"
+              class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-sm font-mono"
             />
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Stored as <code>localStorage.demo_pb_token</code>, applied via <code>pb.authStore.save(token, null)</code>.
-              Required only to unlock media thumbnails. STJÓRNA API keys (<code>stjorna_…</code>) work alongside
-              regular user JWTs.
+              STJÓRNA API keys (<code>stjorna_…</code>) are auto-exchanged for a STJÓRN A service-user JWT on save, so
+              they unlock <code>/api/collections/*</code> like any other STJÓRN A user. User JWTs and PB admin tokens are
+              stored verbatim.
             </p>
-            <Show when={getTokenRaw()}>
+            <Show when={getTokenRaw() || getApiKeyRaw()}>
               <button
                 type="button"
                 onClick={() => { clearToken(); setToken(''); }}
@@ -90,9 +100,10 @@ export default function Settings() {
           <div class="flex items-center gap-3">
             <button
               type="submit"
-              class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
+              disabled={saving()}
+              class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50"
             >
-              Save & open catalog
+              {saving() ? 'Saving…' : 'Save & open catalog'}
             </button>
             <button
               type="button"
@@ -103,6 +114,12 @@ export default function Settings() {
               {testing() ? 'Testing…' : 'Test connection'}
             </button>
           </div>
+
+          <Show when={saveError()}>
+            <div class="text-sm px-3 py-2 rounded bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-300">
+              {saveError()}
+            </div>
+          </Show>
 
           <Show when={testResult()}>
             <div

@@ -343,6 +343,46 @@ async function setupCollections(pb: PocketBase): Promise<void> {
     }
   }
 
+  // Roles collection — STJÓRN A tracks role as a text slug on user_tenants,
+  // but the e2e harness uses a proper `roles` collection for FK integrity.
+  // Mirror the same shape here so the test infra matches production.
+  if (!existingNames.includes('roles')) {
+    try {
+      await pb.collections.create({
+        name: 'roles',
+        type: 'base',
+        schema: [{ name: 'name', type: 'text', required: true }],
+        listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
+      });
+      await pb.collection('roles').create({ name: 'viewer' });
+      await pb.collection('roles').create({ name: 'editor' });
+      await pb.collection('roles').create({ name: 'admin' });
+    } catch {
+    }
+  }
+
+  // Patch `last_tenant` onto the built-in auth collection — same as the
+  // e2e global-setup does. The auth record's last_tenant is STJÓRN A's
+  // tiebreaker for users in multiple tenants (see auth.ts:switchTenant).
+  // We also patch `tenant` here so STJÓRN A's test rules
+  // (`@request.auth.tenant = tenant`) can actually fire against auth
+  // users — without this, PB silently drops every non-auth field on
+  // create and the rules always evaluate to false.
+  try {
+    const authCol = await pb.collections.getOne('_pb_users_auth_');
+    const fields = (authCol.schema || []).map((f: any) => f.name);
+    const additions: any[] = [];
+    if (!fields.includes('last_tenant')) additions.push({ name: 'last_tenant', type: 'text' });
+    if (!fields.includes('tenant'))      additions.push({ name: 'tenant',      type: 'text' });
+    if (additions.length > 0) {
+      await pb.collections.update(authCol.id, {
+        schema: [...authCol.schema, ...additions],
+      });
+    }
+  } catch {
+    // best-effort
+  }
+
   // Second pass: resolve `_COLLECTION_ID_` placeholders in relation fields.
   // The first pass may have failed to create a relation because the target
   // collection didn't exist yet (e.g. `categories.media` → `media`).

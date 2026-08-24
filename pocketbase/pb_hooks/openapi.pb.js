@@ -230,6 +230,71 @@ var SPEC = {
                     "401": { $ref: "#/components/responses/Unauthorized" }
                 }
             }
+        },
+        "/stjorna/api-keys/exchange": {
+            post: {
+                tags: ["Public"],
+                summary: "Exchange an STJÓRN A API key for a STJÓRN A user JWT. STJÓRN A's collection rules reference @request.auth — PB only injects an auth record when it can verify a user JWT, so an STJÓRN A API key bearer alone returns 200 with `items: []` from /api/collections/* routes. This route returns per-tenant service-user credentials (email + password) that the caller then exchanges at /api/collections/users/auth-with-password for a real STJÓRN A JWT.",
+                requestBody: { required: false, content: { "application/json": { schema: { type: "object", properties: { key: { type: "string", description: "API key. Optional if the Authorization: Bearer header is set." } } } } } },
+                responses: {
+                    "200": { description: "Service-user credentials. Use them at /api/collections/users/auth-with-password to get a JWT, then send that JWT as Bearer for /api/collections/* requests.", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, tenant: { type: "string" }, email: { type: "string", description: "Service user email — POST to /api/collections/users/auth-with-password as {identity, password}" }, password: { type: "string", description: "Service user password — same call." }, instructions: { type: "string" }, permissions: { type: "object" } } } } } },
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "409": { description: "API key predates the exchange flow. Re-issue.", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, error: { type: "object", properties: { code: { type: "integer" }, message: { type: "string" }, legacy: { type: "boolean" } } } } } } } },
+                    "500": { $ref: "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/stjorna/stats": {
+            get: {
+                tags: ["Private", "Admin"],
+                summary: "Per-tenant statistics — counts, media storage (sum/largest/per-mime-type), and last-30-day activity. Admin callers must pass ?tenant=<id>. Tenant-user callers are locked to their own tenant regardless of ?tenant=.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "tenant", in: "query", required: false, schema: { type: "string" },
+                      description: "Tenant id. REQUIRED for PB-superuser callers. IGNORED for tenant-user callers (always uses their own tenant)." }
+                ],
+                responses: {
+                    "200": {
+                        description: "Stats snapshot",
+                        content: { "application/json": { schema: {
+                            type: "object",
+                            properties: {
+                                ok: { type: "boolean" },
+                                tenant: { type: "object", properties: {
+                                    id: { type: "string" }, name: { type: "string" }, slug: { type: "string" },
+                                    plan: { type: "string" }, custom_domain: { type: "string" }
+                                } },
+                                counts: { type: "object", properties: {
+                                    categories: { type: "integer" }, products: { type: "integer" },
+                                    media: { type: "integer" }, users: { type: "integer" }
+                                } },
+                                storage: { type: "object", properties: {
+                                    media_bytes: { type: "integer" },
+                                    media_count: { type: "integer" },
+                                    avg_media_bytes: { type: "integer" },
+                                    largest_media: { type: "object", nullable: true, properties: {
+                                        id: { type: "string" }, filename: { type: "string" },
+                                        bytes: { type: "integer" }, mime_type: { type: "string" }
+                                    } },
+                                    by_mime_type: { type: "array", items: { type: "object", properties: {
+                                        mime_type: { type: "string" }, count: { type: "integer" }, bytes: { type: "integer" }
+                                    } } }
+                                } },
+                                activity_30d: { type: "object", properties: {
+                                    products_created: { type: "integer" }, products_updated: { type: "integer" },
+                                    media_uploaded: { type: "integer" }, categories_created: { type: "integer" }
+                                } },
+                                generated_at: { type: "string", format: "date-time" }
+                            }
+                        } } }
+                    },
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            }
         }
     }
 };

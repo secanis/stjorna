@@ -190,13 +190,37 @@ function ProductMedia(props: { product: any }) {
           </div>
         }
       >
-        <img
-          src={fileUrl(props.product, list()[0].file, { thumb: '300x300' })}
-          alt={list()[0].filename || props.product.name}
-          class="w-full h-full object-cover"
-          loading="lazy"
-          onError={(e) => ((e.currentTarget.style.display = 'none'))}
-        />
+        <Show
+          when={list()[0].mime_type?.startsWith?.('video/')}
+          fallback={
+            <img
+              src={fileUrl(list()[0], list()[0].file || list()[0].filename, { thumb: '300x300' })}
+              alt={list()[0].filename || props.product.name}
+              class="w-full h-full object-cover"
+              loading="lazy"
+              onError={(e) => ((e.currentTarget.style.display = 'none'))}
+            />
+          }
+        >
+          {/* Thumbnails don't exist for videos — load the file itself.
+              PB returns the original mp4 with the right MIME so the
+              browser can stream it. controls is mandatory: without it
+              the user has no way to start playback. crossorigin=
+              "anonymous" opts into CORS so ORB doesn't block the
+              cross-origin load from the demo origin. PB sends
+              Access-Control-Allow-Origin: * for /api/files/ so this
+              works as long as the demo origin isn't an exotic one. */}
+          <video
+            src={fileUrl(list()[0], list()[0].file || list()[0].filename)}
+            class="w-full h-full object-cover"
+            controls
+            muted
+            playsinline
+            preload="metadata"
+            crossorigin="anonymous"
+            onError={(e) => ((e.currentTarget.style.display = 'none'))}
+          />
+        </Show>
       </Show>
     </div>
   );

@@ -7,6 +7,32 @@ import { pb } from '~/services/pocketbase';
 // @ts-ignore — swagger-ui-dist has no type declarations
 import swaggerCss from 'swagger-ui-dist/swagger-ui.css?url';
 
+// Builds the OpenAPI spec URL without triggering mixed-content in HTTPS
+// deployments.
+//
+// `VITE_PB_URL` is empty by default — meaning the FE and PB share an origin
+// via a reverse proxy (production nginx, helm ingress, or vite dev proxy) —
+// and we use a relative URL. When the operator explicitly sets an absolute
+// origin, we honour its protocol, but if it points at `http://` while the
+// page is HTTPS, we fall back to the page's protocol to avoid the browser's
+// "Mixed Content: The page was loaded over HTTPS, but requested an insecure
+// resource" block. Operators who genuinely serve PB over HTTP behind an
+// HTTPS proxy should leave `VITE_PB_URL` empty.
+function buildSpecUrl(pbUrl: string): string {
+  if (!pbUrl) return '/api/openapi.json';
+  // Already matches the page protocol → use as-is.
+  if (pbUrl.startsWith('//')) return `${pbUrl}/api/openapi.json`;
+  if (typeof window !== 'undefined') {
+    const pageIsHttps = window.location.protocol === 'https:';
+    const originIsHttp = pbUrl.startsWith('http://');
+    if (pageIsHttps && originIsHttp) {
+      // Strip http://, use protocol-relative — browser inherits https:.
+      return `${pbUrl.replace(/^http:/, '')}/api/openapi.json`;
+    }
+  }
+  return `${pbUrl}/api/openapi.json`;
+}
+
 export default function ApiDocs() {
   const navigate = useNavigate();
   let containerRef: HTMLDivElement | undefined;
@@ -35,8 +61,9 @@ export default function ApiDocs() {
       }
 
       const pbUrl = (import.meta.env.VITE_PB_URL as string)?.replace(/\/+$/, '') || '';
+      const specUrl = buildSpecUrl(pbUrl);
       const ui = SwaggerUIBundle({
-        url: `${pbUrl}/api/openapi.json`,
+        url: specUrl,
         domNode: containerRef,
         deepLinking: true,
         docExpansion: 'list',

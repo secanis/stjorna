@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { getPb, getPbUrl } from './setup.ts';
+import { getPb, getPbUrl } from '../setup.ts';
 import { createAdminClient } from './helpers/client.ts';
-import { createTenantFixture } from './helpers/fixtures.ts';
+import { createTenantFixture, createCategoryFixture } from './helpers/fixtures.ts';
 
 describe('API Keys — collection (PB admin only)', () => {
   let pb: ReturnType<typeof getPb>;
@@ -160,6 +160,18 @@ describe('API Keys — collection (PB admin only)', () => {
     expect(me.status).toBe(401);
   });
 
+  it('LIST degrades gracefully on a fresh deployment (zero rows)', async () => {
+    // PB admin re-auth (any test that issued keys left rows behind).
+    await pb.admins.authWithPassword('admin@test.stjorna.local', 'admin12345678test');
+    const res = await fetch(getPbUrl() + '/api/stjorna/api-keys?perPage=50', {
+      headers: { Authorization: 'Bearer ' + pb.authStore.token },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+    expect(Array.isArray(body.items)).toBe(true);
+  });
+
   it('expires: introspect rejects an expired key', async () => {
     const past = new Date(Date.now() - 60_000).toISOString();
     const issue = await fetch(getPbUrl() + '/api/stjorna/api-keys', {
@@ -173,5 +185,144 @@ describe('API Keys — collection (PB admin only)', () => {
       headers: { Authorization: 'Bearer ' + plaintext },
     });
     expect(me.status).toBe(401);
+  });
+
+  it('exchange: returns STJÓRN A user credentials that unlock /api/collections/*', async () => {
+    // Seed a couple of categories so we have something to fetch.
+    await pb.collection('categories').create(createCategoryFixture(tenantId, { name: 'Cat-Exchange-A' }));
+    await pb.collection('categories').create(createCategoryFixture(tenantId, { name: 'Cat-Exchange-B' }));
+
+    const issue = await fetch(getPbUrl() + '/api/stjorna/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pb.authStore.token },
+      body: JSON.stringify({ tenant: tenantId, name: 'exchange-flow' }),
+    });
+    expect(issue.status).toBe(200);
+    const { plaintext } = await issue.json();
+
+    // 1. exchange the API key
+    const ex = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + plaintext },
+    });
+    expect(ex.status).toBe(200);
+    const exBody = await ex.json();
+    expect(exBody.ok).toBe(true);
+    expect(exBody.tenant).toBe(tenantId);
+    expect(typeof exBody.email).toBe('string');
+    expect(exBody.email).toMatch(/^svc-/);
+    expect(exBody.email.endsWith('@stjorna.internal')).toBe(true);
+    expect(typeof exBody.password).toBe('string');
+    expect(exBody.password.length).toBeGreaterThanOrEqual(16);
+
+    // 2. exchange auth-with-password using the returned credentials
+    const authRes = await fetch(getPbUrl() + '/api/collections/users/auth-with-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identity: exBody.email, password: exBody.password }),
+    });
+    expect(authRes.status).toBe(200);
+    const authBody = await authRes.json();
+    expect(typeof authBody.token).toBe('string');
+    expect(authBody.token.split('.').length).toBe(3);
+
+    // 3. with the JWT, list categories — should now return the seeded rows.
+    const catRes = await fetch(getPbUrl() + '/api/collections/categories/records?perPage=200&filter=' + encodeURIComponent('tenant="' + tenantId + '"'), {
+      headers: { Authorization: 'Bearer ' + authBody.token },
+    });
+    expect(catRes.status).toBe(200);
+    const catBody = await catRes.json();
+    expect(Array.isArray(catBody.items)).toBe(true);
+    const slugs = catBody.items.map((c: any) => c.name);
+    expect(slugs).toContain('Cat-Exchange-A');
+    expect(slugs).toContain('Cat-Exchange-B');
+  });
+
+  it('exchange: rejects unknown bearer (no body, no header)', async () => {
+    const r = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    expect(r.status).toBe(400);
+  });
+
+  it('exchange: rejects a malformed key', async () => {
+    const r = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'not-a-key' }),
+    });
+    expect(r.status).toBe(401);
+  });
+
+  it('exchange: rejects a revoked key (after revoke, exchange returns 401)', async () => {
+    const issue = await fetch(getPbUrl() + '/api/stjorna/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pb.authStore.token },
+      body: JSON.stringify({ tenant: tenantId, name: 'exchange-revoke' }),
+    });
+    const { apiKey, plaintext } = await issue.json();
+
+    // revoke first
+    await fetch(getPbUrl() + '/api/stjorna/api-keys/' + apiKey.id, {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + pb.authStore.token },
+    });
+
+    const r = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + plaintext },
+    });
+    expect(r.status).toBe(401);
+  });
+
+  it('exchange: lazily backfills service-user credentials on legacy api_keys rows', async () => {
+    // Issue a key, then strip the service-user fields to simulate a
+    // pre-exchange-feature row that was around before the upgrade.
+    const issue = await fetch(getPbUrl() + '/api/stjorna/api-keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pb.authStore.token },
+      body: JSON.stringify({ tenant: tenantId, name: 'legacy-backfill' }),
+    });
+    const { apiKey, plaintext } = await issue.json();
+
+    // Wipe the service-user fields. The api_keys collection rules are
+    // null so only PB admin can do this — same trust level as the
+    // hook itself.
+    await pb.collection('api_keys').update(apiKey.id, {
+      service_user_id: '',
+      service_user_email: '',
+      service_user_password: '',
+    });
+
+    // Exchange should now lazy-mint a service user and succeed.
+    const ex = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + plaintext },
+    });
+    expect(ex.status).toBe(200);
+    const body = await ex.json();
+    expect(body.ok).toBe(true);
+    expect(body.backfilled).toBe(true);
+    expect(body.email).toMatch(/^svc-/);
+    expect(typeof body.password).toBe('string');
+    expect(body.password.length).toBeGreaterThanOrEqual(16);
+
+    // And the auth-with-password round-trip should work with the
+    // new credentials.
+    const auth = await fetch(getPbUrl() + '/api/collections/users/auth-with-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identity: body.email, password: body.password }),
+    });
+    expect(auth.status).toBe(200);
+    const authBody = await auth.json();
+    expect(typeof authBody.token).toBe('string');
+
+    // The api_keys row should now have the fields populated.
+    const reread = await pb.collection('api_keys').getOne(apiKey.id);
+    expect(typeof reread.service_user_id).toBe('string');
+    expect(reread.service_user_id.length).toBeGreaterThan(0);
   });
 });

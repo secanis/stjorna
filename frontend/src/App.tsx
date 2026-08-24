@@ -18,6 +18,8 @@ import ApiDocs from '~/pages/ApiDocs';
 import Activities from '~/pages/Activities';
 import Profile from '~/pages/Profile';
 import ApiKeys from '~/pages/ApiKeys';
+import Stats from '~/pages/Stats';
+import TenantStats from '~/pages/TenantStats';
 
 export default function App() {
   return (
@@ -41,6 +43,8 @@ export default function App() {
         <Route path="/tenants" component={TenantList} />
         <Route path="/tenants/new" component={TenantSettings} />
         <Route path="/tenants/:id" component={TenantSettings} />
+        <Route path="/tenants/:id/stats" component={TenantStats} />
+        <Route path="/stats" component={Stats} />
         <Route path="/api-docs" component={ApiDocs} />
         <Route path="/activities" component={Activities} />
         <Route path="/profile" component={Profile} />

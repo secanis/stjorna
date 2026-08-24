@@ -19,7 +19,7 @@ var SPEC = {
             Tenant: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, slug: { type: "string" }, description: { type: "string" }, users: { type: "array", items: { type: "string" } } } },
             Role: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, description: { type: "string" } } },
             UserTenant: { type: "object", properties: { id: { type: "string" }, user: { type: "string" }, tenant: { type: "string" }, role: { type: "string" } } },
-            Category: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, slug: { type: "string" }, description: { type: "string" }, tenant: { type: "string" } } },
+            Category: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, slug: { type: "string" }, description: { type: "string" }, tenant: { type: "string" }, media: { type: "string", description: "Optional media record id (single-relation)" } } },
             Product: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, slug: { type: "string" }, description: { type: "string" }, price: { type: "number" }, sku: { type: "string" }, tenant: { type: "string" }, category: { type: "string" }, media: { type: "array", items: { type: "string" } } } },
             Media: { type: "object", properties: { id: { type: "string" }, name: { type: "string" }, original_name: { type: "string" }, mime_type: { type: "string" }, size: { type: "integer" }, s3_url: { type: "string" }, thumbnail_url: { type: "string" }, tenant: { type: "string" } } },
             InstanceSettings: { type: "object", properties: { id: { type: "string" }, s3_bucket: { type: "string" }, s3_region: { type: "string" }, s3_endpoint: { type: "string" }, s3_access_key: { type: "string" } } },
@@ -155,6 +155,146 @@ var SPEC = {
         "/collections/user_tenants/records": {
             get: { tags: ["Admin"], summary: "List user-tenant assignments (admin only)", security: [{ bearerAuth: [] }], responses: { "200": { description: "Paginated list of user_tenants", content: { "application/json": { schema: { type: "object", properties: { items: { type: "array", items: { $ref: "#/components/schemas/UserTenant" } }, meta: { $ref: "#/components/schemas/ListMeta" } } } } } }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" } } },
             post: { tags: ["Admin"], summary: "Assign user to tenant (admin only)", security: [{ bearerAuth: [] }], requestBody: { required: true, content: { "application/json": { schema: { $ref: "#/components/schemas/UserTenant" } } } }, responses: { "200": { description: "Assignment created", content: { "application/json": { schema: { $ref: "#/components/schemas/UserTenant" } } } }, "401": { $ref: "#/components/responses/Unauthorized" }, "403": { $ref: "#/components/responses/Forbidden" } } }
+        },
+        "/api/backup/json": {
+            get: {
+                tags: ["Admin"], summary: "Download full backup as JSON manifest (admin only)", security: [{ bearerAuth: [] }],
+                responses: {
+                    "200": { description: "Backup manifest as JSON", content: { "application/json": { schema: { type: "object", properties: { version: { type: "string" }, kind: { type: "string" }, schema_version: { type: "integer" }, exported_at: { type: "string", format: "date-time" }, collections: { type: "object" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/backup/zip": {
+            get: {
+                tags: ["Admin"], summary: "Download full backup as ZIP (manifest + media files, admin only)", security: [{ bearerAuth: [] }],
+                responses: {
+                    "200": { description: "Backup ZIP archive", content: { "application/zip": { schema: { type: "string", format: "binary" } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/api/backup/import": {
+            post: {
+                tags: ["Admin"], summary: "Import a backup file (JSON or ZIP) into a target tenant. tenant admin OR pb_admin. Source = 'v1' (legacy STJÓRNA) or 'v3' (current).", security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "tenant", in: "query", required: true, schema: { type: "string" }, description: "Target tenant id" },
+                    { name: "source", in: "query", required: false, schema: { type: "string", enum: ["v1", "v3"], default: "v3" }, description: "Backup source format" }
+                ],
+                requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["tenant", "data_base64"], properties: { tenant: { type: "string" }, source: { type: "string", enum: ["v1", "v3"] }, filename: { type: "string" }, data_base64: { type: "string", description: "Base64-encoded file content (JSON manifest or ZIP)" } } } } } },
+                responses: {
+                    "200": { description: "Import result", content: { "application/json": { schema: { type: "object", properties: { success: { type: "boolean" }, stats: { type: "object", properties: { imported: { type: "object" }, skipped: { type: "object" }, warnings: { type: "array", items: { type: "string" } } } } } } }}},
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/stjorna/api-keys": {
+            post: { tags: ["Admin"], summary: "Issue a new API key for a tenant (PB superuser only). Plaintext returned EXACTLY ONCE in the response.", security: [{ bearerAuth: [] }],
+                requestBody: { required: true, content: { "application/json": { schema: { type: "object", required: ["tenant", "name"], properties: { tenant: { type: "string", description: "Tenant id" }, name: { type: "string" }, permissions: { type: "object", description: "Free-form permissions bag (e.g. scopes)" }, expires: { type: "string", format: "date-time" } } } } } },
+                responses: {
+                    "200": { description: "Key issued. plaintext field is shown only here.", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, apiKey: { type: "object" }, plaintext: { type: "string", description: "Plaintext API key. STORE NOW; never recoverable." }, warning: { type: "string" } } } } } },
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            },
+            get: { tags: ["Admin"], summary: "List API key metadata (never the secret). PB superuser only.", security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "page", in: "query", schema: { type: "integer", default: 1 } },
+                    { name: "perPage", in: "query", schema: { type: "integer", default: 50 } },
+                    { name: "tenant", in: "query", schema: { type: "string", description: "Filter by tenant id" } }
+                ],
+                responses: {
+                    "200": { description: "List of API key records", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, items: { type: "array", items: { type: "object" } }, page: { type: "integer" }, perPage: { type: "integer" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/stjorna/api-keys/{id}": {
+            parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+            delete: { tags: ["Admin"], summary: "Revoke an API key (PB superuser only). Sets revoked=true; row kept for audit.", security: [{ bearerAuth: [] }],
+                responses: {
+                    "200": { description: "Revoked", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, id: { type: "string" }, revoked: { type: "boolean" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/stjorna/api-keys/me": {
+            get: { tags: ["Public"], summary: "Introspect the bearer API key. Any caller — needs a valid, non-expired, non-revoked key.",
+                responses: {
+                    "200": { description: "Tenant + metadata for the verified key", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, tenant: { type: "string" }, id: { type: "string" }, prefix: { type: "string" }, permissions: { type: "object" }, expires: { type: "string", format: "date-time" } } } } } },
+                    "401": { $ref: "#/components/responses/Unauthorized" }
+                }
+            }
+        },
+        "/stjorna/api-keys/exchange": {
+            post: {
+                tags: ["Public"],
+                summary: "Exchange an STJÓRN A API key for a STJÓRN A user JWT. STJÓRN A's collection rules reference @request.auth — PB only injects an auth record when it can verify a user JWT, so an STJÓRN A API key bearer alone returns 200 with `items: []` from /api/collections/* routes. This route returns per-tenant service-user credentials (email + password) that the caller then exchanges at /api/collections/users/auth-with-password for a real STJÓRN A JWT.",
+                requestBody: { required: false, content: { "application/json": { schema: { type: "object", properties: { key: { type: "string", description: "API key. Optional if the Authorization: Bearer header is set." } } } } } },
+                responses: {
+                    "200": { description: "Service-user credentials. Use them at /api/collections/users/auth-with-password to get a JWT, then send that JWT as Bearer for /api/collections/* requests.", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, tenant: { type: "string" }, email: { type: "string", description: "Service user email — POST to /api/collections/users/auth-with-password as {identity, password}" }, password: { type: "string", description: "Service user password — same call." }, instructions: { type: "string" }, permissions: { type: "object" } } } } } },
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "409": { description: "API key predates the exchange flow. Re-issue.", content: { "application/json": { schema: { type: "object", properties: { ok: { type: "boolean" }, error: { type: "object", properties: { code: { type: "integer" }, message: { type: "string" }, legacy: { type: "boolean" } } } } } } } },
+                    "500": { $ref: "#/components/responses/NotFound" }
+                }
+            }
+        },
+        "/stjorna/stats": {
+            get: {
+                tags: ["Private", "Admin"],
+                summary: "Per-tenant statistics — counts, media storage (sum/largest/per-mime-type), and last-30-day activity. Admin callers must pass ?tenant=<id>. Tenant-user callers are locked to their own tenant regardless of ?tenant=.",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { name: "tenant", in: "query", required: false, schema: { type: "string" },
+                      description: "Tenant id. REQUIRED for PB-superuser callers. IGNORED for tenant-user callers (always uses their own tenant)." }
+                ],
+                responses: {
+                    "200": {
+                        description: "Stats snapshot",
+                        content: { "application/json": { schema: {
+                            type: "object",
+                            properties: {
+                                ok: { type: "boolean" },
+                                tenant: { type: "object", properties: {
+                                    id: { type: "string" }, name: { type: "string" }, slug: { type: "string" },
+                                    plan: { type: "string" }, custom_domain: { type: "string" }
+                                } },
+                                counts: { type: "object", properties: {
+                                    categories: { type: "integer" }, products: { type: "integer" },
+                                    media: { type: "integer" }, users: { type: "integer" }
+                                } },
+                                storage: { type: "object", properties: {
+                                    media_bytes: { type: "integer" },
+                                    media_count: { type: "integer" },
+                                    avg_media_bytes: { type: "integer" },
+                                    largest_media: { type: "object", nullable: true, properties: {
+                                        id: { type: "string" }, filename: { type: "string" },
+                                        bytes: { type: "integer" }, mime_type: { type: "string" }
+                                    } },
+                                    by_mime_type: { type: "array", items: { type: "object", properties: {
+                                        mime_type: { type: "string" }, count: { type: "integer" }, bytes: { type: "integer" }
+                                    } } }
+                                } },
+                                activity_30d: { type: "object", properties: {
+                                    products_created: { type: "integer" }, products_updated: { type: "integer" },
+                                    media_uploaded: { type: "integer" }, categories_created: { type: "integer" }
+                                } },
+                                generated_at: { type: "string", format: "date-time" }
+                            }
+                        } } }
+                    },
+                    "400": { $ref: "#/components/responses/BadRequest" },
+                    "401": { $ref: "#/components/responses/Unauthorized" },
+                    "403": { $ref: "#/components/responses/Forbidden" },
+                    "404": { $ref: "#/components/responses/NotFound" }
+                }
+            }
         }
     }
 };

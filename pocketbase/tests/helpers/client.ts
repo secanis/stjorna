@@ -19,16 +19,47 @@ export async function createTenantUser(
   const email = `user-${suffix}-${tenantId}@stjorna.test`;
   const password = 'testpassword123456';
 
+  // The `users` collection in STJÓRN A is PB's built-in `_pb_users_auth_`;
+  // it accepts email+password and that's it — every other field passed in
+  // the create body is silently dropped. So we set role / tenant on the
+  // `user_tenants` join row below instead, which is how STJÓRN A
+  // actually tracks tenant membership in production.
+  let userId = '';
   try {
-    await adminClient.collection('users').create({
+    const created = await adminClient.collection('users').create({
       email,
       password,
       passwordConfirm: password,
-      tenant: tenantId,
       name: `User for tenant ${tenantId}`,
-      role,
     });
+    userId = created?.id || '';
   } catch {
+    // Could already exist (idempotent test runs). Look it up below.
+  }
+  if (!userId) {
+    try {
+      const found = await adminClient.collection('users').getFirstListItem(`email="${email}"`);
+      userId = found?.id || '';
+    } catch {
+    }
+  }
+
+  if (userId) {
+    // Idempotent: ignore duplicate errors on re-runs.
+    try {
+      await adminClient.collection('user_tenants').create({
+        user: userId,
+        tenant: tenantId,
+        role,
+      });
+    } catch {
+    }
+    // last_tenant is STJÓRN A's tiebreaker for users in multiple tenants
+    // (see auth.ts:switchTenant). The stats hook uses it the same way.
+    try {
+      await adminClient.collection('users').update(userId, { last_tenant: tenantId });
+    } catch {
+    }
   }
 
   const pb = new PocketBase(getPb().baseUrl);
