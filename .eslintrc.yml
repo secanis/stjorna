@@ -1,0 +1,57 @@
+---
+# STJÓRNA — ESLint configuration.
+#
+# Codacy looks for ESLint configs at the REPO ROOT (not per-package) when
+# its ESLint tool is set to "Configuration file" mode. So even though
+# STJÓRNA is a monorepo with the SolidJS frontend under frontend/, the
+# ESLint config lives here. Rules below are scoped via `overrides` to
+# only apply to the frontend.
+#
+# Why we need it: Codacy's stock ESLint config applies eslint-plugin-react
+# to every .tsx file. STJÓRNA's frontend is SolidJS — React's
+# `react-in-jsx-scope` and `no-unknown-property` rules fire on every
+# SolidJS JSX line because SolidJS doesn't import React and uses `class`
+# instead of `className`. Same story for eslint-plugin-i18next (no i18n
+# wired up yet — tracked in #183) and eslint-plugin-compat (we target
+# modern evergreen browsers only).
+
+root: true
+
+# STJÓRN A is a monorepo. ESLint shouldn't poke at everything — only the
+# SolidJS frontend in frontend/. PocketBase hooks have their own goja
+# runtime; the helm chart and the demo app have different conventions.
+# We exclude everything else; the `overrides` block below re-enables
+# linting for frontend/ files only.
+ignorePatterns:
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/.git/**"
+  - "pocketbase/**"
+  - "helm/**"
+  - "demo/**"
+  - "scripts/**"
+  - "site/**"
+  - ".github/**"
+  - "test-results/**"
+  - "playwright-report/**"
+
+overrides:
+  - files:
+      - "frontend/**/*.ts"
+      - "frontend/**/*.tsx"
+      - "frontend/**/*.js"
+      - "frontend/**/*.jsx"
+    rules:
+      # React rules are false positives for SolidJS:
+      #   - SolidJS JSX doesn't require `import React from 'react'`
+      #   - SolidJS uses `class`, not `className`
+      react/react-in-jsx-scope: off
+      react/no-unknown-property: off
+
+      # i18next: STJÓRN A has no i18n wired up yet — tracked in #183.
+      # When i18n lands, this rule comes back as a real check.
+      i18next/no-literal-string: off
+
+      # compat: STJÓRN A targets modern evergreen browsers only.
+      compat/compat: off
