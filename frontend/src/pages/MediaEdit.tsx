@@ -1,11 +1,12 @@
-import { createSignal, Show, onMount, onCleanup } from 'solid-js';
+import { createSignal, Show, For, onMount, onCleanup } from 'solid-js';
 import { useNavigate, useParams } from '@solidjs/router';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { getMediaFileUrl, getMediaFileUrlAbsolute } from '~/utils/mediaUrl';
-import { Upload, X, AlertTriangle, Copy, Check } from 'lucide-solid';
-import type { Media } from '~/types';
+import { Upload, X, AlertTriangle, Copy, Check, Scissors, Trash2, ExternalLink } from 'lucide-solid';
+import { ImageCropperModal } from '~/components/media';
+import type { Media, Product, Category } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 const MAX_FILE_BYTES = 524288000; // 500 MiB — matches pocketbase/setup.ts media.file.maxSize
@@ -38,6 +39,10 @@ export default function MediaEdit() {
   const [imageError, setImageError] = createSignal<string | null>(null);
   const [loadError, setLoadError] = createSignal<string | null>(null);
   const [copied, setCopied] = createSignal<'file' | 'thumb' | null>(null);
+  const [cropperOpen, setCropperOpen] = createSignal(false);
+  const [usedInProducts, setUsedInProducts] = createSignal<Product[]>([]);
+  const [usedInCategories, setUsedInCategories] = createSignal<Category[]>([]);
+  const [usageLoading, setUsageLoading] = createSignal(false);
 
   onMount(async () => {
     await authStore.init();
@@ -171,6 +176,34 @@ export default function MediaEdit() {
       setFileUrl('');
       setThumbUrl('');
     }
+    fetchUsage(record.id);
+  };
+
+  const fetchUsage = async (mediaId: string) => {
+    const tenant = getCurrentTenant();
+    if (!tenant) return;
+    setUsageLoading(true);
+    try {
+      const tenantFilter = `tenant = "${tenant}"`;
+      const [products, categories] = await Promise.all([
+        pb.collection('products').getList<Product>(1, 200, {
+          filter: `${tenantFilter} && media ?~ "${mediaId}"`,
+          sort: 'name',
+        }),
+        pb.collection('categories').getList<Category>(1, 200, {
+          filter: `${tenantFilter} && media = "${mediaId}"`,
+          sort: 'name',
+        }),
+      ]);
+      setUsedInProducts(products.items);
+      setUsedInCategories(categories.items);
+    } catch (e: any) {
+      // Best-effort: usage data is non-critical.
+      setUsedInProducts([]);
+      setUsedInCategories([]);
+    } finally {
+      setUsageLoading(false);
+    }
   };
 
   const copyUrl = async (kind: 'file' | 'thumb') => {
@@ -185,8 +218,8 @@ export default function MediaEdit() {
     }
   };
 
-  const handleSubmit = async (e: Event) => {
-    e.preventDefault();
+  const saveRecord = async (options?: { redirect?: boolean }) => {
+    const redirect = options?.redirect !== false;
     setError('');
 
     const tenant = getCurrentTenant();
@@ -240,12 +273,49 @@ export default function MediaEdit() {
         }
         sidebarStore.bump();
         setSuccess(true);
-        setTimeout(() => navigate('/media'), 800);
+        if (redirect) {
+          setTimeout(() => navigate('/media'), 800);
+        }
       }
     } catch (e: any) {
       setError(describeApiError(e));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleSubmit = async (e: Event) => {
+    e.preventDefault();
+    await saveRecord();
+  };
+
+  const handleCropApply = async (blob: Blob) => {
+    const filename = formData().filename || formData().original_name || 'cropped.png';
+    // Change the stored filename on every crop so PocketBase treats it as a new
+    // file and regenerates thumbnails instead of serving cached ones.
+    const lastDot = filename.lastIndexOf('.');
+    const base = lastDot > 0 ? filename.slice(0, lastDot) : filename;
+    const ext = lastDot > 0 ? filename.slice(lastDot) : '.png';
+    const uniqueSuffix = Date.now();
+    const croppedFilename = `${base}-cropped-${uniqueSuffix}${ext}`;
+    const file = new File([blob], croppedFilename, { type: blob.type || formData().mime_type || 'image/png' });
+    setCropperOpen(false);
+    setFile(file);
+  };
+
+  const handleDelete = async () => {
+    if (!isEditing()) return;
+    const usedCount = usedInProducts().length + usedInCategories().length;
+    const message = usedCount > 0
+      ? `This media is used in ${usedInProducts().length} product(s) and ${usedInCategories().length} category(ies). Delete anyway?`
+      : 'Delete this media item?';
+    if (!confirm(message)) return;
+    try {
+      await pb.collection('media').delete(params.id!);
+      sidebarStore.bump();
+      navigate('/media');
+    } catch (e: any) {
+      setError(describeApiError(e));
     }
   };
 
@@ -326,6 +396,16 @@ export default function MediaEdit() {
                     }}
                     onLoad={() => setImageError(null)}
                   />
+                  <Show when={isEditing()}>
+                    <button
+                      type="button"
+                      onClick={() => setCropperOpen(true)}
+                      class="absolute top-2 left-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded shadow"
+                      title="Edit image"
+                    >
+                      <Scissors size={18} />
+                    </button>
+                  </Show>
                 </Show>
                 <Show when={isVideo()}>
                   <video
@@ -483,22 +563,63 @@ export default function MediaEdit() {
             </Show>
           </div>
 
-          <div class="bg-white dark:bg-gray-800 rounded-lg p-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Image Editing</h2>
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-3">
-              Crop and shape tools coming soon. Planned features:
-            </p>
-            <div class="flex flex-wrap gap-2">
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Free crop</span>
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Square (1:1)</span>
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Landscape (16:9)</span>
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Landscape (4:3)</span>
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Portrait (9:16)</span>
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Portrait (3:4)</span>
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Resize</span>
-              <span class="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded text-sm">Rotate</span>
+          <Show when={isEditing()}>
+            <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Used In</h2>
+
+              <Show when={usageLoading()}>
+                <div class="text-gray-500 dark:text-gray-400 text-sm">Loading usage…</div>
+              </Show>
+
+              <Show when={!usageLoading() && usedInProducts().length === 0 && usedInCategories().length === 0}>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">This media is not used in any products or categories.</p>
+              </Show>
+
+              <Show when={!usageLoading() && usedInProducts().length > 0}>
+                <div>
+                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Products</h3>
+                  <ul class="space-y-1">
+                    <For each={usedInProducts()}>
+                      {(product) => (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/products/${product.id}`)}
+                            class="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
+                          >
+                            <ExternalLink size={14} />
+                            {product.name}
+                          </button>
+                        </li>
+                      )}
+                    </For>
+                  </ul>
+                </div>
+              </Show>
+
+              <Show when={!usageLoading() && usedInCategories().length > 0}>
+                <div>
+                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categories</h3>
+                  <ul class="space-y-1">
+                    <For each={usedInCategories()}>
+                      {(category) => (
+                        <li>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/categories/${category.id}`)}
+                            class="inline-flex items-center gap-1.5 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
+                          >
+                            <ExternalLink size={14} />
+                            {category.name}
+                          </button>
+                        </li>
+                      )}
+                    </For>
+                  </ul>
+                </div>
+              </Show>
             </div>
-          </div>
+          </Show>
 
           <div class="flex gap-3">
             <button
@@ -515,9 +636,28 @@ export default function MediaEdit() {
             >
               Cancel
             </button>
+            <Show when={isEditing() && authStore.isEditorOrAbove()}>
+              <button
+                type="button"
+                onClick={handleDelete}
+                class="ml-auto bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded flex items-center gap-2"
+              >
+                <Trash2 size={18} />
+                Delete
+              </button>
+            </Show>
           </div>
         </form>
       </Show>
+
+      <ImageCropperModal
+        src={isEditing() && formData().file ? getMediaFileUrl(params.id!, formData().file) : ''}
+        filename={formData().filename || formData().original_name || 'image'}
+        mimeType={formData().mime_type}
+        open={cropperOpen()}
+        onApply={handleCropApply}
+        onClose={() => setCropperOpen(false)}
+      />
     </div>
   );
 }

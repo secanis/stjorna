@@ -15,8 +15,11 @@
     "test:e2e:fast": "playwright test"
   },
   "dependencies": {
+    "@ark-ui/solid": "^5.39.1",
     "@solidjs/router": "^0.15.3",
     "@tanstack/solid-query": "^5.62.16",
+    "@zag-js/image-cropper": "^1.43.3",
+    "clsx": "^2.1.1",
     "lucide-solid": "^1.21.0",
     "pocketbase": "^0.21.0",
     "solid-js": "^1.9.3",
