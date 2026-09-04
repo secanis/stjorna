@@ -11,7 +11,6 @@ import ProductList from '~/pages/ProductList';
 import ProductEdit from '~/pages/ProductEdit';
 import Settings from '~/pages/Settings';
 import InstanceSettings from '~/pages/InstanceSettings';
-import OidcSettings from '~/pages/OidcSettings';
 import UserManagement from '~/pages/UserManagement';
 import TenantList from '~/pages/TenantList';
 import TenantSettings from '~/pages/TenantSettings';
@@ -41,7 +40,6 @@ export default function App() {
                 <Route path="/products" component={ProductList} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/settings/instance" component={InstanceSettings} />
-                <Route path="/settings/oidc" component={OidcSettings} />
                 <Route path="/users" component={UserManagement} />
                 <Route path="/tenants" component={TenantList} />
                 <Route path="/tenants/new" component={TenantSettings} />

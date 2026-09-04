@@ -1,7 +1,5 @@
 import { createSignal, Show, For, onMount } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
-import { authStore } from '~/stores/auth';
 import { Save } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -43,9 +41,9 @@ function formatRoleMapping(mapping: Record<string, string>): string {
     .join(',');
 }
 
+// OIDC configuration section. Intended to be rendered inside the main
+// Settings page, which already handles auth and admin gating.
 export default function OidcSettings() {
-  const navigate = useNavigate();
-
   const [form, setForm] = createSignal<OidcFormData>({
     enabled: false,
     providerName: 'oidc',
@@ -73,16 +71,6 @@ export default function OidcSettings() {
   const [hasExistingSecret, setHasExistingSecret] = createSignal(false);
 
   onMount(async () => {
-    await authStore.init();
-    if (!authStore.isAuthenticated()) {
-      navigate('/login', { replace: true });
-      return;
-    }
-    if (!authStore.isPBAdmin) {
-      navigate('/', { replace: true });
-      return;
-    }
-
     try {
       // Load instance_settings OIDC mapping config.
       const settingsRes = await pb.collection('instance_settings').getList(1, 1);

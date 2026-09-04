@@ -1,6 +1,6 @@
 import { createSignal, onMount, Show, For, createEffect } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
-import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info, Shield } from 'lucide-solid';
+import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
@@ -15,7 +15,6 @@ const navItems = [
     { path: '/activities', label: 'Activities', icon: History, roles: ['editor', 'admin', 'pb_admin'] as const },
     { path: '/api-docs', label: 'API Docs', icon: BookOpen, roles: ['editor', 'admin', 'pb_admin'] as const },
     { path: '/settings', label: 'Settings', icon: Settings },
-    { path: '/settings/oidc', label: 'OIDC', icon: Shield, roles: ['pb_admin'] as const },
     { path: '/users', label: 'Users', icon: Users, roles: ['pb_admin'] as const, showCount: true },
     { path: '/tenants', label: 'Tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
     { path: '/api-keys', label: 'API Keys', icon: KeyRound, roles: ['pb_admin'] as const, showCount: true },
@@ -134,7 +133,7 @@ export default function Sidebar() {
                 <For each={visibleItems()}>
                     {(item) => {
                         const Icon = item.icon;
-                        const itemPath = () => (item.path === '/settings' && authStore.isPBAdmin ? '/settings/instance' : item.path);
+                        const itemPath = () => item.path;
                         const isActive = () => location.pathname === itemPath() || (itemPath() !== '/' && location.pathname.startsWith(itemPath()));
                         return (
                             <A
