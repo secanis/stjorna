@@ -141,6 +141,26 @@ export const authStore = {
     }
   },
 
+  async loginWithOAuth2(providerName: string, scopes?: string[]) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const authData = await pb.collection('users').authWithOAuth2({
+        provider: providerName,
+        scopes,
+        createData: { emailVisibility: false },
+      });
+      setUser(authData.record);
+      setIsPBAdmin(false);
+      await this.loadTenants();
+    } catch (e: any) {
+      setError(e.message || 'OIDC login failed');
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  },
+
   async loadTenants() {
     try {
       const userId = user()?.id || pb.authStore.model?.id;
