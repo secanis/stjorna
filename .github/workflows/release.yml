@@ -18,11 +18,11 @@
 #
 # Why the site lands AFTER the chart:
 #   The site has two hardcoded version strings — the `--version X.Y.Z` in the
-#   "Install via Helm" snippet and the `stjorna-X.Y.Z.tgz` link. Until now
-#   those were committed to source and went stale every release (e.g. rc2
-#   shipped but the site kept showing rc1). By publishing the site AFTER
-#   chart-releaser writes index.yaml, we can substitute the version from
-#   the live index.yaml at deploy time — the site always tracks the latest.
+#   "Install via Helm" snippet and the `stjorna-X.Y.Z.tgz` link. The source
+#   now uses a `@@CHART_VERSION@@` placeholder, and the publish-site job
+#   substitutes it with the chart version derived from the release tag. This
+#   avoids shipping a stale version to consumers and removes the brittle
+#   regex-based parse of the live index.yaml.
 #
 # Why chart-releaser can't run before bootstrap:
 #   chart-releaser-action refuses to bootstrap the pages branch with the
@@ -275,10 +275,9 @@ jobs:
 
   # -------------------------------------------------------------------------
   # 4. Publish the static site (landing + Swagger UI) to gh-pages.
-  # Runs AFTER release-helm so the just-written index.yaml carries the
-  # latest chart version. We parse the chart version out of index.yaml
-  # (with python+PyYAML, which is on every GHA runner) and substitute it
-  # into the two hardcoded spots in site/index.html before pushing.
+  # Runs AFTER release-helm so the chart is already published. The chart
+  # version is taken from the release tag output, and the `@@CHART_VERSION@@`
+  # placeholders in site/index.html are substituted before pushing.
   # Also refreshes openapi.json from a live PB container so the docs
   # always match the released image.
   # -------------------------------------------------------------------------
@@ -303,7 +302,13 @@ jobs:
           else
             TAG="${GITHUB_REF#refs/tags/}"
           fi
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag resolved. Push a v* tag or pass 'tag' input."
+            exit 1
+          fi
+          CHART_VERSION="${TAG#v}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
       - name: Refresh openapi.json from a live PB container
         # Boots the just-built PB image, fetches the public /api/openapi.json
         # (no auth required per pocketbase/pb_hooks/openapi.pb.js), kills the
@@ -361,28 +366,18 @@ jobs:
           docker stop stjorna-pb-spec
           echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
       - name: Inject latest chart version into site/index.html
-        # chart-releaser just wrote index.yaml on gh-pages. Read the latest
-        # version from it and substitute the two hardcoded version strings
-        # in the site:
-        #   - line 94: `helm install ... --version 3.0.0-rc1`
-        #   - line 114: `<a href="stjorna-3.0.0-rc1.tgz">`
-        # If substitution fails (e.g. no entries yet — first release), the
-        # site keeps whatever's in the source tree, which is harmless.
+        # The source page uses a placeholder so it never ships with a stale
+        # version. Substitute it with the chart version that matches this
+        # release (e.g. 3.0.0-rc3). This is more reliable than parsing the
+        # just-updated index.yaml, which may not be visible yet.
         run: |
-          git fetch origin gh-pages
-          LATEST="$(git show origin/gh-pages:index.yaml \
-              | python3 -c 'import sys,yaml; d=yaml.safe_load(sys.stdin); print(d["entries"]["stjorna"][0]["version"])' \
-              || true)"
-          if [ -z "$LATEST" ]; then
-            echo "::warning::Could not resolve latest chart version from index.yaml — leaving site/index.html untouched."
-            exit 0
+          CHART_VERSION="${{ steps.version.outputs.chart_version }}"
+          if [ -z "$CHART_VERSION" ]; then
+            echo "::error::Could not resolve chart version from release tag."
+            exit 1
           fi
-          echo "Latest chart version: $LATEST"
-          # Substitute both hardcoded spots. Pattern matches semver+prerelease
-          # (e.g. 3.0.0, 3.0.0-rc1). The trailing 'g' is not strictly needed
-          # but makes the regex unambiguous on multi-digit versions.
-          sed -i -E "s|(--version )[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?|\1$LATEST|g" site/index.html
-          sed -i -E "s|(stjorna-)[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?(\.tgz)|\1$LATEST\3|g" site/index.html
+          echo "Injecting chart version: $CHART_VERSION"
+          sed -i "s|@@CHART_VERSION@@|$CHART_VERSION|g" site/index.html
           echo "Patched site/index.html — relevant lines:"
           grep -n -E "(stjorna-)|--version" site/index.html
       - name: Push site to gh-pages

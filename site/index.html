@@ -91,7 +91,7 @@
       <h2>Install via Helm</h2>
       <pre><code>helm repo add stjorna https://secanis.github.io/stjorna
 helm repo update
-helm install my-stjorna stjorna/stjorna --version 3.0.0-rc1</code></pre>
+helm install my-stjorna stjorna/stjorna --version @@CHART_VERSION@@</code></pre>
       <p>The chart provisions a PocketBase backend, a SolidJS frontend, an optional S3 (Garage) dependency, and a TLS-terminating ingress. See the
         <a href="https://github.com/secanis/stjorna/blob/main/helm/stjorna/README.md">chart README</a> for the full set of values.</p>
     </div>
@@ -111,7 +111,7 @@ helm install my-stjorna stjorna/stjorna --version 3.0.0-rc1</code></pre>
       <h2>Helm chart repository contents</h2>
       <ul>
         <li><a href="index.yaml"><code>index.yaml</code></a> — chart repository index (consumed by <code>helm search</code>)</li>
-        <li><a href="stjorna-3.0.0-rc1.tgz"><code>stjorna-3.0.0-rc1.tgz</code></a> — packaged chart for the latest release</li>
+        <li><a href="stjorna-@@CHART_VERSION@@.tgz"><code>stjorna-@@CHART_VERSION@@.tgz</code></a> — packaged chart for the latest release</li>
       </ul>
     </div>
 
