@@ -82,7 +82,7 @@ export default function OidcSettings() {
           enabled: !!s.oidc_enabled,
           providerName: String(s.oidc_provider_name || 'oidc'),
           displayName: String(s.oidc_display_name || 'Sign in with OIDC'),
-          clientId: '',
+          clientId: String(s.oidc_client_id || ''),
           clientSecret: '',
           authUrl: String(s.oidc_auth_url || ''),
           tokenUrl: String(s.oidc_token_url || ''),
@@ -141,6 +141,11 @@ export default function OidcSettings() {
       if (!f.clientId) { setError('Client ID is required'); setSaving(false); return; }
       if (!f.authUrl) { setError('Authorization URL is required'); setSaving(false); return; }
       if (!f.tokenUrl) { setError('Token URL is required'); setSaving(false); return; }
+      if (!f.pkce && !f.clientSecret && !hasExistingSecret()) {
+        setError('Client secret is required when PKCE is disabled');
+        setSaving(false);
+        return;
+      }
       const mapping = parseRoleMapping(f.roleMapping);
       if (!mapping['_admin'] || !mapping['_editor'] || !mapping['_viewer']) {
         setError('Role mapping must define _admin, _editor and _viewer suffixes');
@@ -314,7 +319,11 @@ export default function OidcSettings() {
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {hasExistingSecret() && !form().clientSecret ? 'Leave blank to keep the existing secret.' : ''}
+                {form().pkce
+                  ? 'Optional when PKCE is enabled.'
+                  : hasExistingSecret() && !form().clientSecret
+                    ? 'Required unless PKCE is enabled. Leave blank to keep the existing secret.'
+                    : 'Required unless PKCE is enabled.'}
               </p>
             </div>
           </div>
