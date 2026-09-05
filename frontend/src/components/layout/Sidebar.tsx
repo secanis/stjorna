@@ -133,7 +133,7 @@ export default function Sidebar() {
                 <For each={visibleItems()}>
                     {(item) => {
                         const Icon = item.icon;
-                        const itemPath = () => (item.path === '/settings' && authStore.isPBAdmin ? '/settings/instance' : item.path);
+                        const itemPath = () => item.path;
                         const isActive = () => location.pathname === itemPath() || (itemPath() !== '/' && location.pathname.startsWith(itemPath()));
                         return (
                             <A

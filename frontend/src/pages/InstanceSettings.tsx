@@ -94,7 +94,7 @@ export default function InstanceSettings() {
   };
 
   return (
-    <div class="space-y-6 max-w-2xl">
+    <div class="space-y-6 max-w-3xl">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Instance Settings</h1>
 
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">

@@ -100,6 +100,7 @@ const collectionsToCreate = [
       { name: 'user', type: 'relation', options: { collectionId: '_pb_users_auth_', maxSelect: 1, cascadeDelete: false } },
       { name: 'tenant', type: 'relation', options: { collectionId: 'tenants', maxSelect: 1, cascadeDelete: false } },
       { name: 'role', type: 'relation', options: { collectionId: 'roles', maxSelect: 1, cascadeDelete: false } },
+      { name: 'source', type: 'text' },
     ],
     listRule: '@request.auth.admin = true || user.id = @request.auth.id',
     viewRule: '@request.auth.id != ""',
@@ -123,6 +124,22 @@ const collectionsToCreate = [
       { name: 's3_secret_key', type: 'text' },
       { name: 's3_force_path_style', type: 'bool' },
       { name: 'storage_configured', type: 'bool' },
+      { name: 'oidc_enabled', type: 'bool' },
+      { name: 'oidc_provider_name', type: 'text' },
+      { name: 'oidc_display_name', type: 'text' },
+      { name: 'oidc_client_id', type: 'text' },
+      { name: 'oidc_client_secret', type: 'text' },
+      { name: 'oidc_auth_url', type: 'text' },
+      { name: 'oidc_token_url', type: 'text' },
+      { name: 'oidc_user_info_url', type: 'text' },
+      { name: 'oidc_scopes', type: 'text' },
+      { name: 'oidc_group_claim', type: 'text' },
+      { name: 'oidc_group_separator', type: 'text' },
+      { name: 'oidc_default_role', type: 'text' },
+      { name: 'oidc_role_mapping', type: 'text' },
+      { name: 'oidc_auto_create_tenants', type: 'bool' },
+      { name: 'oidc_deny_on_no_group', type: 'bool' },
+      { name: 'oidc_disable_password_login', type: 'bool' },
     ],
     listRule: null,
     viewRule: null,
@@ -234,16 +251,16 @@ async function ensureCollections(pb: PocketBase): Promise<void> {
   }
 }
 
-async function ensureUsersLastTenantField(pb: PocketBase): Promise<void> {
+async function ensureUsersAuthFields(pb: PocketBase): Promise<void> {
   try {
     const usersCollection = await pb.collections.getOne('_pb_users_auth_');
     const hasLastTenant = usersCollection.schema.some(f => f.name === 'last_tenant');
-    if (!hasLastTenant) {
-      const updatedSchema = [
-        ...usersCollection.schema,
-        { name: 'last_tenant', type: 'text' },
-      ];
-      await pb.collections.update(usersCollection.id, { schema: updatedSchema });
+    const hasName = usersCollection.schema.some(f => f.name === 'name');
+    const newFields: any[] = [];
+    if (!hasLastTenant) newFields.push({ name: 'last_tenant', type: 'text' });
+    if (!hasName) newFields.push({ name: 'name', type: 'text' });
+    if (newFields.length > 0) {
+      await pb.collections.update(usersCollection.id, { schema: [...usersCollection.schema, ...newFields] });
     }
   } catch (e: any) {
     console.warn('Failed to update users collection:', e.message);
@@ -518,7 +535,7 @@ export default function Setup() {
 
       await pb.admins.authWithPassword(adminEmail(), adminPassword());
       await ensureCollections(pb);
-      await ensureUsersLastTenantField(pb);
+      await ensureUsersAuthFields(pb);
       setStep('storage');
     } catch (e: any) {
       setError(e.message || 'Failed to create admin');

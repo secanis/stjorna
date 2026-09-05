@@ -4,6 +4,8 @@ import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import type { Tenant } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import OidcSettings from './OidcSettings';
+import InstanceSettings from './InstanceSettings';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -20,24 +22,9 @@ export default function Settings() {
   const [error, setError] = createSignal('');
   const [success, setSuccess] = createSignal(false);
 
-  onMount(async () => {
-    await authStore.init();
-    if (!authStore.isAuthenticated()) {
-      navigate('/login', { replace: true });
-      return;
-    }
-
+  const loadTenantSettings = async () => {
     const tenantId = authStore.currentTenant;
-
-    if (!tenantId) {
-      if (authStore.isPBAdmin) {
-        navigate('/tenants', { replace: true });
-        return;
-      }
-      setError('No tenant selected. Please use the tenant selector in the header.');
-      setLoading(false);
-      return;
-    }
+    if (!tenantId) return;
 
     try {
       const tenant = await pb.collection('tenants').getOne<Tenant>(tenantId);
@@ -50,9 +37,28 @@ export default function Settings() {
       });
     } catch (e: any) {
       setError(e.message || 'Failed to load tenant settings');
-    } finally {
-      setLoading(false);
     }
+  };
+
+  onMount(async () => {
+    await authStore.init();
+    if (!authStore.isAuthenticated()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    const tenantId = authStore.currentTenant;
+
+    if (!tenantId && !authStore.isPBAdmin) {
+      setError('No tenant selected. Please use the tenant selector in the header.');
+      setLoading(false);
+      return;
+    }
+
+    if (tenantId) {
+      await loadTenantSettings();
+    }
+    setLoading(false);
   });
 
   const handleSubmit = async (e: Event) => {
@@ -83,8 +89,8 @@ export default function Settings() {
   };
 
   return (
-    <div class="space-y-6 max-w-2xl">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenant Settings</h1>
+    <div class="space-y-8 max-w-3xl">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
 
       <Show when={loading()}>
         <div class="text-gray-500 dark:text-gray-400">Loading...</div>
@@ -107,8 +113,19 @@ export default function Settings() {
         </div>
       </Show>
 
-      <Show when={!loading() && !error()}>
-        <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
+      <Show when={authStore.isPBAdmin}>
+        <section class="space-y-4">
+          <InstanceSettings />
+        </section>
+        <section class="space-y-4">
+          <OidcSettings />
+        </section>
+      </Show>
+
+      <Show when={!loading() && !error() && authStore.currentTenant}>
+        <section>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tenant Settings</h2>
+          <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
             <input
@@ -175,6 +192,7 @@ export default function Settings() {
             {saving() ? 'Saving...' : 'Save Settings'}
           </button>
         </form>
+        </section>
       </Show>
     </div>
   );
