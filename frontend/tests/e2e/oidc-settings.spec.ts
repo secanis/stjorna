@@ -7,6 +7,7 @@ test.describe('OIDC settings section', () => {
 
     await page.goto(ctx.frontendUrl + '/settings');
     await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Instance Settings' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'OIDC Settings' })).toBeVisible();
 
     // Form should load with sensible defaults.
@@ -30,7 +31,8 @@ test.describe('OIDC settings section', () => {
     await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tenant Settings' })).toBeVisible();
 
-    // OIDC configuration is admin-only and should not be rendered.
+    // Admin-only sections should not be rendered for regular users.
+    await expect(page.getByRole('heading', { name: 'Instance Settings' })).not.toBeVisible();
     await expect(page.getByRole('heading', { name: 'OIDC Settings' })).not.toBeVisible();
     await expect(page.locator('label:has-text("Provider slot") + input')).toHaveCount(0);
   });

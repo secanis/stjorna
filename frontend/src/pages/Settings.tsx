@@ -5,6 +5,7 @@ import { authStore } from '~/stores/auth';
 import type { Tenant } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import OidcSettings from './OidcSettings';
+import InstanceSettings from './InstanceSettings';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -113,6 +114,9 @@ export default function Settings() {
       </Show>
 
       <Show when={authStore.isPBAdmin}>
+        <section class="space-y-4">
+          <InstanceSettings />
+        </section>
         <section class="space-y-4">
           <OidcSettings />
         </section>
