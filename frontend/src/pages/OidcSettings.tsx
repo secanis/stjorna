@@ -24,6 +24,19 @@ interface OidcFormData {
 
 const DEFAULT_ROLE_MAPPING = '_admin:admin,_editor:editor,_viewer:viewer';
 
+// In PocketBase v0.22.7 generic OIDC slots are configured at the app settings
+// level, not inside the auth collection. The providerName stored in
+// instance_settings maps to one of these keys.
+const SLOT_SETTINGS_KEY: Record<string, string> = {
+  oidc: 'oidcAuth',
+  oidc2: 'oidc2Auth',
+  oidc3: 'oidc3Auth',
+};
+
+function providerSettingsKey(name: string): string {
+  return SLOT_SETTINGS_KEY[name] || `${name}Auth`;
+}
+
 function parseRoleMapping(input: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const part of input.split(',')) {
@@ -74,13 +87,15 @@ export default function OidcSettings() {
     try {
       // Load instance_settings OIDC mapping config.
       const settingsRes = await pb.collection('instance_settings').getList(1, 1);
+      let providerName = 'oidc';
       if (settingsRes.items.length > 0) {
         const s = settingsRes.items[0];
         setSettingsId(s.id);
+        providerName = String(s.oidc_provider_name || 'oidc');
         const rm = String(s.oidc_role_mapping || '');
         setForm({
           enabled: !!s.oidc_enabled,
-          providerName: String(s.oidc_provider_name || 'oidc'),
+          providerName,
           displayName: String(s.oidc_display_name || 'Sign in with OIDC'),
           clientId: String(s.oidc_client_id || ''),
           clientSecret: '',
@@ -98,30 +113,28 @@ export default function OidcSettings() {
         });
       }
 
-      // Load users collection OAuth2 provider config.
-      const usersColl = await pb.collections.getOne('_pb_users_auth_');
-      const oauth2: any = usersColl.oauth2 || {};
-      const provider = (oauth2.providers || []).find((p: any) =>
-        p.name === form().providerName || p.name === 'oidc'
-      );
-      if (provider) {
+      // Load the actual OIDC provider config from PB app settings.
+      const appSettings: any = await pb.settings.getAll();
+      const key = providerSettingsKey(providerName);
+      const provider: any = appSettings[key] || {};
+      if (provider && typeof provider === 'object') {
         setForm((f) => ({
           ...f,
-          providerName: String(provider.name || f.providerName),
+          providerName,
           displayName: String(provider.displayName || f.displayName),
-          clientId: String(provider.clientId || ''),
-          authUrl: String(provider.authURL || ''),
-          tokenUrl: String(provider.tokenURL || ''),
-          userInfoUrl: String(provider.userInfoURL || ''),
-          scopes: Array.isArray(provider.scopes) ? provider.scopes.join(',') : f.scopes,
+          clientId: String(provider.clientId || f.clientId || ''),
+          authUrl: String(provider.authUrl || f.authUrl || ''),
+          tokenUrl: String(provider.tokenUrl || f.tokenUrl || ''),
+          userInfoUrl: String(provider.userApiUrl || f.userInfoUrl || ''),
           pkce: provider.pkce !== false,
+          enabled: !!provider.enabled,
         }));
         setHasExistingSecret(!!provider.clientSecret);
       }
 
       // Reflect current password auth state.
-      const passwordAuth: any = (usersColl as any).passwordAuth || {};
-      setForm((f) => ({ ...f, disablePasswordLogin: passwordAuth.enabled === false }));
+      const emailAuth: any = appSettings.emailAuth || {};
+      setForm((f) => ({ ...f, disablePasswordLogin: emailAuth.enabled === false }));
     } catch (e: any) {
       setError(e.message || 'Failed to load OIDC settings');
     } finally {
@@ -141,8 +154,11 @@ export default function OidcSettings() {
       if (!f.clientId) { setError('Client ID is required'); setSaving(false); return; }
       if (!f.authUrl) { setError('Authorization URL is required'); setSaving(false); return; }
       if (!f.tokenUrl) { setError('Token URL is required'); setSaving(false); return; }
-      if (!f.pkce && !f.clientSecret && !hasExistingSecret()) {
-        setError('Client secret is required when PKCE is disabled');
+      // PocketBase v0.22.7 requires a client secret for the generic OIDC slot
+      // even when PKCE is enabled. Leaving it blank is only allowed when an
+      // existing secret is already stored.
+      if (!f.clientSecret && !hasExistingSecret()) {
+        setError('Client secret is required');
         setSaving(false);
         return;
       }
@@ -162,7 +178,7 @@ export default function OidcSettings() {
 
     try {
       // Save instance_settings mapping config.
-      const settingsPayload = {
+      const instancePayload = {
         oidc_enabled: f.enabled,
         oidc_provider_name: f.providerName,
         oidc_display_name: f.displayName,
@@ -181,49 +197,33 @@ export default function OidcSettings() {
       };
 
       if (settingsId()) {
-        await pb.collection('instance_settings').update(settingsId()!, settingsPayload);
+        await pb.collection('instance_settings').update(settingsId()!, instancePayload);
       } else {
-        const created = await pb.collection('instance_settings').create(settingsPayload);
+        const created = await pb.collection('instance_settings').create(instancePayload);
         setSettingsId(created.id);
       }
 
-      // Update users collection OAuth2 provider config.
-      const usersColl = await pb.collections.getOne('_pb_users_auth_');
-      const oauth2: any = usersColl.oauth2 || { enabled: false, mappedFields: {}, providers: [] };
-      const mappedFields = oauth2.mappedFields || { id: '', name: 'name', username: '', avatarURL: '' };
-
-      let providers = (oauth2.providers || []).filter((p: any) => p.name !== f.providerName);
-
-      const newProvider: any = {
-        name: f.providerName,
+      // Update the actual OIDC provider config in PB app settings.
+      const key = providerSettingsKey(f.providerName);
+      const providerConfig: any = {
+        enabled: f.enabled,
         clientId: f.clientId,
-        authURL: f.authUrl,
-        tokenURL: f.tokenUrl,
-        userInfoURL: f.userInfoUrl,
+        authUrl: f.authUrl,
+        tokenUrl: f.tokenUrl,
+        userApiUrl: f.userInfoUrl,
         displayName: f.displayName,
         pkce: f.pkce,
-        extra: {},
       };
-      // Only send secret when user typed one or we are keeping an existing one.
+      // Only send a new secret when the user typed one. Omitting it keeps the
+      // existing secret on the server.
       if (f.clientSecret) {
-        newProvider.clientSecret = f.clientSecret;
-      }
-      if (f.scopes) {
-        newProvider.scopes = f.scopes.split(',').map((s) => s.trim()).filter(Boolean);
-      }
-      if (f.enabled) {
-        providers.push(newProvider);
+        providerConfig.clientSecret = f.clientSecret;
       }
 
-      await pb.collections.update(usersColl.id, {
-        oauth2: {
-          enabled: f.enabled,
-          mappedFields,
-          providers,
-        },
-        passwordAuth: {
+      await pb.settings.update({
+        [key]: providerConfig,
+        emailAuth: {
           enabled: !f.disablePasswordLogin,
-          identityFields: ['email'],
         },
       });
 
@@ -319,11 +319,9 @@ export default function OidcSettings() {
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {form().pkce
-                  ? 'Optional when PKCE is enabled.'
-                  : hasExistingSecret() && !form().clientSecret
-                    ? 'Required unless PKCE is enabled. Leave blank to keep the existing secret.'
-                    : 'Required unless PKCE is enabled.'}
+                {hasExistingSecret() && !form().clientSecret
+                  ? 'Required by PocketBase for the OIDC slot. Leave blank to keep the existing secret.'
+                  : 'Required by PocketBase for the OIDC slot, even with PKCE enabled.'}
               </p>
             </div>
           </div>
