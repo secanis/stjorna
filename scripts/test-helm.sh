@@ -244,6 +244,7 @@ helm install stjorna "$CHART_DIR" \
   --set "pocketbase.persistence.storageClass=standard" \
   --set "pocketbase.image.pullPolicy=Never" \
   --set "frontend.image.pullPolicy=Never" \
+  --set "pocketbase.hooks.mountFromConfigMap=false" \
   --set "pocketbase.image.tag=$TAG" \
   --set "frontend.image.tag=$TAG" \
   || fail "helm install failed"

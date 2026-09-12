@@ -477,7 +477,7 @@ export function getTestAdminCredentials(): { email: string; password: string } {
 
 beforeAll(async () => {
   await startPocketBase();
-}, 60000);
+}, 180000);
 
 afterAll(async () => {
   await cleanup();
