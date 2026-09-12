@@ -1,5 +1,4 @@
 import PocketBase from 'pocketbase';
-import { afterAll, beforeAll } from 'vitest';
 
 const PB_PORT = 8090;
 const PB_URL = `http://localhost:${PB_PORT}`;
@@ -75,8 +74,8 @@ export async function startPocketBase(): Promise<PocketBase> {
 
     // First-boot PocketBase can take a while (especially on CI runners
     // with cold caches) to create the initial superuser, so give it
-    // up to 60s.
-    const deadline = Date.now() + 60_000;
+    // up to 180s.
+    const deadline = Date.now() + 180_000;
     let lastError: unknown = null;
     while (Date.now() < deadline) {
       const pb = new PocketBase(PB_URL);
@@ -101,7 +100,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     }
 
     const detail = lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(`Failed to start PocketBase: ${PB_URL} not healthy after 60s. Last error: ${detail}`);
+    throw new Error(`Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}`);
   };
 
   try {
@@ -474,11 +473,3 @@ export function getPbUrl(): string {
 export function getTestAdminCredentials(): { email: string; password: string } {
   return { email: ADMIN_EMAIL, password: ADMIN_PASSWORD };
 }
-
-beforeAll(async () => {
-  await startPocketBase();
-}, 180000);
-
-afterAll(async () => {
-  await cleanup();
-});
