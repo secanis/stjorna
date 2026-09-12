@@ -13,60 +13,47 @@
 // - categories doesn't exist yet → no-op (wait for setup wizard)
 // - categories exists, media field already present → no-op (idempotent)
 // - categories exists, no media field → add the field
-//
-// Note: PB 0.22.7 exits the serve process if a migration throws during
-// startup, so we early-return on the "not ready" case rather than
-// throwing. Setup.tsx has been updated to create categories WITH the
-// media field on fresh installs, so this migration mainly helps PBs
-// that were set up before that fix.
 
-migrate((db) => {
-  const dao = new Dao(db);
-
+migrate((app) => {
   let categories;
   try {
-    categories = dao.findCollectionByNameOrId("categories");
+    categories = app.findCollectionByNameOrId("categories");
   } catch (_) {
     return; // categories doesn't exist yet — setup wizard hasn't run
   }
 
-  if (categories.schema.getFieldByName("media")) {
+  if (categories.fields.getByName("media")) {
     return; // already there
   }
 
   let media;
   try {
-    media = dao.findCollectionByNameOrId("media");
+    media = app.findCollectionByNameOrId("media");
   } catch (_) {
     return; // media collection doesn't exist either — wait for setup
   }
 
-  categories.schema.addField(
-    new SchemaField({
+  categories.fields.add(
+    new RelationField({
       name: "media",
-      type: "relation",
-      options: {
-        collectionId: media.id,
-        maxSelect: 1,
-        cascadeDelete: false,
-      },
+      collectionId: media.id,
+      maxSelect: 1,
+      cascadeDelete: false,
     }),
   );
 
-  return dao.saveCollection(categories);
-}, (db) => {
-  const dao = new Dao(db);
-
+  app.save(categories);
+}, (app) => {
   let categories;
   try {
-    categories = dao.findCollectionByNameOrId("categories");
+    categories = app.findCollectionByNameOrId("categories");
   } catch (_) {
     return;
   }
 
-  const field = categories.schema.getFieldByName("media");
+  const field = categories.fields.getByName("media");
   if (!field) return;
 
-  categories.schema.removeField(field.id);
-  return dao.saveCollection(categories);
+  categories.fields.removeByName(field.id);
+  app.save(categories);
 });

@@ -1,301 +1,33 @@
 import { createSignal, Show, onMount, createEffect } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import PocketBase from 'pocketbase';
-import { checkHasAdmins } from '~/stores/auth';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
-type Step = 'connect' | 'admin' | 'storage' | 'collections' | 'tenant' | 'link' | 'done';
-
-const collectionsToCreate = [
-  {
-    name: 'roles',
-    schema: [
-      { name: 'name', type: 'text', required: true },
-    ],
-    listRule: '@request.auth.admin = true',
-    viewRule: '@request.auth.id != ""',
-    createRule: '@request.auth.admin = true',
-    updateRule: '@request.auth.admin = true',
-    deleteRule: '@request.auth.admin = true',
-  },
-  {
-    name: 'tenants',
-    schema: [
-      { name: 'name', type: 'text', required: true },
-      { name: 'slug', type: 'text', required: true },
-      { name: 'plan', type: 'select', options: { values: ['free', 'starter', 'professional', 'enterprise'], maxSelect: 1 } },
-      { name: 'custom_domain', type: 'text' },
-      { name: 'theme_config', type: 'json', options: { maxSize: 2000000 } },
-      { name: 'users', type: 'relation', options: { collectionId: '_pb_users_auth_', maxSelect: 99, cascadeDelete: false } },
-    ],
-    listRule: '',
-    viewRule: '@request.auth.id != ""',
-    createRule: '',
-    updateRule: '',
-    deleteRule: '',
-  },
-  {
-    name: 'categories',
-    schema: [
-      { name: 'tenant', type: 'relation', options: { collectionId: 'tenants', maxSelect: 1, cascadeDelete: false } },
-      { name: 'name', type: 'text', required: true },
-      { name: 'slug', type: 'text', required: true },
-      { name: 'description', type: 'text' },
-      { name: 'active', type: 'bool' },
-      { name: 'sort_order', type: 'number' },
-      { name: 'media', type: 'relation', options: { collectionId: 'media', maxSelect: 1, cascadeDelete: false } },
-    ],
-    listRule: '@request.auth.id != ""',
-    viewRule: '@request.auth.id != ""',
-    createRule: '@request.auth.id != ""',
-    updateRule: '@request.auth.id != "" || @request.auth.admin = true',
-    deleteRule: '@request.auth.id != "" || @request.auth.admin = true',
-  },
-  {
-    name: 'products',
-    schema: [
-      { name: 'tenant', type: 'relation', options: { collectionId: 'tenants', maxSelect: 1, cascadeDelete: false } },
-      { name: 'category', type: 'relation', options: { collectionId: 'categories', maxSelect: 1, cascadeDelete: false } },
-      { name: 'name', type: 'text', required: true },
-      { name: 'slug', type: 'text', required: true },
-      { name: 'price', type: 'number' },
-      { name: 'description', type: 'editor' },
-      { name: 'media', type: 'relation', options: { collectionId: 'media', maxSelect: 99, cascadeDelete: false } },
-      { name: 'active', type: 'bool' },
-      { name: 'sort_order', type: 'number' },
-      { name: 'custom_fields', type: 'json', options: { maxSize: 2000000 } },
-    ],
-    listRule: '@request.auth.id != ""',
-    viewRule: '@request.auth.id != ""',
-    createRule: '@request.auth.id != ""',
-    updateRule: '@request.auth.id != "" || @request.auth.admin = true',
-    deleteRule: '@request.auth.id != "" || @request.auth.admin = true',
-  },
-  {
-    name: 'media',
-    schema: [
-      { name: 'tenant', type: 'relation', options: { collectionId: 'tenants', maxSelect: 1, cascadeDelete: false } },
-      { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: 524288000, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
-      { name: 'filename', type: 'text' },
-      { name: 'original_name', type: 'text' },
-      { name: 'mime_type', type: 'text' },
-      { name: 'size', type: 'number' },
-      { name: 'width', type: 'number' },
-      { name: 'height', type: 'number' },
-      { name: 's3_key', type: 'text' },
-      { name: 's3_url', type: 'url' },
-      { name: 'thumbnail_url', type: 'url' },
-      { name: 'usage_count', type: 'number' },
-      { name: 'createdUser', type: 'relation', options: { collectionId: '_pb_users_auth_', maxSelect: 1, cascadeDelete: false } },
-    ],
-    listRule: '@request.auth.id != ""',
-    viewRule: '@request.auth.id != ""',
-    createRule: '@request.auth.id != ""',
-    updateRule: '@request.auth.id != "" || @request.auth.admin = true',
-    deleteRule: '@request.auth.id != "" || @request.auth.admin = true',
-  },
-  {
-    name: 'user_tenants',
-    schema: [
-      { name: 'user', type: 'relation', options: { collectionId: '_pb_users_auth_', maxSelect: 1, cascadeDelete: false } },
-      { name: 'tenant', type: 'relation', options: { collectionId: 'tenants', maxSelect: 1, cascadeDelete: false } },
-      { name: 'role', type: 'relation', options: { collectionId: 'roles', maxSelect: 1, cascadeDelete: false } },
-      { name: 'source', type: 'text' },
-    ],
-    listRule: '@request.auth.admin = true || user.id = @request.auth.id',
-    viewRule: '@request.auth.id != ""',
-    createRule: '@request.auth.admin = true',
-    updateRule: '@request.auth.admin = true',
-    deleteRule: '@request.auth.admin = true',
-  },
-  {
-    name: 'instance_settings',
-    schema: [
-      { name: 'instance_name', type: 'text' },
-      { name: 'instance_url', type: 'text' },
-      { name: 'instance_logo_url', type: 'url' },
-      { name: 'instance_tagline', type: 'text' },
-      { name: 'setup_done', type: 'bool' },
-      { name: 'storage_type', type: 'text' },
-      { name: 's3_bucket', type: 'text' },
-      { name: 's3_region', type: 'text' },
-      { name: 's3_endpoint', type: 'text' },
-      { name: 's3_access_key', type: 'text' },
-      { name: 's3_secret_key', type: 'text' },
-      { name: 's3_force_path_style', type: 'bool' },
-      { name: 'storage_configured', type: 'bool' },
-      { name: 'oidc_enabled', type: 'bool' },
-      { name: 'oidc_provider_name', type: 'text' },
-      { name: 'oidc_display_name', type: 'text' },
-      { name: 'oidc_client_id', type: 'text' },
-      { name: 'oidc_client_secret', type: 'text' },
-      { name: 'oidc_auth_url', type: 'text' },
-      { name: 'oidc_token_url', type: 'text' },
-      { name: 'oidc_user_info_url', type: 'text' },
-      { name: 'oidc_scopes', type: 'text' },
-      { name: 'oidc_group_claim', type: 'text' },
-      { name: 'oidc_group_separator', type: 'text' },
-      { name: 'oidc_default_role', type: 'text' },
-      { name: 'oidc_role_mapping', type: 'text' },
-      { name: 'oidc_auto_create_tenants', type: 'bool' },
-      { name: 'oidc_deny_on_no_group', type: 'bool' },
-      { name: 'oidc_disable_password_login', type: 'bool' },
-    ],
-    listRule: null,
-    viewRule: null,
-    createRule: null,
-    updateRule: '@request.auth.admin = true',
-    deleteRule: null,
-  },
-];
-
-async function ensureCollections(pb: PocketBase): Promise<void> {
-  const existing = await pb.collections.getFullList({ perPage: 200 });
-  const existingNames = new Set(existing.map(c => c.name.toLowerCase()));
-
-  const phase1Names = ['roles', 'tenants', 'media'];
-  const phase2Names = ['categories', 'products', 'user_tenants'];
-  const phase3Names = ['instance_settings'];
-
-  const usersId = (await pb.collections.getOne('_pb_users_auth_')).id;
-
-  let tenantsId: string | null = null;
-  let rolesId: string | null = null;
-  let mediaId: string | null = null;
-  let categoriesId: string | null = null;
-
-  // Resolve placeholder names in relation fields (`tenants`, `_pb_users_auth_`,
-  // `roles`, `categories`, `media`, `products`) to real collection IDs. Only
-  // replaces when the target ID is known — fields that reference collections
-  // not yet created are left with their string name for PB to resolve.
-  const replaceCollectionId = (col: any): any => ({
-    ...col,
-    schema: col.schema.map((field: any) => {
-      if (field.type !== 'relation' || !field.options?.collectionId) return field;
-      const name = field.options.collectionId;
-      let targetId: string | null = null;
-      if (name === 'tenants' && tenantsId) targetId = tenantsId;
-      else if (name === '_pb_users_auth_' && usersId) targetId = usersId;
-      else if (name === 'roles' && rolesId) targetId = rolesId;
-      else if (name === 'categories' && categoriesId) targetId = categoriesId;
-      else if (name === 'media' && mediaId) targetId = mediaId;
-      if (targetId) {
-        return { ...field, options: { ...field.options, collectionId: targetId } };
-      }
-      return field;
-    }),
-  });
-
-  for (const name of phase1Names) {
-    if (!existingNames.has(name)) {
-      const colTemplate = collectionsToCreate.find(c => c.name === name)!;
-      const col = replaceCollectionId(colTemplate);
-      try {
-        const created = await pb.collections.create(col);
-        console.log(`[Setup] Created collection: ${name}`);
-        if (name === 'tenants') tenantsId = created.id;
-        if (name === 'roles') rolesId = created.id;
-        if (name === 'media') mediaId = created.id;
-      } catch (e: any) {
-        console.warn(`[Setup] Failed to create ${name}:`, e.status, JSON.stringify(e.data));
-      }
-    } else {
-      const col = await pb.collections.getFirstListItem(`name="${name}"`);
-      if (name === 'tenants') tenantsId = col.id;
-      if (name === 'roles') rolesId = col.id;
-      if (name === 'media') mediaId = col.id;
-    }
-  }
-
-  if (!rolesId) {
-    console.warn('Could not get roles collection ID');
-    return;
-  }
-
-  if (!existingNames.has('roles')) {
-    await pb.collection('roles').create({ name: 'viewer' });
-    await pb.collection('roles').create({ name: 'editor' });
-    await pb.collection('roles').create({ name: 'admin' });
-    console.log('[Setup] Created default roles');
-  }
-
-  if (!tenantsId) {
-    console.warn('Could not get tenants collection ID');
-    return;
-  }
-
-  for (const name of phase2Names) {
-    if (!existingNames.has(name)) {
-      const colTemplate = collectionsToCreate.find(c => c.name === name)!;
-      const col = replaceCollectionId(colTemplate);
-      try {
-        const created = await pb.collections.create(col);
-        console.log(`[Setup] Created collection: ${name}`);
-        if (name === 'categories') categoriesId = created.id;
-      } catch (e: any) {
-        console.warn(`[Setup] Failed to create ${name}:`, e.status, JSON.stringify(e.data));
-      }
-    }
-  }
-
-  for (const name of phase3Names) {
-    if (!existingNames.has(name)) {
-      const col = collectionsToCreate.find(c => c.name === name)!;
-      try {
-        await pb.collections.create(col);
-        console.log(`[Setup] Created collection: ${name}`);
-      } catch (e: any) {
-        console.warn(`[Setup] Failed to create ${name}:`, e.status, JSON.stringify(e.data));
-      }
-    }
-  }
-}
-
-async function ensureUsersAuthFields(pb: PocketBase): Promise<void> {
-  try {
-    const usersCollection = await pb.collections.getOne('_pb_users_auth_');
-    const hasLastTenant = usersCollection.schema.some(f => f.name === 'last_tenant');
-    const hasName = usersCollection.schema.some(f => f.name === 'name');
-    const newFields: any[] = [];
-    if (!hasLastTenant) newFields.push({ name: 'last_tenant', type: 'text' });
-    if (!hasName) newFields.push({ name: 'name', type: 'text' });
-    if (newFields.length > 0) {
-      await pb.collections.update(usersCollection.id, { schema: [...usersCollection.schema, ...newFields] });
-    }
-  } catch (e: any) {
-    console.warn('Failed to update users collection:', e.message);
-  }
-}
+type Step = 'admin' | 'storage' | 'tenant' | 'link' | 'done';
 
 export default function Setup() {
   const navigate = useNavigate();
 
+  const resolvePbUrl = () =>
+    (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') ||
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090');
+
   onMount(async () => {
-    const envUrl = (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '');
-    const initialUrl = envUrl || '';
-    if (initialUrl) {
-      try {
-        const checkPb = new PocketBase(initialUrl);
-        try {
-          const settings = await checkPb.collection('instance_settings').getList(1, 1);
-          if (settings.items.length > 0 && settings.items[0].setup_done === true) {
-            navigate('/login', { replace: true });
-            return;
-          }
-        } catch (e: any) {
-          if (e.status !== 404) console.warn('Setup check warning:', e.message);
-        }
-      } catch {}
+    try {
+      const checkPb = new PocketBase(resolvePbUrl());
+      const settings = await checkPb.collection('instance_settings').getList(1, 1);
+      if (settings.items.length > 0 && settings.items[0].setup_done === true) {
+        navigate('/login', { replace: true });
+      }
+    } catch (e: any) {
+      if (e.status !== 404) console.warn('Setup check warning:', e.message);
     }
   });
 
-  const [step, setStep] = createSignal<Step>('connect');
-  const [pbUrl, setPbUrl] = createSignal(
-    ((import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || 'http://localhost:8090')
-  );
+  const [step, setStep] = createSignal<Step>('admin');
+  const [pbUrl] = createSignal(resolvePbUrl());
   const [adminEmail, setAdminEmail] = createSignal('');
   const [adminPassword, setAdminPassword] = createSignal('');
-  const [adminPasswordConfirm, setAdminPasswordConfirm] = createSignal('');
   const [storageType, setStorageType] = createSignal<'local' | 's3'>('local');
   const [s3Bucket, setS3Bucket] = createSignal('');
   const [s3Region, setS3Region] = createSignal('');
@@ -497,48 +229,20 @@ export default function Setup() {
     };
   };
 
-  const handleConnect = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const pb = new PocketBase(pbUrl());
-      await pb.health.check();
-
-      const hasAdmins = await checkHasAdmins.call({ pb } as any);
-      if (hasAdmins) {
-        setStep('admin');
-      } else {
-        setStep('admin');
-      }
-    } catch (e: any) {
-      setError(`Cannot connect to PocketBase at ${pbUrl()}: ${e.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateAdmin = async () => {
+  const handleSuperuserLogin = async () => {
     setLoading(true);
     setError('');
     try {
       const pb = new PocketBase(pbUrl());
 
-      try {
-        await pb.admins.create({
-          email: adminEmail(),
-          password: adminPassword(),
-          passwordConfirm: adminPasswordConfirm(),
-        });
-      } catch (e: any) {
-        if (e.status !== 400) throw e;
-      }
-
-      await pb.admins.authWithPassword(adminEmail(), adminPassword());
-      await ensureCollections(pb);
-      await ensureUsersAuthFields(pb);
+      // In PB v0.40+ superusers live in the _superusers collection and the
+      // backend entrypoint already bootstraps the first one from the env vars.
+      // The setup UI only logs in with those credentials; the schema is created
+      // by the backend migrations before the wizard runs.
+      await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
       setStep('storage');
     } catch (e: any) {
-      setError(e.message || 'Failed to create admin');
+      setError(e.message || 'Superuser login failed');
     } finally {
       setLoading(false);
     }
@@ -553,7 +257,7 @@ export default function Setup() {
     if (storageType() === 's3') {
       try {
         const pb = new PocketBase(pbUrl());
-        await pb.admins.authWithPassword(adminEmail(), adminPassword());
+        await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
         await saveS3Settings(pb);
       } catch (e: any) {
         setError(`Could not save S3 settings: ${e?.message || e}`);
@@ -568,7 +272,7 @@ export default function Setup() {
     setError('');
     try {
       const pb = new PocketBase(pbUrl());
-      await pb.admins.authWithPassword(adminEmail(), adminPassword());
+      await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
       const tenant = await pb.collection('tenants').create({
         name: tenantName(),
         slug: tenantSlug(),
@@ -589,7 +293,7 @@ export default function Setup() {
     setError('');
     try {
       const pb = new PocketBase(pbUrl());
-      await pb.admins.authWithPassword(adminEmail(), adminPassword());
+      await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
       const tenants = await pb.collection('tenants').getList(1, 1, {
         filter: `slug = "${(window as any).__setupTenantSlug}"`,
       });
@@ -609,7 +313,7 @@ export default function Setup() {
         adminUser = await pb.collection('users').create({
           email: adminEmail(),
           password: adminPassword(),
-          passwordConfirm: adminPasswordConfirm(),
+          passwordConfirm: adminPassword(),
           name: 'Admin',
         });
       }
@@ -655,55 +359,32 @@ export default function Setup() {
 
         <div class="mb-6">
           <div class="flex justify-between text-xs text-gray-600 dark:text-gray-500 mb-2">
-            <span class={['connect', 'admin', 'storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>1. Connect</span>
-            <span class={['admin', 'storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>2. Admin</span>
-            <span class={['storage', 'collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>3. Storage</span>
-            <span class={['collections', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>4. Schema</span>
-            <span class={['tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>5. Tenant</span>
-            <span class={step() === 'link' ? 'text-blue-600 dark:text-blue-400' : ''}>6. Link</span>
+            <span class={['admin', 'storage', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>1. Superuser</span>
+            <span class={['storage', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>2. Storage</span>
+            <span class={['tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>3. Tenant</span>
+            <span class={step() === 'link' ? 'text-blue-600 dark:text-blue-400' : ''}>4. Link</span>
           </div>
           <div class="h-1 bg-gray-50 dark:bg-gray-700 rounded">
             <div
               class="h-1 bg-blue-500 rounded transition-all duration-300"
               style={{
-                width: step() === 'connect' ? '16%'
-                  : step() === 'admin' ? '32%'
-                  : step() === 'storage' ? '48%'
-                  : step() === 'collections' ? '64%'
-                  : step() === 'tenant' ? '80%'
+                width: step() === 'admin' ? '25%'
+                  : step() === 'storage' ? '50%'
+                  : step() === 'tenant' ? '75%'
                   : '100%'
               }}
             />
           </div>
         </div>
 
-        <Show when={step() === 'connect'}>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PocketBase URL</label>
-              <input
-                type="url"
-                value={pbUrl()}
-                onInput={(e) => setPbUrl(e.currentTarget.value)}
-                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-                placeholder="http://localhost:8090"
-              />
-            </div>
-            <button
-              onClick={handleConnect}
-              disabled={loading()}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
-            >
-              {loading() ? 'Connecting...' : 'Connect'}
-            </button>
-          </div>
-        </Show>
-
         <Show when={step() === 'admin'}>
           <div class="space-y-4">
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Enter your admin credentials:</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">
+              Log in with the PocketBase superuser configured in your docker-compose environment
+              (<code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_EMAIL</code> / <code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_PASSWORD</code>).
+            </p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Admin Email</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Superuser Email</label>
               <input
                 type="email"
                 value={adminEmail()}
@@ -717,26 +398,16 @@ export default function Setup() {
                 type="password"
                 value={adminPassword()}
                 onInput={(e) => setAdminPassword(e.currentTarget.value)}
-                autocomplete="new-password"
-                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
-              <input
-                type="password"
-                value={adminPasswordConfirm()}
-                autocomplete="new-password"
-                onInput={(e) => setAdminPasswordConfirm(e.currentTarget.value)}
+                autocomplete="current-password"
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
             <button
-              onClick={handleCreateAdmin}
-              disabled={loading() || !adminEmail() || !adminPassword() || adminPassword() !== adminPasswordConfirm()}
+              onClick={handleSuperuserLogin}
+              disabled={loading() || !adminEmail() || !adminPassword()}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
-              {loading() ? 'Setting up...' : 'Continue'}
+              {loading() ? 'Logging in...' : 'Continue'}
             </button>
           </div>
         </Show>

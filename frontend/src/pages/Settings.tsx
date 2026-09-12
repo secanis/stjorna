@@ -4,8 +4,6 @@ import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import type { Tenant } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
-import OidcSettings from './OidcSettings';
-import InstanceSettings from './InstanceSettings';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -47,9 +45,14 @@ export default function Settings() {
       return;
     }
 
+    if (authStore.isPBAdmin) {
+      navigate('/settings/general', { replace: true });
+      return;
+    }
+
     const tenantId = authStore.currentTenant;
 
-    if (!tenantId && !authStore.isPBAdmin) {
+    if (!tenantId) {
       setError('No tenant selected. Please use the tenant selector in the header.');
       setLoading(false);
       return;
@@ -111,15 +114,6 @@ export default function Settings() {
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
           Settings saved successfully!
         </div>
-      </Show>
-
-      <Show when={authStore.isPBAdmin}>
-        <section class="space-y-4">
-          <InstanceSettings />
-        </section>
-        <section class="space-y-4">
-          <OidcSettings />
-        </section>
       </Show>
 
       <Show when={!loading() && !error() && authStore.currentTenant}>

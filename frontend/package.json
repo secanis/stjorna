@@ -21,7 +21,7 @@
     "@zag-js/image-cropper": "^1.43.3",
     "clsx": "^2.1.1",
     "lucide-solid": "^1.21.0",
-    "pocketbase": "^0.21.0",
+    "pocketbase": "^0.28.0",
     "solid-js": "^1.9.3",
     "swagger-ui-dist": "^5.32.8"
   },

@@ -11,7 +11,21 @@ services:
             # - ./pocketbase/pb_data:/app/pb_data
             - ./pocketbase/pb_hooks:/app/pb_hooks
         environment:
-            - PB_SECRET=${PB_SECRET:-$(openssl rand -hex 32)}
+            # Create the first superuser automatically. Override in .env for real
+            # deployments; defaults below are for local development only.
+            - PB_SUPERUSER_EMAIL=${PB_SUPERUSER_EMAIL:-admin@stjorna.local}
+            - PB_SUPERUSER_PASSWORD=${PB_SUPERUSER_PASSWORD:-changeme}
+            # PB_SECRET must be exactly 32 ASCII characters if set.
+            - PB_SECRET=${PB_SECRET:-}
+            - PB_AUTOMIGRATE=${PB_AUTOMIGRATE:-true}
+            # Superuser IP whitelist (space-separated IPs/CIDRs).
+            # Use 0.0.0.0/0 (default) to allow all; set real ranges to restrict.
+            - PB_SUPERUSER_IPS=${PB_SUPERUSER_IPS:-0.0.0.0/0}
+            # Optional: log generated superuser OTP codes to stdout when SMTP is
+            # not configured. Accepted values: "1", "true" or "yes".
+            # NEVER enable this in production — OTP codes are authentication
+            # secrets and anyone with log access can use them.
+            - STJORNA_LOG_OTP=${STJORNA_LOG_OTP:-}
         restart: unless-stopped
         healthcheck:
             test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:8090/api/health']

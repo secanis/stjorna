@@ -8,7 +8,7 @@ RUN apk add --no-cache \
 
 WORKDIR /app
 
-ARG PB_VERSION=0.22.7
+ARG PB_VERSION=0.40.2
 ARG PB_ARCH=linux_amd64
 
 RUN wget -q https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_${PB_ARCH}.zip && \
@@ -17,8 +17,10 @@ RUN wget -q https://github.com/pocketbase/pocketbase/releases/download/v${PB_VER
 
 COPY pb_migrations /app/pb_migrations
 COPY pb_hooks /app/pb_hooks
+COPY entrypoint.sh /app/entrypoint.sh
 
-RUN chown -R pocketbase:pocketbase /app
+RUN chmod +x /app/entrypoint.sh && \
+    chown -R pocketbase:pocketbase /app
 
 USER pocketbase
 
@@ -26,5 +28,4 @@ EXPOSE 8090
 
 VOLUME ["/app/pb_data"]
 
-ENTRYPOINT ["/app/pocketbase"]
-CMD ["serve", "--http", "0.0.0.0:8090", "--dir", "/app/pb_data", "--hooksDir", "/app/pb_hooks"]
+ENTRYPOINT ["/app/entrypoint.sh"]

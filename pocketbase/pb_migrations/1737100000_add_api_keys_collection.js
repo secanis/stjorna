@@ -17,29 +17,24 @@
 // All four access rules are set to `null` so STJÓRN A user JWTs cannot
 // list/view/update/delete keys directly — every access goes through the
 // admin-only custom routes in pb_hooks/api_keys.pb.js.
-//
-// PB 0.22.7 exits the serve process if a migration throws during
-// startup, so every step is wrapped in try/return.
 
-migrate((db) => {
-  const dao = new Dao(db);
-
+migrate((app) => {
   // ---- Step 1: ensure api_keys collection exists ----
   let apiKeys;
   try {
-    apiKeys = dao.findCollectionByNameOrId("api_keys");
+    apiKeys = app.findCollectionByNameOrId("api_keys");
   } catch (_) {
     apiKeys = new Collection({
       name: "api_keys",
       type: "base",
-      schema: [],
+      fields: [],
       listRule: null,
       viewRule: null,
       createRule: null,
       updateRule: null,
       deleteRule: null,
     });
-    dao.saveCollection(apiKeys);
+    app.save(apiKeys);
   }
 
   // ---- Step 2: ensure required fields ----
@@ -48,32 +43,26 @@ migrate((db) => {
   // on first-boot migrations). The hook enforces that the tenant
   // referenced actually exists.
   const fieldDefs = [
-    { name: "tenant",      type: "text", required: true,  options: { min: 1, maxLen: 100 } },
-    { name: "name",        type: "text", required: true,  options: { min: 1, maxLen: 200 } },
-    { name: "prefix",      type: "text", required: true,  options: { min: 1, maxLen: 32, pattern: "^[a-zA-Z0-9_]+$" } },
-    { name: "key_hash",    type: "text", required: true,  options: { min: 1, maxLen: 256 } },
-    { name: "permissions", type: "json", required: false, options: { maxSize: 4096 } },
-    { name: "last_used",   type: "date", required: false, options: {} },
-    { name: "expires",     type: "date", required: false, options: {} },
-    { name: "revoked",     type: "bool", required: false, options: {} },
-    { name: "created_by",  type: "text", required: false, options: { maxLen: 100 } },
+    new TextField({ name: "tenant", required: true, min: 1, max: 100 }),
+    new TextField({ name: "name", required: true, min: 1, max: 200 }),
+    new TextField({ name: "prefix", required: true, min: 1, max: 32, pattern: "^[a-zA-Z0-9_]+$" }),
+    new TextField({ name: "key_hash", required: true, min: 1, max: 256 }),
+    new JSONField({ name: "permissions", maxSize: 4096 }),
+    new DateField({ name: "last_used" }),
+    new DateField({ name: "expires" }),
+    new BoolField({ name: "revoked" }),
+    new TextField({ name: "created_by", max: 100 }),
   ];
 
-  // Re-fetch the schema model — `getFieldByName` is a method on the
-  // schema collection, not the record.
-  const schemaFieldByName = (name) => {
-    try { return apiKeys.schema.getFieldByName(name); }
-    catch (_) { return null; }
-  };
-
-  const newFields = [];
-  for (const def of fieldDefs) {
-    if (schemaFieldByName(def.name)) continue;
-    newFields.push(new SchemaField(def));
+  let changed = false;
+  for (const f of fieldDefs) {
+    if (apiKeys.fields.getByName(f.name)) continue;
+    apiKeys.fields.add(f);
+    changed = true;
   }
-  if (newFields.length > 0) {
-    for (const f of newFields) apiKeys.schema.addField(f);
-    dao.saveCollection(apiKeys);
+
+  if (changed) {
+    app.save(apiKeys);
   }
 
   // ---- Step 3: lock all rules (collection access via the custom route only) ----
@@ -87,13 +76,12 @@ migrate((db) => {
     apiKeys.createRule = null;
     apiKeys.updateRule = null;
     apiKeys.deleteRule = null;
-    dao.saveCollection(apiKeys);
+    app.save(apiKeys);
   }
-}, (db) => {
+}, (app) => {
   // Rollback: drop the api_keys collection (idempotent via try/catch).
-  const dao = new Dao(db);
   try {
-    const apiKeys = dao.findCollectionByNameOrId("api_keys");
-    dao.deleteCollection(apiKeys);
+    const apiKeys = app.findCollectionByNameOrId("api_keys");
+    app.delete(apiKeys);
   } catch (_) {}
 });

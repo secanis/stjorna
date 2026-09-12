@@ -1,6 +1,6 @@
 import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { User, Lock, Sun, Moon, Monitor } from 'lucide-solid';
+import { User, Lock, Sun, Moon, Monitor, Shield, Mail, KeyRound } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { themeStore, type ThemeMode } from '~/stores/theme';
@@ -48,6 +48,61 @@ export default function Profile() {
   const [pwSaving, setPwSaving] = createSignal(false);
   const [pwError, setPwError] = createSignal('');
   const [pwSuccess, setPwSuccess] = createSignal('');
+
+  // ── Security / MFA ───────────────────────────────────────────────────
+  const [authMethods, setAuthMethods] = createSignal<any>(null);
+  const [collectionConfig, setCollectionConfig] = createSignal<any>(null);
+  const [secLoading, setSecLoading] = createSignal(true);
+  const [secSaving, setSecSaving] = createSignal(false);
+  const [secError, setSecError] = createSignal('');
+  const [secSuccess, setSecSuccess] = createSignal('');
+
+  const collectionName = () => (authStore.isPBAdmin ? '_superusers' : 'users');
+
+  const loadSecurity = async () => {
+    setSecLoading(true);
+    try {
+      const colName = collectionName();
+      const methods = await pb.collection(colName).listAuthMethods();
+      const config = await pb.collections.getOne(colName);
+      setAuthMethods(methods);
+      setCollectionConfig(config);
+    } catch (e: any) {
+      console.warn('[Profile] failed to load security settings:', e.message);
+    } finally {
+      setSecLoading(false);
+    }
+  };
+
+  const handleSecuritySave = async (e: Event) => {
+    e.preventDefault();
+    if (!authStore.isPBAdmin) return;
+    setSecSaving(true);
+    setSecError('');
+    setSecSuccess('');
+    try {
+      const col = collectionConfig();
+      await pb.collections.update(col.id, {
+        otp: {
+          enabled: !!col.otp?.enabled,
+          duration: col.otp?.duration ?? 180,
+          length: col.otp?.length ?? 8,
+        },
+        mfa: {
+          enabled: !!col.mfa?.enabled,
+          duration: col.mfa?.duration ?? 1800,
+          rule: col.mfa?.rule ?? '',
+        },
+      });
+      setSecSuccess('Security settings saved.');
+      setTimeout(() => setSecSuccess(''), 3000);
+      await loadSecurity();
+    } catch (e: any) {
+      setSecError(describeApiError(e));
+    } finally {
+      setSecSaving(false);
+    }
+  };
 
   const handleChangePassword = async (e: Event) => {
     e.preventDefault();
@@ -111,6 +166,7 @@ export default function Profile() {
   };
   onMount(() => {
     updateEffectiveLabel();
+    loadSecurity();
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => {
       if (themeStore.mode === 'system') updateEffectiveLabel();
@@ -243,6 +299,127 @@ export default function Profile() {
             </button>
           </div>
         </form>
+      </section>
+
+      {/* ── Security / MFA ─────────────────────────────────────────────── */}
+      <section class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+        <div class="flex items-center gap-2 mb-4">
+          <Shield size={18} class="text-gray-500 dark:text-gray-400" />
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Security</h2>
+        </div>
+
+        <Show when={secLoading()}>
+          <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        </Show>
+
+        <Show when={!secLoading() && authMethods()}>
+          <div class="space-y-4">
+            <div class="flex flex-wrap gap-2">
+              <Show when={authMethods().password?.enabled}>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                  <Lock size={12} /> Password
+                </span>
+              </Show>
+              <Show when={authMethods().otp?.enabled}>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
+                  <Mail size={12} /> Email OTP
+                </span>
+              </Show>
+              <Show when={authMethods().oauth2?.enabled}>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
+                  <KeyRound size={12} /> SSO / OIDC
+                </span>
+              </Show>
+              <Show when={authMethods().mfa?.enabled}>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                  <Shield size={12} /> MFA enforced
+                </span>
+              </Show>
+            </div>
+
+            <Show when={!authMethods().password?.enabled && !authMethods().oauth2?.enabled}>
+              <p class="text-sm text-red-600 dark:text-red-400">
+                No login method is enabled for this account type. Contact an administrator.
+              </p>
+            </Show>
+
+            <Show when={authStore.isPBAdmin}>
+              <form onSubmit={handleSecuritySave} class="space-y-4 pt-2">
+                <Show when={secError()}>
+                  <div class="bg-red-50 dark:bg-red-500/10 border border-red-500/30 dark:border-red-500/50 rounded p-3 text-sm text-red-700 dark:text-red-300">
+                    {secError()}
+                  </div>
+                </Show>
+                <Show when={secSuccess()}>
+                  <div class="bg-green-50 dark:bg-green-500/10 border border-green-500/30 dark:border-green-500/50 rounded p-3 text-sm text-green-700 dark:text-green-300">
+                    {secSuccess()}
+                  </div>
+                </Show>
+
+                <div class="flex items-start gap-3">
+                  <input
+                    id="profile-otp"
+                    type="checkbox"
+                    checked={!!collectionConfig()?.otp?.enabled}
+                    onChange={(e) =>
+                      setCollectionConfig((c: any) => ({
+                        ...c,
+                        otp: { ...(c.otp || { duration: 180, length: 8 }), enabled: e.currentTarget.checked },
+                      }))
+                    }
+                    class="h-4 w-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <label for="profile-otp" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Enable email OTP
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      Applies to all superusers. Requires SMTP.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="flex items-start gap-3">
+                  <input
+                    id="profile-mfa"
+                    type="checkbox"
+                    checked={!!collectionConfig()?.mfa?.enabled}
+                    disabled={!collectionConfig()?.passwordAuth?.enabled || !collectionConfig()?.otp?.enabled}
+                    onChange={(e) =>
+                      setCollectionConfig((c: any) => ({
+                        ...c,
+                        mfa: { ...(c.mfa || { duration: 1800, rule: '' }), enabled: e.currentTarget.checked },
+                      }))
+                    }
+                    class="h-4 w-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+                  />
+                  <div>
+                    <label for="profile-mfa" class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Enforce MFA
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                      Requires password + OTP to be enabled. Applies to all superusers.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={secSaving()}
+                  class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
+                >
+                  {secSaving() ? 'Saving...' : 'Save Security Settings'}
+                </button>
+              </form>
+            </Show>
+
+            <Show when={!authStore.isPBAdmin}>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Multi-factor authentication is managed by your administrator.
+              </p>
+            </Show>
+          </div>
+        </Show>
       </section>
 
       {/* ── Appearance ────────────────────────────────────────────────── */}

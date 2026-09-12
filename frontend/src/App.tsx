@@ -11,6 +11,9 @@ import ProductList from '~/pages/ProductList';
 import ProductEdit from '~/pages/ProductEdit';
 import Settings from '~/pages/Settings';
 import InstanceSettings from '~/pages/InstanceSettings';
+import OidcSettings from '~/pages/OidcSettings';
+import SmtpSettings from '~/pages/SmtpSettings';
+import SecuritySettingsPage from '~/pages/SecuritySettingsPage';
 import UserManagement from '~/pages/UserManagement';
 import TenantList from '~/pages/TenantList';
 import TenantSettings from '~/pages/TenantSettings';
@@ -20,6 +23,8 @@ import Profile from '~/pages/Profile';
 import ApiKeys from '~/pages/ApiKeys';
 import Stats from '~/pages/Stats';
 import TenantStats from '~/pages/TenantStats';
+import SuperuserManagement from '~/pages/SuperuserManagement';
+import SuperuserLogin from '~/pages/SuperuserLogin';
 import About from '~/pages/About';
 
 export default function App() {
@@ -27,6 +32,7 @@ export default function App() {
         <Router>
             <Route path="/setup" component={Setup} />
             <Route path="/login" component={Login} />
+            <Route path="/superlogin" component={SuperuserLogin} />
             <Route path="/" component={Layout}>
                 <Route path="/" component={Dashboard} />
                 <Route path="/media/new" component={MediaEdit} />
@@ -39,13 +45,17 @@ export default function App() {
                 <Route path="/products/:id" component={ProductEdit} />
                 <Route path="/products" component={ProductList} />
                 <Route path="/settings" component={Settings} />
-                <Route path="/settings/instance" component={InstanceSettings} />
+                <Route path="/settings/general" component={InstanceSettings} />
+                <Route path="/settings/oidc" component={OidcSettings} />
+                <Route path="/settings/smtp" component={SmtpSettings} />
+                <Route path="/settings/security" component={SecuritySettingsPage} />
                 <Route path="/users" component={UserManagement} />
                 <Route path="/tenants" component={TenantList} />
                 <Route path="/tenants/new" component={TenantSettings} />
                 <Route path="/tenants/:id" component={TenantSettings} />
                 <Route path="/tenants/:id/stats" component={TenantStats} />
                 <Route path="/stats" component={Stats} />
+                <Route path="/superusers" component={SuperuserManagement} />
                 <Route path="/api-docs" component={ApiDocs} />
                 <Route path="/activities" component={Activities} />
                 <Route path="/profile" component={Profile} />

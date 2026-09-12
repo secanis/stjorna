@@ -64,16 +64,7 @@ export const authStore = {
       setUser(pb.authStore.model);
       const model = pb.authStore.model;
 
-      if (pb.authStore.isAdmin) {
-        try {
-          await pb.admins.getList(1, 1);
-        } catch (e: any) {
-          if (e.status === 401) {
-            await this.logout();
-            window.location.href = '/login';
-            return;
-          }
-        }
+      if (pb.authStore.isSuperuser) {
         setIsPBAdmin(true);
         await this.loadAllTenantsForPBAdmin();
         return;
@@ -93,28 +84,19 @@ export const authStore = {
       const authData = await pb.collection('users').authWithPassword(email, password);
       setUser(authData.record);
 
-      let isAdmin = false;
-      try {
-        await pb.admins.getList(1, 1);
-        isAdmin = true;
-      } catch (e: any) {
-        if (e.status === 401) {
-          isAdmin = false;
-        } else {
-          throw e;
-        }
-      }
-
-      if (isAdmin) {
+      // PB v0.40+ stores superusers in the `_superusers` auth collection.
+      // If someone somehow used a superuser identity here, reject it so they
+      // use the admin login form instead.
+      if (pb.authStore.isSuperuser) {
         await this.logout();
-        const err = new Error('This account is a PB admin. Please use the admin login instead.');
+        const err = new Error('This account is a superuser. Please use the admin login instead.');
         setError(err.message);
         throw err;
       }
 
       await this.loadTenants();
     } catch (e: any) {
-      if (!e.message?.includes('PB admin')) {
+      if (!e.message?.includes('superuser')) {
         setError(e.message || 'Login failed');
       }
       throw e;
@@ -127,7 +109,7 @@ export const authStore = {
     setIsLoading(true);
     setError(null);
     try {
-      await pb.admins.authWithPassword(email, password);
+      await pb.collection('_superusers').authWithPassword(email, password);
       setUser(pb.authStore.model);
       setIsPBAdmin(true);
       setCurrentTenantSignal(null);
@@ -141,13 +123,91 @@ export const authStore = {
     }
   },
 
+  async requestAdminOTP(email: string) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await pb.collection('_superusers').requestOTP(email);
+      return result.otpId as string;
+    } catch (e: any) {
+      setError(e.message || 'Failed to send OTP');
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  },
+
+  async verifyAdminOTP(otpId: string, code: string, mfaId: string) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await pb.collection('_superusers').authWithOTP(otpId, code, { mfaId });
+      setUser(pb.authStore.model);
+      setIsPBAdmin(true);
+      setCurrentTenantSignal(null);
+      setRole(null);
+      await this.loadAllTenantsForPBAdmin();
+    } catch (e: any) {
+      setError(e.message || 'OTP verification failed');
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  },
+
+  async requestOTP(email: string) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await pb.collection('users').requestOTP(email);
+      return result.otpId as string;
+    } catch (e: any) {
+      setError(e.message || 'Failed to send OTP');
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  },
+
+  async verifyOTP(otpId: string, code: string, mfaId: string) {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const authData = await pb.collection('users').authWithOTP(otpId, code, { mfaId });
+      setUser(authData.record);
+      await this.loadTenants();
+    } catch (e: any) {
+      setError(e.message || 'OTP verification failed');
+      throw e;
+    } finally {
+      setIsLoading(false);
+    }
+  },
+
   async loginWithOAuth2(providerName: string, scopes?: string[]) {
     setIsLoading(true);
     setError(null);
     try {
+      // Fall back to the scopes configured in instance_settings so the
+      // "groups" scope (or any custom scope) is actually requested.
+      let effectiveScopes = scopes;
+      if (!effectiveScopes || effectiveScopes.length === 0) {
+        try {
+          const cfg = await pb.send('/api/stjorna/oidc-config', { method: 'GET' });
+          if (cfg && typeof cfg.scopes === 'string') {
+            effectiveScopes = cfg.scopes
+              .split(',')
+              .map((s: string) => s.trim())
+              .filter(Boolean);
+          }
+        } catch (_) {
+          // ignore and let the SDK use the provider defaults
+        }
+      }
+
       const authData = await pb.collection('users').authWithOAuth2({
         provider: providerName,
-        scopes,
+        scopes: effectiveScopes,
         createData: { emailVisibility: false },
       });
       setUser(authData.record);
@@ -282,11 +342,12 @@ export async function checkHasAdmins(): Promise<boolean> {
   try {
     pb.authStore.clear();
     await pb.health.check();
-    await pb.admins.getList(1, 1);
+    await pb.collection('_superusers').getList(1, 1);
     return true;
   } catch (e: any) {
     if (e.status === 404) return false;
     if (e.status === 401) return false;
+    if (e.status === 403) return false;
     return false;
   }
 }

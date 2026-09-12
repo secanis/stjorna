@@ -20,48 +20,38 @@
 // before this migration won't have service_user_id populated —
 // EXCHANGE returns 409 with `legacy: true` so callers know to
 // re-issue.
-//
-// PB 0.22.7 exits the serve process if a migration throws during
-// startup, so every step is wrapped in try/return.
 
-migrate((db) => {
-  const dao = new Dao(db);
-
+migrate((app) => {
   let apiKeys;
   try {
-    apiKeys = dao.findCollectionByNameOrId("api_keys");
+    apiKeys = app.findCollectionByNameOrId("api_keys");
   } catch (_) {
     return;
   }
 
   const fieldDefs = [
-    { name: "service_user_id",       type: "text", required: false, options: { maxLen: 100 } },
-    { name: "service_user_email",    type: "text", required: false, options: { maxLen: 255 } },
-    { name: "service_user_password", type: "text", required: false, options: { maxLen: 255 } },
+    new TextField({ name: "service_user_id", max: 100 }),
+    new TextField({ name: "service_user_email", max: 255 }),
+    new TextField({ name: "service_user_password", max: 255 }),
   ];
 
-  const schemaFieldByName = (name) => {
-    try { return apiKeys.schema.getFieldByName(name); }
-    catch (_) { return null; }
-  };
+  let changed = false;
+  for (const f of fieldDefs) {
+    if (apiKeys.fields.getByName(f.name)) continue;
+    apiKeys.fields.add(f);
+    changed = true;
+  }
 
-  const newFields = [];
-  for (const def of fieldDefs) {
-    if (schemaFieldByName(def.name)) continue;
-    newFields.push(new SchemaField(def));
+  if (changed) {
+    app.save(apiKeys);
   }
-  if (newFields.length > 0) {
-    for (const f of newFields) apiKeys.schema.addField(f);
-    try { dao.saveCollection(apiKeys); } catch (_) { /* best-effort */ }
-  }
-}, (db) => {
+}, (app) => {
   // Rollback: drop the new fields (idempotent via try/catch).
-  const dao = new Dao(db);
   try {
-    const apiKeys = dao.findCollectionByNameOrId("api_keys");
+    const apiKeys = app.findCollectionByNameOrId("api_keys");
     for (const name of ["service_user_password", "service_user_email", "service_user_id"]) {
-      try { apiKeys.schema.removeField(name); } catch (_) { /* best-effort, field may not exist */ }
+      try { apiKeys.fields.removeByName(name); } catch (_) {}
     }
-    dao.saveCollection(apiKeys);
-  } catch (_) { /* best-effort, collection may not exist */ }
+    app.save(apiKeys);
+  } catch (_) {}
 });

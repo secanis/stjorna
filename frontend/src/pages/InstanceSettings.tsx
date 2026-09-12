@@ -5,6 +5,7 @@ import { authStore } from '~/stores/auth';
 import { Save, Download } from 'lucide-solid';
 import { downloadBackup } from '~/services/backup';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import DescriptionBlock from '~/components/settings/DescriptionBlock';
 
 interface InstanceSettings {
   id?: string;
@@ -95,7 +96,15 @@ export default function InstanceSettings() {
 
   return (
     <div class="space-y-6 max-w-3xl">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Instance Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">General Settings</h1>
+
+      <DescriptionBlock>
+        <p>Configure the public identity of this STJÓRNA instance.</p>
+        <p>
+          The name, URL, logo and tagline are shown on the login page and in system emails.
+          Backups below contain all tenants, users, products, categories and media.
+        </p>
+      </DescriptionBlock>
 
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
         <div>
