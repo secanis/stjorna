@@ -81,13 +81,29 @@ export async function startPocketBase(): Promise<PocketBase> {
       const pb = new PocketBase(PB_URL);
       try {
         await pb.health.check();
-        try {
-          await pb.admins.create({
-            email: ADMIN_EMAIL,
-            password: ADMIN_PASSWORD,
-            passwordConfirm: ADMIN_PASSWORD,
-          });
-        } catch {
+        // Wait for admin API to be ready - retry creation until it succeeds or admin exists
+        let adminCreated = false;
+        const adminDeadline = Date.now() + 30_000;
+        while (Date.now() < adminDeadline) {
+          try {
+            await pb.admins.create({
+              email: ADMIN_EMAIL,
+              password: ADMIN_PASSWORD,
+              passwordConfirm: ADMIN_PASSWORD,
+            });
+            adminCreated = true;
+            break;
+          } catch (e: any) {
+            if (e.status === 400 && e.message?.includes('already exists')) {
+              adminCreated = true;
+              break;
+            }
+            // Admin API not ready yet, wait and retry
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
+        if (!adminCreated) {
+          throw new Error('Admin API not ready after 30s');
         }
         await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
         pbInstance = pb;
