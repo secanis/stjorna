@@ -9,67 +9,64 @@
 // so instance_settings/user_tenants may not exist yet. New instances get
 // the fields from Setup; existing instances get them from this migration.
 
-migrate((db) => {
-  const dao = new Dao(db);
-
+migrate((app) => {
   // ---- users: add name field ----
   try {
-    const users = dao.findCollectionByNameOrId("_pb_users_auth_");
-    if (!users.schema.getFieldByName("name")) {
-      users.schema.addField(new SchemaField({ name: "name", type: "text", options: { maxLen: 200 } }));
-      dao.saveCollection(users);
+    const users = app.findCollectionByNameOrId("users");
+    if (!users.fields.getByName("name")) {
+      users.fields.add(new TextField({ name: "name", max: 200 }));
+      app.save(users);
     }
   } catch (_) {}
 
   // ---- user_tenants: add source field ----
   try {
-    const ut = dao.findCollectionByNameOrId("user_tenants");
-    if (!ut.schema.getFieldByName("source")) {
-      ut.schema.addField(new SchemaField({ name: "source", type: "text", options: { maxLen: 50 } }));
-      dao.saveCollection(ut);
+    const ut = app.findCollectionByNameOrId("user_tenants");
+    if (!ut.fields.getByName("source")) {
+      ut.fields.add(new TextField({ name: "source", max: 50 }));
+      app.save(ut);
     }
   } catch (_) {}
 
   // ---- instance_settings: add OIDC config fields ----
   const oidcFields = [
-    { name: "oidc_enabled", type: "bool", options: {} },
-    { name: "oidc_provider_name", type: "text", options: { maxLen: 50 } },
-    { name: "oidc_display_name", type: "text", options: { maxLen: 100 } },
-    { name: "oidc_client_id", type: "text", options: { maxLen: 500 } },
-    { name: "oidc_client_secret", type: "text", options: { maxLen: 500 } },
-    { name: "oidc_auth_url", type: "text", options: { maxLen: 1000 } },
-    { name: "oidc_token_url", type: "text", options: { maxLen: 1000 } },
-    { name: "oidc_user_info_url", type: "text", options: { maxLen: 1000 } },
-    { name: "oidc_scopes", type: "text", options: { maxLen: 500 } },
-    { name: "oidc_group_claim", type: "text", options: { maxLen: 200 } },
-    { name: "oidc_group_separator", type: "text", options: { maxLen: 10 } },
-    { name: "oidc_default_role", type: "text", options: { maxLen: 50 } },
-    { name: "oidc_role_mapping", type: "text", options: { maxLen: 500 } },
-    { name: "oidc_auto_create_tenants", type: "bool", options: {} },
-    { name: "oidc_deny_on_no_group", type: "bool", options: {} },
-    { name: "oidc_disable_password_login", type: "bool", options: {} },
+    new BoolField({ name: "oidc_enabled" }),
+    new TextField({ name: "oidc_provider_name", max: 50 }),
+    new TextField({ name: "oidc_display_name", max: 100 }),
+    new TextField({ name: "oidc_client_id", max: 500 }),
+    new TextField({ name: "oidc_client_secret", max: 500 }),
+    new TextField({ name: "oidc_auth_url", max: 1000 }),
+    new TextField({ name: "oidc_token_url", max: 1000 }),
+    new TextField({ name: "oidc_user_info_url", max: 1000 }),
+    new TextField({ name: "oidc_scopes", max: 500 }),
+    new TextField({ name: "oidc_group_claim", max: 200 }),
+    new TextField({ name: "oidc_group_separator", max: 10 }),
+    new TextField({ name: "oidc_default_role", max: 50 }),
+    new TextField({ name: "oidc_role_mapping", max: 500 }),
+    new BoolField({ name: "oidc_auto_create_tenants" }),
+    new BoolField({ name: "oidc_deny_on_no_group" }),
+    new BoolField({ name: "oidc_disable_password_login" }),
   ];
 
   try {
-    const settings = dao.findCollectionByNameOrId("instance_settings");
+    const settings = app.findCollectionByNameOrId("instance_settings");
     let changed = false;
-    for (const def of oidcFields) {
-      if (!settings.schema.getFieldByName(def.name)) {
-        settings.schema.addField(new SchemaField(def));
+    for (const f of oidcFields) {
+      if (!settings.fields.getByName(f.name)) {
+        settings.fields.add(f);
         changed = true;
       }
     }
-    if (changed) dao.saveCollection(settings);
+    if (changed) app.save(settings);
   } catch (_) {}
-}, (db) => {
+}, (app) => {
   // Rollback is best-effort; we do not remove fields to avoid data loss.
-  const dao = new Dao(db);
   try {
-    const users = dao.findCollectionByNameOrId("_pb_users_auth_");
-    const f = users.schema.getFieldByName("name");
+    const users = app.findCollectionByNameOrId("users");
+    const f = users.fields.getByName("name");
     if (f) {
-      users.schema.removeField(f.id);
-      dao.saveCollection(users);
+      users.fields.removeByName(f.id);
+      app.save(users);
     }
   } catch (_) {}
 });

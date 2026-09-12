@@ -1,7 +1,10 @@
 import { createSignal, Show, For, onMount } from 'solid-js';
+import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
+import { authStore } from '~/stores/auth';
 import { Save } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import DescriptionBlock from '~/components/settings/DescriptionBlock';
 
 interface OidcFormData {
   enabled: boolean;
@@ -15,6 +18,7 @@ interface OidcFormData {
   scopes: string;
   pkce: boolean;
   groupClaim: string;
+  groupPrefix: string;
   groupSeparator: string;
   defaultRole: string;
   roleMapping: string;
@@ -24,18 +28,7 @@ interface OidcFormData {
 
 const DEFAULT_ROLE_MAPPING = '_admin:admin,_editor:editor,_viewer:viewer';
 
-// In PocketBase v0.22.7 generic OIDC slots are configured at the app settings
-// level, not inside the auth collection. The providerName stored in
-// instance_settings maps to one of these keys.
-const SLOT_SETTINGS_KEY: Record<string, string> = {
-  oidc: 'oidcAuth',
-  oidc2: 'oidc2Auth',
-  oidc3: 'oidc3Auth',
-};
 
-function providerSettingsKey(name: string): string {
-  return SLOT_SETTINGS_KEY[name] || `${name}Auth`;
-}
 
 function parseRoleMapping(input: string): Record<string, string> {
   const out: Record<string, string> = {};
@@ -54,9 +47,9 @@ function formatRoleMapping(mapping: Record<string, string>): string {
     .join(',');
 }
 
-// OIDC configuration section. Intended to be rendered inside the main
-// Settings page, which already handles auth and admin gating.
+// OIDC configuration section. Now rendered as a standalone settings sub-page.
 export default function OidcSettings() {
+  const navigate = useNavigate();
   const [form, setForm] = createSignal<OidcFormData>({
     enabled: false,
     providerName: 'oidc',
@@ -69,6 +62,7 @@ export default function OidcSettings() {
     scopes: 'openid,email,profile,groups',
     pkce: true,
     groupClaim: 'groups',
+    groupPrefix: '',
     groupSeparator: '_',
     defaultRole: 'viewer',
     roleMapping: DEFAULT_ROLE_MAPPING,
@@ -84,6 +78,16 @@ export default function OidcSettings() {
   const [hasExistingSecret, setHasExistingSecret] = createSignal(false);
 
   onMount(async () => {
+    await authStore.init();
+    if (!authStore.isAuthenticated()) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    if (!authStore.isPBAdmin) {
+      navigate('/', { replace: true });
+      return;
+    }
+
     try {
       // Load instance_settings OIDC mapping config.
       const settingsRes = await pb.collection('instance_settings').getList(1, 1);
@@ -105,6 +109,7 @@ export default function OidcSettings() {
           scopes: String(s.oidc_scopes || 'openid,email,profile,groups'),
           pkce: true,
           groupClaim: String(s.oidc_group_claim || 'groups'),
+          groupPrefix: String(s.oidc_group_prefix || ''),
           groupSeparator: String(s.oidc_group_separator || '_'),
           defaultRole: String(s.oidc_default_role || 'viewer'),
           roleMapping: rm || DEFAULT_ROLE_MAPPING,
@@ -113,28 +118,31 @@ export default function OidcSettings() {
         });
       }
 
-      // Load the actual OIDC provider config from PB app settings.
-      const appSettings: any = await pb.settings.getAll();
-      const key = providerSettingsKey(providerName);
-      const provider: any = appSettings[key] || {};
-      if (provider && typeof provider === 'object') {
+      // Load the actual OIDC provider config from the users auth collection.
+      const usersColl: any = await pb.collections.getOne('users');
+      const oauth2: any = usersColl.oauth2 || { enabled: false, mappedFields: {}, providers: [] };
+      const provider = (oauth2.providers || []).find((p: any) =>
+        p.name === providerName || p.name === 'oidc'
+      );
+      if (provider) {
         setForm((f) => ({
           ...f,
-          providerName,
+          providerName: String(provider.name || f.providerName),
           displayName: String(provider.displayName || f.displayName),
           clientId: String(provider.clientId || f.clientId || ''),
-          authUrl: String(provider.authUrl || f.authUrl || ''),
-          tokenUrl: String(provider.tokenUrl || f.tokenUrl || ''),
-          userInfoUrl: String(provider.userApiUrl || f.userInfoUrl || ''),
+          authUrl: String(provider.authURL || f.authUrl || ''),
+          tokenUrl: String(provider.tokenURL || f.tokenUrl || ''),
+          userInfoUrl: String(provider.userInfoURL || f.userInfoUrl || ''),
+          scopes: Array.isArray(provider.scopes) ? provider.scopes.join(',') : f.scopes,
           pkce: provider.pkce !== false,
-          enabled: !!provider.enabled,
+          enabled: !!provider.enabled || f.enabled,
         }));
         setHasExistingSecret(!!provider.clientSecret);
       }
 
       // Reflect current password auth state.
-      const emailAuth: any = appSettings.emailAuth || {};
-      setForm((f) => ({ ...f, disablePasswordLogin: emailAuth.enabled === false }));
+      const passwordAuth: any = usersColl.passwordAuth || {};
+      setForm((f) => ({ ...f, disablePasswordLogin: passwordAuth.enabled === false }));
     } catch (e: any) {
       setError(e.message || 'Failed to load OIDC settings');
     } finally {
@@ -154,9 +162,8 @@ export default function OidcSettings() {
       if (!f.clientId) { setError('Client ID is required'); setSaving(false); return; }
       if (!f.authUrl) { setError('Authorization URL is required'); setSaving(false); return; }
       if (!f.tokenUrl) { setError('Token URL is required'); setSaving(false); return; }
-      // PocketBase v0.22.7 requires a client secret for the generic OIDC slot
-      // even when PKCE is enabled. Leaving it blank is only allowed when an
-      // existing secret is already stored.
+      // PocketBase requires a client secret even for the generic OIDC slot
+      // when PKCE is enabled, so we enforce it unconditionally.
       if (!f.clientSecret && !hasExistingSecret()) {
         setError('Client secret is required');
         setSaving(false);
@@ -189,6 +196,7 @@ export default function OidcSettings() {
         oidc_user_info_url: f.userInfoUrl,
         oidc_scopes: f.scopes,
         oidc_group_claim: f.groupClaim,
+        oidc_group_prefix: f.groupPrefix,
         oidc_group_separator: f.groupSeparator,
         oidc_default_role: f.defaultRole,
         oidc_role_mapping: f.roleMapping,
@@ -203,27 +211,44 @@ export default function OidcSettings() {
         setSettingsId(created.id);
       }
 
-      // Update the actual OIDC provider config in PB app settings.
-      const key = providerSettingsKey(f.providerName);
-      const providerConfig: any = {
-        enabled: f.enabled,
+      // Update the OIDC provider config on the users auth collection.
+      const usersColl: any = await pb.collections.getOne('users');
+      const oauth2: any = usersColl.oauth2 || { enabled: false, mappedFields: {}, providers: [] };
+      const mappedFields = oauth2.mappedFields || { id: '', name: 'name', username: '', avatarURL: '' };
+
+      let providers = (oauth2.providers || []).filter((p: any) => p.name !== f.providerName);
+
+      const newProvider: any = {
+        name: f.providerName,
         clientId: f.clientId,
-        authUrl: f.authUrl,
-        tokenUrl: f.tokenUrl,
-        userApiUrl: f.userInfoUrl,
+        authURL: f.authUrl,
+        tokenURL: f.tokenUrl,
+        userInfoURL: f.userInfoUrl,
         displayName: f.displayName,
         pkce: f.pkce,
+        extra: {},
       };
       // Only send a new secret when the user typed one. Omitting it keeps the
       // existing secret on the server.
       if (f.clientSecret) {
-        providerConfig.clientSecret = f.clientSecret;
+        newProvider.clientSecret = f.clientSecret;
+      }
+      if (f.scopes) {
+        newProvider.scopes = f.scopes.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+      if (f.enabled) {
+        providers.push(newProvider);
       }
 
-      await pb.settings.update({
-        [key]: providerConfig,
-        emailAuth: {
+      await pb.collections.update(usersColl.id, {
+        oauth2: {
+          enabled: f.enabled,
+          mappedFields,
+          providers,
+        },
+        passwordAuth: {
           enabled: !f.disablePasswordLogin,
+          identityFields: ['email'],
         },
       });
 
@@ -245,6 +270,14 @@ export default function OidcSettings() {
   return (
     <div class="space-y-6 max-w-3xl">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">OIDC Settings</h1>
+
+      <DescriptionBlock>
+        <p>Delegate user authentication to an external OpenID Connect provider.</p>
+        <p>
+          When enabled, users can sign in via SSO. Group claims are mapped to STJÓRNA tenants and roles.
+          Superuser login is never affected by these settings.
+        </p>
+      </DescriptionBlock>
 
       <Show when={loading()}>
         <div class="text-gray-500 dark:text-gray-400">Loading...</div>
@@ -320,7 +353,7 @@ export default function OidcSettings() {
               />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {hasExistingSecret() && !form().clientSecret
-                  ? 'Required by PocketBase for the OIDC slot. Leave blank to keep the existing secret.'
+                  ? 'Leave blank to keep the existing secret.'
                   : 'Required by PocketBase for the OIDC slot, even with PKCE enabled.'}
               </p>
             </div>
@@ -395,6 +428,17 @@ export default function OidcSettings() {
                   onInput={(e) => setForm((f) => ({ ...f, groupClaim: e.currentTarget.value.trim() }))}
                   class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                 />
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group prefix</label>
+                <input
+                  type="text"
+                  value={form().groupPrefix}
+                  onInput={(e) => setForm((f) => ({ ...f, groupPrefix: e.currentTarget.value.trim() }))}
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Optional prefix stripped before parsing, e.g. "stjorna_".</p>
               </div>
 
               <div>

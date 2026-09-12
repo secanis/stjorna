@@ -7,7 +7,7 @@
 //   GET    /api/stjorna/api-keys/me          → introspect bearer (any caller).
 //
 // Collection access:
-//   The `api_keys` collection has ALL rules locked to null. STJÓRN A user
+//   The `api_keys` collection has ALL rules locked to null. STJÓRNA user
 //   JWTs CANNOT list/get/create/update api_keys at all. Only PB superusers
 //   (PB admins via `pb.admins.authWithPassword`) can use these routes.
 //
@@ -17,15 +17,15 @@
 //   Second half = secret, hashed at rest (PB $security.sha256, deterministic
 //   — see REPORT.md for the bcrypt-vs-sha256 trade-off note), returned once.
 //
-// Notes on PB 0.22.7 JSVM (mirror the patterns in openapi.pb.js /
+// Notes on PB v0.40.2 JSVM (mirror the patterns in openapi.pb.js /
 // backup.pb.js — handlers are string-concatenated and wrapped in
-//   `new Function("c", BODY)` to dodge loader/executor VM closures):
-//   - c is an echo.Context; c.request() is *http.Request.
-//   - c.response().header().set(name, value); for response headers.
-//   - c.string(status, body) for responses.
-//   - c.queryParam(name) for query params.
-//   - c.request().header.get(name) for request headers.
-//   - $app.dao() for DB; $security.sha256/parseUnverifiedJWT/randomString.
+//   `new Function("e", BODY)` to dodge loader/executor VM closures):
+//   - e is a core.RequestEvent; e.request is *http.Request.
+//   - e.response.header().set(name, value) for response headers.
+//   - e.string(status, body) for responses.
+//   - e.request.url.query().get(name) for query params.
+//   - e.request.header.get(name) for request headers.
+//   - $app for DB; $security.sha256/parseUnverifiedJWT/randomString.
 
 console.log("[stjorna-apikeys] loading");
 
@@ -34,7 +34,7 @@ console.log("[stjorna-apikeys] loading");
 // ---------------------------------------------------------------------------
 
 var READ_BODY_FN =
-    "function _readBody(){try{return readerToString(c.request().body,64*1024);}catch(_e){return '';}}";
+    "function _readBody(){try{return readerToString(e.request.body,64*1024);}catch(_e){return '';}}";
 
 // Constant-time-ish string compare — no early exit on mismatch.
 var CMP_FN =
@@ -46,24 +46,25 @@ var CMP_FN =
         "return d===0;" +
     "}";
 
-// Auth: require PB superuser (admin). We parse the bearer JWT and only allow
-// `type==='admin'`. STJÓRN A's regular user JWTs (type==='authRecord') are
-// denied.
+// Auth: require PB superuser. In PB v0.40+ superuser tokens have
+// `type==='auth'` and `collectionId==='pbc_3142635823'`. Regular user JWTs
+// share `type==='auth'` but a different collectionId, so we must check the
+// collection id.
 var ADMIN_AUTH_FN =
-    "var _h=String(c.request().header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
+    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
     "var _p={};try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_e){_p={};}" +
-    "if(_p.type!=='admin'){" +
-        "c.response().header().set('Content-Type','application/json; charset=utf-8');" +
-        "c.string(401,'{\"ok\":false,\"error\":{\"code\":401,\"message\":\"admin auth required\"}}');" +
+    "if(!(_p.type==='auth'&&_p.collectionId==='pbc_3142635823')){" +
+        "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+        "e.string(401,'{\"ok\":false,\"error\":{\"code\":401,\"message\":\"admin auth required\"}}');" +
         "return;" +
     "}";
 
 var JSON_REPLY_FN =
     "function _reply(status,obj){" +
         "var body=JSON.stringify(obj);" +
-        "c.response().header().set('Content-Type','application/json; charset=utf-8');" +
-        "c.response().header().set('Cache-Control','no-store');" +
-        "c.string(status,body);" +
+        "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+        "e.response.header().set('Cache-Control','no-store');" +
+        "e.string(status,body);" +
     "}";
 
 var KEY_SHAPE_FN =
@@ -119,7 +120,7 @@ var ISSUE_BODY = "" +
     "if(_name.length>200){_reply(400,{ok:false,error:{code:400,message:'name too long'}});return;}" +
     // Verify tenant exists. tenants listRule is `null` → superuser-only,
     // which we already auth-checked above.
-    "var _tenant=null;try{_tenant=$app.dao().findRecordById('tenants',_tenantId);}catch(_et){_reply(404,{ok:false,error:{code:404,message:'tenant not found'}});return;}" +
+    "var _tenant=null;try{_tenant=$app.findRecordById('tenants',_tenantId);}catch(_et){_reply(404,{ok:false,error:{code:404,message:'tenant not found'}});return;}" +
     "if(!_tenant){_reply(404,{ok:false,error:{code:404,message:'tenant not found'}});return;}" +
     // Build key
     "var _tid=String(_tenant.id||'').replace(/[^a-zA-Z0-9]/g,'').slice(0,6).toLowerCase()||'tenant';" +
@@ -128,9 +129,9 @@ var ISSUE_BODY = "" +
     "var _fullKey=_prefix+'.'+_secret;" +
     "var _keyHash=_hash(_fullKey);" +
     "if(!_keyHash){_reply(500,{ok:false,error:{code:500,message:'hashing unavailable'}});return;}" +
-    // ---- Create a STJÓRN A service user for this tenant --------------------
-    // STJÓRN A's collection rules reference @request.auth — PB doesn't
-    // inject a synthetic auth record for an STJÓRN A API key, so ren-
+    // ---- Create a STJÓRNA service user for this tenant --------------------
+    // STJÓRNA's collection rules reference @request.auth — PB doesn't
+    // inject a synthetic auth record for an STJÓRNA API key, so ren-
     // dering through the rules returns 0 rows. We mint a per-tenant
     // auth-record-internal "service user" at issue time and store its
     // credentials on the api_keys row. The /exchange route hands them
@@ -138,7 +139,7 @@ var ISSUE_BODY = "" +
     //   pb.collection('users').authWithPassword(email, password)
     // and uses the resulting JWT for /api/collections/* requests.
     //
-    // The api_keys collection has all rules null — STJÓRN A user JWTs
+    // The api_keys collection has all rules null — STJÓRNA user JWTs
     // cannot read `service_user_password`. Only PB admins and the
     // custom /exchange route can.
     "var _svcEmail='';" +
@@ -152,15 +153,15 @@ var ISSUE_BODY = "" +
         // it set explicitly — save fails with "unable to save auth
         // record without username" otherwise).
         "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
-        // Find or create the auth collection. `users` in STJÓRN A IS
+        // Find or create the auth collection. `users` in STJÓRNA IS
         // `_pb_users_auth_` — every non-auth field on a base record
         // there is silently dropped, but we only set email + password
         // which are the auth fields PB itself owns.
-        "var _authCol=$app.dao().findCollectionByNameOrId('_pb_users_auth_');" +
+        "var _authCol=$app.findCollectionByNameOrId('_pb_users_auth_');" +
         "var _authCollName=_authCol?_authCol.name||'_pb_users_auth_':'_pb_users_auth_';" +
-        "_authCol=$app.dao().findCollectionByNameOrId(_authCollName);" +
+        "_authCol=$app.findCollectionByNameOrId(_authCollName);" +
         "var _existingUser=null;" +
-        "try{_existingUser=$app.dao().findFirstRecordByFilter(_authCollName,'email={:e}',{e:_svcEmail});}catch(_eu){}" +
+        "try{_existingUser=$app.findFirstRecordByFilter(_authCollName,'email={:e}',{e:_svcEmail});}catch(_eu){}" +
         "if(_existingUser){_svcUserId=String(_existingUser.id||'');}" +
         "else{" +
             "var _u=new Record(_authCol);" +
@@ -175,17 +176,17 @@ var ISSUE_BODY = "" +
             // verified=false is fine — the user will never log in
             // interactively, only via this exchange flow.
             "_u.setVerified(true);" +
-            // Stamp the tenant on the auth record so STJÓRN A's
+            // Stamp the tenant on the auth record so STJÓRNA's
             // collection rules (`@request.auth.tenant = tenant`)
             // can evaluate to true. PB silently drops non-auth
             // fields on regular `set(...)` calls, so use the typed
             // helper if available, otherwise fall back to set().
             "try{if(typeof _u.set==='function')_u.set('tenant',_tenantId);else if(typeof _u.tenant!=='undefined')_u.tenant=_tenantId;}catch(_es){}" +
-            "try{$app.dao().saveRecord(_u);_svcUserId=String(_u.id||'');}catch(_esu){console.log('[stjorna-apikeys] svc user save failed: '+(_esu&&_esu.message))}" +
+            "try{$app.save(_u);_svcUserId=String(_u.id||'');}catch(_esu){console.log('[stjorna-apikeys] svc user save failed: '+(_esu&&_esu.message))}" +
         "}" +
     "}catch(_eSvc){console.log('[stjorna-apikeys] svc user block error: '+(_eSvc&&_eSvc.message))}" +
     // ---- Persist the api_keys row ----
-    "var _coll=$app.dao().findCollectionByNameOrId('api_keys');" +
+    "var _coll=$app.findCollectionByNameOrId('api_keys');" +
     "var _rec=new Record(_coll);" +
     "_rec.set('tenant',_tenantId);" +
     "_rec.set('name',_name);" +
@@ -195,7 +196,7 @@ var ISSUE_BODY = "" +
     "if(_expires)_rec.set('expires',String(_expires));" +
     "_rec.set('revoked',false);" +
     "if(_svcUserId){_rec.set('service_user_id',_svcUserId);_rec.set('service_user_email',_svcEmail);_rec.set('service_user_password',_svcPassword);}" +
-    "try{$app.dao().saveRecord(_rec);}catch(_es){_reply(500,{ok:false,error:{code:500,message:'persist failed: '+(_es.message||_es)}});return;}" +
+    "try{$app.save(_rec);}catch(_es){_reply(500,{ok:false,error:{code:500,message:'persist failed: '+(_es.message||_es)}});return;}" +
     "var _resp={" +
         "ok:true," +
         "apiKey:{" +
@@ -214,7 +215,7 @@ var ISSUE_BODY = "" +
     "};" +
     "_reply(200,_resp);";
 
-routerAdd("POST", "/api/stjorna/api-keys", new Function("c", ISSUE_BODY));
+routerAdd("POST", "/api/stjorna/api-keys", new Function("e", ISSUE_BODY));
 console.log("[stjorna-apikeys] registered POST /api/stjorna/api-keys");
 
 // ---------------------------------------------------------------------------
@@ -228,18 +229,18 @@ var LIST_BODY = "" +
     // clean 500 with the actual error message so the FE has something
     // useful to show instead of "Something went wrong".
     "try{" +
-    "var _page=parseInt(c.queryParam('page')||'1',10);" +
-    "var _perPage=parseInt(c.queryParam('perPage')||'50',10);" +
-    "var _tenantId=String(c.queryParam('tenant')||'');" +
+    "var _page=parseInt(e.request.url.query().get('page')||'1',10);" +
+    "var _perPage=parseInt(e.request.url.query().get('perPage')||'50',10);" +
+    "var _tenantId=String(e.request.url.query().get('tenant')||'');" +
     "if(!_page||_page<1)_page=1;" +
     "if(!_perPage||_perPage<1||_perPage>200)_perPage=50;" +
     "var _rows=[];" +
     "try{" +
-        // `findRecordsByExpr` is the proven PB-internal API for arbitrary
+        // using findRecordsByFilter
         // SQL-like expressions (backup.pb.js uses it). We post-filter +
         // paginate in JS so the row count stays in our hands regardless of
         // pagination niceties inside the expression engine.
-        "_rows=$app.dao().findRecordsByExpr('api_keys');" +
+        "_rows=$app.findRecordsByFilter('api_keys','','',0,0);" +
     "}catch(_el){_reply(500,{ok:false,error:{code:500,message:'list query failed: '+(_el.message||_el)}});return;}" +
     // JS-side filter (tenant match + not revoked) + sort + paginate.
     "var _filtered=[];" +
@@ -278,35 +279,27 @@ var LIST_BODY = "" +
     "_reply(200,{ok:true,items:_items,page:_page,perPage:_perPage,totalItems:_total});" +
     "}catch(_eAll){console.log('[stjorna-apikeys] LIST outer error: '+((_eAll&&_eAll.stack)||(_eAll&&_eAll.message)||_eAll));_reply(500,{ok:false,error:{code:500,message:'list handler crashed: '+((_eAll&&_eAll.message)||String(_eAll))}});return;}" ;
 
-routerAdd("GET", "/api/stjorna/api-keys", new Function("c", LIST_BODY));
+routerAdd("GET", "/api/stjorna/api-keys", new Function("e", LIST_BODY));
 console.log("[stjorna-apikeys] registered GET /api/stjorna/api-keys");
 
 // ---------------------------------------------------------------------------
 // DELETE /api/stjorna/api-keys/{id}  — revoke
 // ---------------------------------------------------------------------------
-// PB v0.22.7's `routerAdd` path matching with `{id}` is brittle; we pull
-// the segment ourselves from `c.request().url` to be safe across versions.
+// PB v0.40.2 uses `/{id...}` for wildcard path params; read with
+// e.request.pathValue('id').
 var REVOKE_BODY = "" +
     ADMIN_AUTH_FN +
     JSON_REPLY_FN +
-    "var _id='';" +
-    "var _p=String(c.request().url||'');" +
-    "var _m=_p.match(/\\/api\\/stjorna\\/api-keys\\/([^/?#]+)/);" +
-    "if(_m)_id=_m[1];" +
+    "var _id=String(e.request.pathValue('id')||'');" +
     "if(!_id){_reply(400,{ok:false,error:{code:400,message:'id required'}});return;}" +
-    // Pass the collection NAME (string), not the Collection object — the
-    // goja wrapper on this PB build only round-trips lookups correctly
-    // when given the literal name.
-    "var _rec=null;try{_rec=$app.dao().findRecordById('api_keys',_id);}catch(_en){_reply(404,{ok:false,error:{code:404,message:'not found'}});return;}" +
+    // Pass the collection NAME (string), not the Collection object.
+    "var _rec=null;try{_rec=$app.findRecordById('api_keys',_id);}catch(_en){_reply(404,{ok:false,error:{code:404,message:'not found'}});return;}" +
     "_rec.set('revoked',true);" +
-    "try{$app.dao().saveRecord(_rec);}catch(_es){_reply(500,{ok:false,error:{code:500,message:'revoke failed: '+(_es.message||_es)}});return;}" +
+    "try{$app.save(_rec);}catch(_es){_reply(500,{ok:false,error:{code:500,message:'revoke failed: '+(_es.message||_es)}});return;}" +
     "_reply(200,{ok:true,id:_id,revoked:true});";
 
-// PB v0.22.7's `routerAdd` with `{id}` path params is not reliable on this
-// JS engine + Go bridge combo. Use a wildcard route and parse the id from
-// the URL ourselves — same approach we take in the REVOKE handler.
-routerAdd("DELETE", "/api/stjorna/api-keys/*", new Function("c", REVOKE_BODY));
-console.log("[stjorna-apikeys] registered DELETE /api/stjorna/api-keys/*");
+routerAdd("DELETE", "/api/stjorna/api-keys/{id...}", new Function("e", REVOKE_BODY));
+console.log("[stjorna-apikeys] registered DELETE /api/stjorna/api-keys/{id...}");
 
 // ---------------------------------------------------------------------------
 // GET /api/stjorna/api-keys/me  — introspect
@@ -316,7 +309,7 @@ var INTROSPECT_BODY = "" +
     KEY_SHAPE_FN +
     CRYPTO_FN +
     CMP_FN +
-    "var _h=String(c.request().header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
+    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
     "if(!_h){_reply(401,{ok:false,error:{code:401,message:'missing API key'}});return;}" +
     "if(!_keyShape(_h)){_reply(401,{ok:false,error:{code:401,message:'malformed API key'}});return;}" +
     "var _prefix=_h.split('.')[0];" +
@@ -324,10 +317,8 @@ var INTROSPECT_BODY = "" +
     // re-hash the same fullKey and constant-time compare.
     "var _computedHash=_hash(_h);" +
     "var _rec=null;" +
-    // Use `findRecordsByExpr` then scan in JS — same reason as the LIST path.
-    // PB's `findFirstRecordByFilter`/`findRecordsByFilter` JS bindings are
-    // unreliable across v0.21→0.22 for this hook's goja-level access.
-    "var _all=null;try{_all=$app.dao().findRecordsByExpr('api_keys');}catch(_e1){}" +
+    // using findRecordsByFilter
+    "var _all=null;try{_all=$app.findRecordsByFilter('api_keys','','',0,0);}catch(_e1){}" +
     "var _getR=function(_r,_k){try{return _r.get(_k);}catch(_eg){return null;}};" +
     "if(_all){for(var _i2=0;_i2<_all.length;_i2++){var _r=_all[_i2];if(!_r||typeof _r.get!=='function')continue;if(String(_getR(_r,'prefix'))===_prefix&&!_getR(_r,'revoked')){_rec=_r;break;}}}" +
     "if(!_rec){_reply(401,{ok:false,error:{code:401,message:'invalid API key'}});return;}" +
@@ -352,7 +343,7 @@ var INTROSPECT_BODY = "" +
         "if(_ms&&!isNaN(_ms)&&_ms<Date.now()){_reply(401,{ok:false,error:{code:401,message:'expired'}});return;}" +
     "}" +
     // Best-effort last_used update.
-    "try{_rec.set('last_used',new Date().toISOString().replace('T',' ').replace(/\\..*$/,'Z'));$app.dao().saveRecord(_rec);}catch(_eu){}" +
+    "try{_rec.set('last_used',new Date().toISOString().replace('T',' ').replace(/\\..*$/,'Z'));$app.save(_rec);}catch(_eu){}" +
     "var _permsOut=null;" +
     "try{var _pp=_getR(_rec,'permissions');if(_pp&&typeof _pp==='string')_permsOut=JSON.parse(_pp);else if(_pp)_permsOut=_pp;}catch(_ep2){}" +
     "_reply(200,{" +
@@ -364,25 +355,25 @@ var INTROSPECT_BODY = "" +
         "expires:_exp||null" +
     "});";
 
-routerAdd("GET", "/api/stjorna/api-keys/me", new Function("c", INTROSPECT_BODY));
+routerAdd("GET", "/api/stjorna/api-keys/me", new Function("e", INTROSPECT_BODY));
 console.log("[stjorna-apikeys] registered GET /api/stjorna/api-keys/me");
 
 // ---------------------------------------------------------------------------
-// POST /api/stjorna/api-keys/exchange — API key bearer → STJÓRN A user credentials
+// POST /api/stjorna/api-keys/exchange — API key bearer → STJÓRNA user credentials
 // ---------------------------------------------------------------------------
 // Accepts the API key as a bearer (Authorization: Bearer stjorna_….) or in the
 // JSON body { key: "stjorna_…" }. Returns:
 //   { ok, tenant, email, password }
 // The caller then does
 //   pb.collection('users').authWithPassword(email, password)
-// against its own STJÓRN A frontend and uses the resulting JWT for the
+// against its own STJÓRNA frontend and uses the resulting JWT for the
 // regular /api/collections/* routes.
 //
-// Why this exists: STJÓRN A's collection rules reference @request.auth.
+// Why this exists: STJÓRNA's collection rules reference @request.auth.
 // PB only injects an auth record when it can verify a user JWT — an
-// STJÓRN A API key is not a JWT PB recognises, so rules reject reads
+// STJÓRNA API key is not a JWT PB recognises, so rules reject reads
 // (returns 200 with `items: []`). Service-user exchange gives the
-// caller a real STJÓRN A user JWT that passes the rules.
+// caller a real STJÓRNA user JWT that passes the rules.
 
 var EXCHANGE_BODY = "" +
     JSON_REPLY_FN +
@@ -391,7 +382,7 @@ var EXCHANGE_BODY = "" +
     CRYPTO_FN +
     CMP_FN +
     // Read bearer OR body.
-    "var _h=String(c.request().header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
+    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
     "var _raw=_readBody();" +
     "var _body={};try{_body=JSON.parse(_raw||'{}')||{};}catch(_e){_body={};}" +
     "var _key=_h||String(_body.key||'').trim();" +
@@ -399,9 +390,9 @@ var EXCHANGE_BODY = "" +
     "if(!_keyShape(_key)){_reply(401,{ok:false,error:{code:401,message:'malformed API key'}});return;}" +
     "var _prefix=_key.split('.')[0];" +
     "var _computedHash=_hash(_key);" +
-    // findRecordsByExpr then JS filter — same reason as INTROSPECT.
+    // using findRecordsByFilter
     "var _rec=null;" +
-    "var _all=null;try{_all=$app.dao().findRecordsByExpr('api_keys');}catch(_e1){}" +
+    "var _all=null;try{_all=$app.findRecordsByFilter('api_keys','','',0,0);}catch(_e1){}" +
     "var _getR=function(_r,_k){try{return _r.get(_k);}catch(_eg){return null;}};" +
     "if(_all){for(var _i3=0;_i3<_all.length;_i3++){var _r=_all[_i3];if(!_r||typeof _r.get!=='function')continue;if(String(_getR(_r,'prefix'))===_prefix&&!_getR(_r,'revoked')){_rec=_r;break;}}}" +
     "if(!_rec){_reply(401,{ok:false,error:{code:401,message:'invalid API key'}});return;}" +
@@ -436,19 +427,19 @@ var EXCHANGE_BODY = "" +
             "var _tid=String(_tenantId).replace(/[^a-zA-Z0-9]/g,'').slice(0,6).toLowerCase()||'tenant';" +
             "_svcEmail='svc-'+_tid+'-'+_rand(8)+'@stjorna.internal';" +
             "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
-            "var _authCol=$app.dao().findCollectionByNameOrId('_pb_users_auth_');" +
+            "var _authCol=$app.findCollectionByNameOrId('_pb_users_auth_');" +
             "var _u=new Record(_authCol);" +
             "_u.setUsername(_svcUsername);" +
             "_u.setEmail(_svcEmail);" +
             "_u.setPassword(_svcPassword);" +
             "_u.setVerified(true);" +
-            "$app.dao().saveRecord(_u);" +
+            "$app.save(_u);" +
             "_svcId=String(_u.id||'');" +
             // Persist onto the existing api_keys row.
             "_rec.set('service_user_id',_svcId);" +
             "_rec.set('service_user_email',_svcEmail);" +
             "_rec.set('service_user_password',_svcPassword);" +
-            "$app.dao().saveRecord(_rec);" +
+            "$app.save(_rec);" +
             "_backfilled=true;" +
         "}catch(_eBack){" +
             "_reply(500,{ok:false,error:{code:500,message:'legacy backfill failed: '+(_eBack&&_eBack.message||_eBack)}});return;" +
@@ -458,7 +449,7 @@ var EXCHANGE_BODY = "" +
     // wiped by an admin manually). If missing, refuse rather than mint
     // a broken JWT.
     "try{" +
-        "var _uCheck=$app.dao().findRecordById('_pb_users_auth_',_svcId);" +
+        "var _uCheck=$app.findRecordById('_pb_users_auth_',_svcId);" +
         "if(!_uCheck||String(_getR(_uCheck,'email')||'')!==_svcEmail){" +
             "_reply(500,{ok:false,error:{code:500,message:'service user record missing or email mismatch — re-issue the key'}});return;" +
         "}" +
@@ -466,7 +457,7 @@ var EXCHANGE_BODY = "" +
         "_reply(500,{ok:false,error:{code:500,message:'service user lookup failed — re-issue the key'}});return;" +
     "}" +
     // Best-effort last_used update.
-    "try{_rec.set('last_used',new Date().toISOString().replace('T',' ').replace(/\\..*$/,'Z'));$app.dao().saveRecord(_rec);}catch(_eu){}" +
+    "try{_rec.set('last_used',new Date().toISOString().replace('T',' ').replace(/\\..*$/,'Z'));$app.save(_rec);}catch(_eu){}" +
     "var _tenantOut=String(_getR(_rec,'tenant')||'');" +
     "var _permsOut=null;" +
     "try{var _pp=_getR(_rec,'permissions');if(_pp&&typeof _pp==='string')_permsOut=JSON.parse(_pp);else if(_pp)_permsOut=_pp;}catch(_ep2){}" +
@@ -480,7 +471,7 @@ var EXCHANGE_BODY = "" +
         "permissions:_permsOut" +
     "});";
 
-routerAdd("POST", "/api/stjorna/api-keys/exchange", new Function("c", EXCHANGE_BODY));
+routerAdd("POST", "/api/stjorna/api-keys/exchange", new Function("e", EXCHANGE_BODY));
 console.log("[stjorna-apikeys] registered POST /api/stjorna/api-keys/exchange");
 
 console.log("[stjorna-apikeys] all routes registered");

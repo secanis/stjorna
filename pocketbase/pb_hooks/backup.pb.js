@@ -9,17 +9,18 @@
 //                                       "v3" (v3 JSON or ZIP, base64)
 //                              data_base64 = base64(file content)
 //
-// Notes on v0.22.7 JSVM:
-//   - c is an echo.Context. c.request() is *http.Request.
-//   - c.response() is *echo.Response. Use c.response().header().set().
-//   - c.string(200, str), c.blob(200, contentType, []byte) for responses.
-//   - c.queryParam(name) for query params.
+// Notes on v0.40.2 JSVM:
+//   - e is a core.RequestEvent. e.request is *http.Request.
+//   - e.response is *echo.Response. Use e.response.header().set().
+//   - e.string(200, str), e.blob(200, contentType, []byte) for responses.
 //   - readerToString(r, maxBytes) reads an io.Reader into a JS string.
-//   - $app.dao() for DB access.
+//   - $app for DB access.
 //   - $os.readFile(path) returns []byte (Uint8Array-like in goja).
 //   - $security.parseUnverifiedJWT(token) decodes JWT payload safely.
+//   - $filesystem.fileFromBytes(content, name) creates a file object.
+//   - Set file objects on record fields and call $app.save(record).
 //
-// All handlers are inlined as `new Function("c", BODY)` to avoid the
+// All handlers are inlined as `new Function("e", BODY)` to avoid the
 // loader/executor VM closure issue (see openapi.pb.js for the pattern).
 
 console.log("[stjorna-backup] loading");
@@ -142,7 +143,7 @@ var STR_TO_BYTES_FN =
 // If type is not in allowedTypes, returns 401 and stops execution (uses `return;`).
 function authCheckSnippet(allowedTypes) {
     return "" +
-        "var _h=String(c.request().header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
+        "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
         "var _p={};" +
         "if(_h.length>0){" +
             "try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_e){_p={};}" +
@@ -150,8 +151,8 @@ function authCheckSnippet(allowedTypes) {
         "var authType=_p.type||'';" +
         "var authId=_p.id||'';" +
         "if(" + JSON.stringify(allowedTypes) + ".indexOf(authType)<0){" +
-            "c.response().header().set('Content-Type','application/json; charset=utf-8');" +
-            "c.string(401,'{\"error\":\"unauthorized\"}');" +
+            "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+            "e.string(401,'{\"error\":\"unauthorized\"}');" +
             "return;" +
         "}";
 }
@@ -188,7 +189,7 @@ function manifestSnippet() {
             "var _n=_cols[_i];" +
             "var _arr=[];" +
             "try{" +
-                "var _recs=$app.dao().findRecordsByExpr(_n);" +
+                "var _recs=$app.findRecordsByFilter(_n,'','',0,0);" +
                 "for(var _r=0;_r<_recs.length;_r++){" +
                     "var _rec=_recs[_r];" +
                     "var _exp={};" +
@@ -208,11 +209,11 @@ var JSON_BODY = "" +
     authCheckSnippet(["admin"]) +
     manifestSnippet() +
     "var _body=JSON.stringify(manifest,null,2);" +
-    "c.response().header().set('Content-Type','application/json; charset=utf-8');" +
-    "c.response().header().set('Content-Disposition','attachment; filename=\"stjorna-backup-' + Date.now() + '.json\"');" +
-    "c.string(200,_body);";
+    "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+    "e.response.header().set('Content-Disposition','attachment; filename=\"stjorna-backup-' + Date.now() + '.json\"');" +
+    "e.string(200,_body);";
 
-routerAdd("GET", "/api/backup/json", new Function("c", JSON_BODY));
+routerAdd("GET", "/api/backup/json", new Function("e", JSON_BODY));
 console.log("[stjorna-backup] registered GET /api/backup/json");
 
 // ---------------------------------------------------------------------------
@@ -317,11 +318,11 @@ var ZIP_BODY = "" +
         "for(var _zi2=0;_zi2<_localParts.length;_zi2++){for(var _zi3=0;_zi3<_localParts[_zi2].length;_zi3++)_zip[_pos++]=_localParts[_zi2][_zi3];}" +
         "for(var _zi4=0;_zi4<_centralParts.length;_zi4++){for(var _zi5=0;_zi5<_centralParts[_zi4].length;_zi5++)_zip[_pos++]=_centralParts[_zi4][_zi5];}" +
         "for(var _zi6=0;_zi6<22;_zi6++)_zip[_pos++]=_eocd[_zi6];" +
-        "c.response().header().set('Content-Disposition','attachment; filename=\"stjorna-backup-' + Date.now() + '.zip\"');" +
-        "c.blob(200,'application/zip',_zip);" +
+        "e.response.header().set('Content-Disposition','attachment; filename=\"stjorna-backup-' + Date.now() + '.zip\"');" +
+        "e.blob(200,'application/zip',_zip);" +
     "})();";
 
-routerAdd("GET", "/api/backup/zip", new Function("c", ZIP_BODY));
+routerAdd("GET", "/api/backup/zip", new Function("e", ZIP_BODY));
 console.log("[stjorna-backup] registered GET /api/backup/zip");
 
 // ---------------------------------------------------------------------------
@@ -332,25 +333,25 @@ console.log("[stjorna-backup] registered GET /api/backup/zip");
 
 var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN + JSON_HELPER_FN + "try{" +
     "var _rawBody='';" +
-    "try{_rawBody=readerToString(c.request().body,64*1024*1024);}catch(_be){c.string(400,'{\"error\":\"read body failed\"}');return;}" +
+    "try{_rawBody=readerToString(e.request.body,64*1024*1024);}catch(_be){e.string(400,'{\"error\":\"read body failed\"}');return;}" +
     "var _req=null;" +
-    "try{_req=JSON.parse(_rawBody);}catch(_je){c.string(400,'{\"error\":\"invalid JSON body\"}');return;}" +
+    "try{_req=JSON.parse(_rawBody);}catch(_je){e.string(400,'{\"error\":\"invalid JSON body\"}');return;}" +
     "var _tenantId=String(_req.tenant||'');" +
     "var _source=String(_req.source||'v3');" +
-    "if(!_tenantId){c.string(400,'{\"error\":\"tenant required\"}');return;}" +
-    "if(_source!=='v1'&&_source!=='v3'){c.string(400,'{\"error\":\"source must be v1 or v3\"}');return;}" +
+    "if(!_tenantId){e.string(400,'{\"error\":\"tenant required\"}');return;}" +
+    "if(_source!=='v1'&&_source!=='v3'){e.string(400,'{\"error\":\"source must be v1 or v3\"}');return;}" +
     // Auth
-    "var _h=String(c.request().header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
+    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
     "var _p={};" +
     "if(_h.length>0){try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_e){_p={};}}" +
     "var _allowed=false;" +
     "if(_p.type==='admin'){_allowed=true;}" +
     "else if(_p.type==='authRecord'&&_p.id){" +
-        "try{var _ur=$app.dao().findRecordById('users',_p.id);if(_ur.get('tenant')===_tenantId&&_ur.get('role')==='admin')_allowed=true;}catch(_ue){}" +
+        "try{var _ur=$app.findRecordById('users',_p.id);if(_ur.get('tenant')===_tenantId&&_ur.get('role')==='admin')_allowed=true;}catch(_ue){}" +
     "}" +
-    "if(!_allowed){c.string(403,'{\"error\":\"forbidden: admin of target tenant required\"}');return;}" +
+    "if(!_allowed){e.string(403,'{\"error\":\"forbidden: admin of target tenant required\"}');return;}" +
     // Verify tenant
-    "try{$app.dao().findRecordById('tenants',_tenantId);}catch(_te){c.string(404,'{\"error\":\"tenant not found\"}');return;}" +
+    "try{$app.findRecordById('tenants',_tenantId);}catch(_te){e.string(404,'{\"error\":\"tenant not found\"}');return;}" +
     // Decode file content
     "var _fileBytes=null;" +
     "if(_req.data_base64){_fileBytes=b64decode(String(_req.data_base64));}" +
@@ -368,10 +369,10 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
                 "if(_i<0)break;" +
                 "if(_fileBytes[_i]===0x50&&_fileBytes[_i+1]===0x4B&&_fileBytes[_i+2]===0x05&&_fileBytes[_i+3]===0x06){_eocdOff=_i;break;}" +
             "}" +
-            "if(_eocdOff<0){c.string(400,'{\"error\":\"invalid ZIP: EOCD not found\"}');return;}" +
+            "if(_eocdOff<0){e.string(400,'{\"error\":\"invalid ZIP: EOCD not found\"}');return;}" +
             "var _cdCount=(_fileBytes[_eocdOff+10]&0xFF)|((_fileBytes[_eocdOff+11]&0xFF)<<8);" +
             "var _cdOff=((_fileBytes[_eocdOff+16]&0xFF)|((_fileBytes[_eocdOff+17]&0xFF)<<8)|((_fileBytes[_eocdOff+18]&0xFF)<<16)|((_fileBytes[_eocdOff+19]&0xFF)<<24))>>>0;" +
-            "if(_cdOff>=_fileBytes.length){c.string(400,'{\"error\":\"invalid ZIP: CD out of bounds\"}');return;}" +
+            "if(_cdOff>=_fileBytes.length){e.string(400,'{\"error\":\"invalid ZIP: CD out of bounds\"}');return;}" +
             "var _p2=_cdOff;" +
             "for(var _fi=0;_fi<_cdCount;_fi++){" +
                 "if(_p2+46>_fileBytes.length)break;" +
@@ -394,11 +395,11 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
                     "}" +
                 "}" +
             "}" +
-            "if(!_zipFiles['manifest.json']){c.string(400,'{\"error\":\"ZIP missing manifest.json\"}');return;}" +
+            "if(!_zipFiles['manifest.json']){e.string(400,'{\"error\":\"ZIP missing manifest.json\"}');return;}" +
             "var _mStr=_bytesToUtf8(_zipFiles['manifest.json']);" +
-            "try{_manifest=JSON.parse(_mStr);}catch(_me){c.string(400,'{\"error\":\"invalid manifest.json in ZIP\"}');return;}" +
+            "try{_manifest=JSON.parse(_mStr);}catch(_me){e.string(400,'{\"error\":\"invalid manifest.json in ZIP\"}');return;}" +
         "}else{" +
-            "try{_manifest=JSON.parse(_asStr);}catch(_je2){c.string(400,'{\"error\":\"file is not JSON or ZIP\"}');return;}" +
+            "try{_manifest=JSON.parse(_asStr);}catch(_je2){e.string(400,'{\"error\":\"file is not JSON or ZIP\"}');return;}" +
         "}" +
     "}" +
     // Merge in mediaFiles
@@ -409,7 +410,7 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "}" +
         "}" +
     "}" +
-    "if(!_manifest){c.string(400,'{\"error\":\"no manifest in request or file\"}');return;}" +
+    "if(!_manifest){e.string(400,'{\"error\":\"no manifest in request or file\"}');return;}" +
     // Run import
     "var _stats={imported:{categories:0,products:0,media:0},skipped:{categories:0,products:0,media:0},warnings:[]};" +
     "if(_source==='v1'){" +
@@ -421,16 +422,16 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "var _slug=_slugify(_vc.name||'category');" +
             "if(!_slug)_slug='category-'+_ci;" +
             "var _exists=null;" +
-            "try{_exists=$app.dao().findFirstRecordByFilter('categories','tenant={:t} && slug={:s}',{t:_tenantId,s:_slug});}catch(_fe){}" +
+            "try{_exists=$app.findFirstRecordByFilter('categories','tenant={:t} && slug={:s}',{t:_tenantId,s:_slug});}catch(_fe){}" +
             "if(_exists){_oldIdToNewId[_vc._id]=_exists.id;_stats.skipped.categories++;continue;}" +
-            "var _nrec=new Record($app.dao().findCollectionByNameOrId('categories'));" +
+            "var _nrec=new Record($app.findCollectionByNameOrId('categories'));" +
             "_nrec.set('tenant',_tenantId);" +
             "_nrec.set('name',_vc.name||'Untitled');" +
             "_nrec.set('slug',_slug);" +
             "_nrec.set('description',_vc.description||'');" +
             "_nrec.set('active',_vc.active!==false);" +
             "_nrec.set('sort_order',0);" +
-            "try{$app.dao().saveRecord(_nrec);_oldIdToNewId[_vc._id]=_nrec.id;_stats.imported.categories++;}catch(_se){_stats.warnings.push('category failed: '+(_vc.name||'?')+' ('+_se.message+')');}" +
+            "try{$app.save(_nrec);_oldIdToNewId[_vc._id]=_nrec.id;_stats.imported.categories++;}catch(_se){_stats.warnings.push('category failed: '+(_vc.name||'?')+' ('+_se.message+')');}" +
         "}" +
         "for(var _pi=0;_pi<_v1Prods.length;_pi++){" +
             "var _vp=_v1Prods[_pi];" +
@@ -439,9 +440,9 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "var _pslug=_slugify(_vp.name||'product');" +
             "if(!_pslug)_pslug='product-'+_pi;" +
             "var _pexists=null;" +
-            "try{_pexists=$app.dao().findFirstRecordByFilter('products','tenant={:t} && slug={:s}',{t:_tenantId,s:_pslug});}catch(_pe){}" +
+            "try{_pexists=$app.findFirstRecordByFilter('products','tenant={:t} && slug={:s}',{t:_tenantId,s:_pslug});}catch(_pe){}" +
             "if(_pexists){_stats.skipped.products++;continue;}" +
-            "var _prec=new Record($app.dao().findCollectionByNameOrId('products'));" +
+            "var _prec=new Record($app.findCollectionByNameOrId('products'));" +
             "_prec.set('tenant',_tenantId);" +
             "_prec.set('name',_vp.name||'Untitled');" +
             "_prec.set('slug',_pslug);" +
@@ -451,7 +452,7 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "_prec.set('active',_vp.active!==false);" +
             "_prec.set('sort_order',0);" +
             "_prec.set('custom_fields',{});" +
-            "try{$app.dao().saveRecord(_prec);_stats.imported.products++;}catch(_pse){_stats.warnings.push('product failed: '+(_vp.name||'?')+' ('+_pse.message+')');}" +
+            "try{$app.save(_prec);_stats.imported.products++;}catch(_pse){_stats.warnings.push('product failed: '+(_vp.name||'?')+' ('+_pse.message+')');}" +
         "}" +
         "if(_v1Cats.some(function(c){return c.image;}))_stats.warnings.push('v1 category image references ignored (v1 JSON contains filenames only, not the file bytes — re-upload via the v3 admin UI to attach a media record)');" +
     "}else{" +
@@ -464,26 +465,26 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "var _slug2=_vc2.slug||_slugify(_vc2.name||'');" +
             "if(!_slug2)_slug2='category-'+_ci2;" +
             "var _exists2=null;" +
-            "try{_exists2=$app.dao().findFirstRecordByFilter('categories','tenant={:t} && slug={:s}',{t:_tenantId,s:_slug2});}catch(_fe2){}" +
+            "try{_exists2=$app.findFirstRecordByFilter('categories','tenant={:t} && slug={:s}',{t:_tenantId,s:_slug2});}catch(_fe2){}" +
             "if(_exists2){_oldCatToNew[_vc2.id]=_exists2.id;_stats.skipped.categories++;continue;}" +
-            "var _nrec2=new Record($app.dao().findCollectionByNameOrId('categories'));" +
+            "var _nrec2=new Record($app.findCollectionByNameOrId('categories'));" +
             "_nrec2.set('tenant',_tenantId);" +
             "_nrec2.set('name',_vc2.name||'Untitled');" +
             "_nrec2.set('slug',_slug2);" +
             "_nrec2.set('description',_vc2.description||'');" +
             "_nrec2.set('active',_vc2.active!==false);" +
             "_nrec2.set('sort_order',_vc2.sort_order||0);" +
-            "try{$app.dao().saveRecord(_nrec2);_oldCatToNew[_vc2.id]=_nrec2.id;_stats.imported.categories++;}catch(_se2){_stats.warnings.push('category failed: '+(_vc2.name||'?')+' ('+_se2.message+')');}" +
+            "try{$app.save(_nrec2);_oldCatToNew[_vc2.id]=_nrec2.id;_stats.imported.categories++;}catch(_se2){_stats.warnings.push('category failed: '+(_vc2.name||'?')+' ('+_se2.message+')');}" +
         "}" +
         "for(var _pi2=0;_pi2<_vprods.length;_pi2++){" +
             "var _vp2=_vprods[_pi2];" +
             "var _pslug2=_vp2.slug||_slugify(_vp2.name||'');" +
             "if(!_pslug2)_pslug2='product-'+_pi2;" +
             "var _pexists2=null;" +
-            "try{_pexists2=$app.dao().findFirstRecordByFilter('products','tenant={:t} && slug={:s}',{t:_tenantId,s:_pslug2});}catch(_pe2){}" +
+            "try{_pexists2=$app.findFirstRecordByFilter('products','tenant={:t} && slug={:s}',{t:_tenantId,s:_pslug2});}catch(_pe2){}" +
             "if(_pexists2){_stats.skipped.products++;continue;}" +
             "var _newCatId2=_oldCatToNew[_vp2.category]||'';" +
-            "var _prec2=new Record($app.dao().findCollectionByNameOrId('products'));" +
+            "var _prec2=new Record($app.findCollectionByNameOrId('products'));" +
             "_prec2.set('tenant',_tenantId);" +
             "_prec2.set('name',_vp2.name||'Untitled');" +
             "_prec2.set('slug',_pslug2);" +
@@ -493,7 +494,7 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
             "_prec2.set('active',_vp2.active!==false);" +
             "_prec2.set('sort_order',_vp2.sort_order||0);" +
             "_prec2.set('custom_fields',J(_vp2.custom_fields));" +
-            "try{$app.dao().saveRecord(_prec2);_stats.imported.products++;}catch(_pse2){_stats.warnings.push('product failed: '+(_vp2.name||'?')+' ('+_pse2.message+')');}" +
+            "try{$app.save(_prec2);_stats.imported.products++;}catch(_pse2){_stats.warnings.push('product failed: '+(_vp2.name||'?')+' ('+_pse2.message+')');}" +
         "}" +
         "var _hasMediaFiles=Object.keys(_zipFiles).length>0;" +
         "if(_hasMediaFiles){" +
@@ -507,43 +508,44 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
                     "var _path3='media/'+_vm.id+'/'+_fn3;" +
                     "if(!_zipFiles[_path3])continue;" +
                     "try{" +
-                        "var _mrec=new Record($app.dao().findCollectionByNameOrId('media'));" +
+                        "var _mrec=new Record($app.findCollectionByNameOrId('media'));" +
                         "_mrec.set('tenant',_tenantId);" +
                         "_mrec.set('filename',_fn3);" +
                         "_mrec.set('original_name',_vm.original_name||_fn3);" +
                         "_mrec.set('mime_type',_vm.mime_type||'application/octet-stream');" +
                         "_mrec.set('size',_vm.size||_zipFiles[_path3].length);" +
-                        "$app.dao().saveRecord(_mrec);" +
-                        "var _fsysKey=_fn3;" +
-                        "var _fsysId=_mrec.id;" +
-                        "try{" +
-                            "var _file=$filesystem.fileFromBytes(_fn3,_vm.mime_type||'application/octet-stream',_zipFiles[_path3]);" +
-                            "$app.dao().saveRecord(_mrec,_file);" +
-                        "}catch(_fse){" +
-                            "try{" +
-                                "var _writer=$app.dao().newFilesystem().upload(_fsysKey,_fsysId);" +
-                                "for(var _ci4=0;_ci4<_zipFiles[_path3].length;_ci4++)_writer.write(new Array(_zipFiles[_path3][_ci4]));" +
-                                "try{if(_writer.close)_writer.close();}catch(_wce){}" +
-                            "}catch(_wfe){_stats.warnings.push('media write failed: '+_fn3+' ('+_wfe.message+')');}" +
-                        "}" +
+                        // Primary path: attach file object to the record's
+                        // file field and let $app.save handle upload + validation.
+                        "var _file=$filesystem.fileFromBytes(_zipFiles[_path3],_fn3);" +
+                        "_mrec.set('file',_file);" +
+                        "$app.save(_mrec);" +
                         "_stats.imported.media++;" +
-                    "}catch(_mse){_stats.warnings.push('media failed: '+_fn3+' ('+_mse.message+')');}" +
+                    "}catch(_fse){" +
+                        // Fallback writer: upload bytes directly to the
+                        // filesystem under the record's storage path.
+                        "try{" +
+                            "var _key=_fn3;" +
+                            "try{_key=_mrec.baseFilesPath()+'/'+_fn3;}catch(_){}" +
+                            "$app.newFilesystem().upload(_zipFiles[_path3],_key);" +
+                            "_stats.imported.media++;" +
+                        "}catch(_wfe){_stats.warnings.push('media write failed: '+_fn3+' ('+_wfe.message+')');}" +
+                    "}" +
                 "}" +
             "}" +
         "}" +
     "}" +
-    "c.response().header().set('Content-Type','application/json; charset=utf-8');" +
-    "c.string(200,JSON.stringify({success:true,stats:_stats}));" +
+    "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+    "e.string(200,JSON.stringify({success:true,stats:_stats}));" +
     "}catch(_e){" +
         "var _resp=JSON.stringify({error:String(_e).substring(0,500)});" +
-        "c.response().header().set('Content-Type','application/json; charset=utf-8');" +
-        "c.string(500,_resp);" +
+        "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+        "e.string(500,_resp);" +
     "}";
 
 // 500MB body limit — v1 backups with many images can exceed the 32MB default.
 // Only applies to the import route; other routes keep the default.
 routerAdd("POST", "/api/backup/import",
-    new Function("c", IMPORT_BODY),
+    new Function("e", IMPORT_BODY),
     $apis.bodyLimit(500 * 1024 * 1024));
 console.log("[stjorna-backup] registered POST /api/backup/import");
 

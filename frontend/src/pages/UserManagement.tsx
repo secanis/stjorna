@@ -7,15 +7,15 @@ import { tenantStore } from '~/stores/tenant';
 import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
-import { X, ExternalLink } from 'lucide-solid';
+import { X, ExternalLink, Search, UserPlus } from 'lucide-solid';
 
 // One row per tenant membership of a given user.
-// uniqUser below rolls several of these up into a single row.
 interface UserMembership {
   userTenantId: string;
   tenantId: string;
   tenantName: string;
   role: string;
+  source?: string;
 }
 
 // One row per user, regardless of how many tenants they belong to.
@@ -24,15 +24,16 @@ interface AggregatedUser {
   name: string;
   email: string;
   memberships: UserMembership[];
+  hasSSO: boolean;
 }
 
 // Raw shape as it comes out of user_tenants.getList with expand.
-// Kept narrow so unknown expand fields are tolerated.
 interface RawUserTenant {
   id: string;
   user: string;
   tenant: string;
   role: string;
+  source?: string;
   expand?: {
     user?: { id?: string; name?: string; email?: string };
     tenant?: { id?: string; name?: string };
@@ -40,10 +41,12 @@ interface RawUserTenant {
   };
 }
 
-// Roll user_tenants records up by user so a user belonging to two
-// tenants produces a single row, with their memberships listed
-// inside it. The previous shape had one row per link, which made
-// the same double up across the table — fine data, wrong UX.
+interface SearchResult {
+  id: string;
+  email: string;
+  name: string;
+}
+
 function aggregateUserTenants(rows: RawUserTenant[]): AggregatedUser[] {
   const byUser = new Map<string, AggregatedUser>();
   for (const ut of rows) {
@@ -55,20 +58,21 @@ function aggregateUserTenants(rows: RawUserTenant[]): AggregatedUser[] {
       tenantId,
       tenantName: ut.expand?.tenant?.name || 'Unknown tenant',
       role: ut.expand?.role?.name || ut.role || 'viewer',
+      source: ut.source,
     };
     if (existing) {
       existing.memberships.push(membership);
+      if (ut.source === 'oidc') existing.hasSSO = true;
     } else {
       byUser.set(userId, {
         userId,
         name: ut.expand?.user?.name || '',
         email: ut.expand?.user?.email || '',
         memberships: [membership],
+        hasSSO: ut.source === 'oidc',
       });
     }
   }
-  // Sort memberships inside each row by tenant name so the cells
-  // have a stable order across re-fetches.
   return Array.from(byUser.values()).map((u) => ({
     ...u,
     memberships: [...u.memberships].sort((a, b) =>
@@ -92,7 +96,7 @@ async function fetchUsers(): Promise<AggregatedUser[]> {
       const r = await pb.collection('user_tenants').getList(1, 500, {
         filter,
         expand: 'user,tenant,role',
-    sort: 'tenant',
+        sort: 'tenant',
       });
       raw = r.items as unknown as RawUserTenant[];
     }
@@ -115,24 +119,30 @@ export default function UserManagement() {
     }
   });
 
-  // tenantStore.version inside the source key keeps the user list in
-  // step with tenant switches — particularly for non-admin viewers
-  // whose query is filtered by getCurrentTenant(); without this
-  // subscription a switch to a different tenant left the table
-  // showing the previous tenant's user_tenants rows.
   const [users, { refetch }] = createResource(
     () => ({ ready: initialized(), tenantVersion: tenantStore.version }),
     ({ ready }) => (ready ? fetchUsers() : undefined)
   );
 
+  // Superuser invite flow (create new account).
   const [showInvite, setShowInvite] = createSignal(false);
   const [inviteEmail, setInviteEmail] = createSignal('');
   const [inviteRole, setInviteRole] = createSignal<Role>('editor');
   const [inviteName, setInviteName] = createSignal('');
   const [invitePassword, setInvitePassword] = createSignal('');
   const [invitePasswordConfirm, setInvitePasswordConfirm] = createSignal('');
-  const [error, setError] = createSignal('');
+  const [inviteTenant, setInviteTenant] = createSignal<string>('');
   const [inviting, setInviting] = createSignal(false);
+
+  // Tenant admin add-existing-user flow.
+  const [addRole, setAddRole] = createSignal<Role>('editor');
+  const [searchEmail, setSearchEmail] = createSignal('');
+  const [searching, setSearching] = createSignal(false);
+  const [searchResults, setSearchResults] = createSignal<SearchResult[]>([]);
+  const [selectedUser, setSelectedUser] = createSignal<SearchResult | null>(null);
+  const [addingExisting, setAddingExisting] = createSignal(false);
+
+  const [error, setError] = createSignal('');
 
   const getRoleId = async (roleName: string): Promise<string> => {
     const roles = await pb.collection('roles').getList(1, 10);
@@ -146,17 +156,22 @@ export default function UserManagement() {
       setError('Passwords do not match');
       return;
     }
+
+    const tenant = inviteTenant();
+    if (!tenant) {
+      setError('Please select a tenant first');
+      return;
+    }
+
     setInviting(true);
     setError('');
 
     try {
-      const tenant = getCurrentTenant();
       const newUser = await pb.collection('users').create({
         email: inviteEmail(),
         password: invitePassword(),
         passwordConfirm: invitePasswordConfirm(),
         name: inviteName(),
-        tenant,
       });
       const roleId = await getRoleId(inviteRole());
       await pb.collection('user_tenants').create({
@@ -164,21 +179,91 @@ export default function UserManagement() {
         tenant,
         role: roleId,
       });
-      setShowInvite(false);
-      setInviteEmail('');
-      setInviteName('');
-      setInvitePassword('');
-      setInvitePasswordConfirm('');
+      resetInvite();
       sidebarStore.bump();
       refetch();
-    } catch (e: any) {
-      setError(e.message || 'Failed to invite user');
+    } catch (err: any) {
+      setError(err.message || 'Failed to invite user');
     } finally {
       setInviting(false);
     }
   };
 
-const handleRoleChange = async (userTenantId: string, newRole: Role) => {
+  const resetInvite = () => {
+    setShowInvite(false);
+    setInviteEmail('');
+    setInviteName('');
+    setInvitePassword('');
+    setInvitePasswordConfirm('');
+    setInviteTenant('');
+    setError('');
+  };
+
+  const resetAddExisting = () => {
+    setSearchEmail('');
+    setSearchResults([]);
+    setSelectedUser(null);
+    setAddRole('editor');
+    setError('');
+  };
+
+  const handleSearch = async (e?: Event) => {
+    e?.preventDefault();
+    setError('');
+    const q = searchEmail().trim();
+    if (!q) return;
+    setSearching(true);
+    try {
+      const res = (await pb.send('/api/stjorna/users/search', {
+        method: 'GET',
+        query: { q },
+      })) as { ok: boolean; users: SearchResult[] };
+      setSearchResults(res.users || []);
+      setSelectedUser(null);
+      if ((res.users || []).length === 0) {
+        setError('No existing user found with that email.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Search failed');
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleAddExisting = async (e: Event) => {
+    e.preventDefault();
+    const user = selectedUser();
+    const tenant = getCurrentTenant();
+    if (!user) {
+      setError('Please select a user from the search results');
+      return;
+    }
+    if (!tenant) {
+      setError('No tenant selected');
+      return;
+    }
+    setAddingExisting(true);
+    setError('');
+    try {
+      const roleId = await getRoleId(addRole());
+      await pb.collection('user_tenants').create({
+        user: user.id,
+        tenant,
+        role: roleId,
+      });
+      resetAddExisting();
+      setShowInvite(false);
+      sidebarStore.bump();
+      refetch();
+    } catch (err: any) {
+      setError(err.message || 'Failed to add user to tenant');
+    } finally {
+      setAddingExisting(false);
+    }
+  };
+
+  const handleRoleChange = async (userTenantId: string, newRole: Role) => {
     try {
       const roleId = await getRoleId(newRole);
       await pb.collection('user_tenants').update(userTenantId, { role: roleId });
@@ -199,13 +284,6 @@ const handleRoleChange = async (userTenantId: string, newRole: Role) => {
     }
   };
 
-  // Each membership gets its own inline row inside the Tenants
-  // column. PB admin sees a tenant link + role select + remove.
-  // Non-admin (single-tenant context) only sees the role select
-  // — the membership is implicit and the row reflects the
-  // viewer's own tenant.
-  // data-membership-tenant-id is used by e2e tests to scope a
-  // single membership without DOM-tree text collision risk.
   const renderMembershipCell = (row: AggregatedUser) => (
     <div class="space-y-1.5">
       <For each={row.memberships}>
@@ -255,16 +333,27 @@ const handleRoleChange = async (userTenantId: string, newRole: Role) => {
     </div>
   );
 
-  // Backend column rows carry an array of memberships. The Table
-  // component calls render(value, wholeRow), so we ignore `value`
-  // and read row.memberships directly. Header label is deliberately
-  // always "Tenants" plural — solid in any context (singular cases
-  // are still readable), and avoids the
-  // `isPBAdmin ? 'Tenants' : 'Tenant'` capture-at-init race that
-  // would otherwise leak the wrong label until a refetch.
   const columns: Column[] = [
     { key: 'name', label: 'Name' },
     { key: 'email', label: 'Email' },
+    {
+      key: 'hasSSO',
+      label: 'Auth',
+      render: (_v, row) => {
+        const user = row as AggregatedUser;
+        return (
+          <span
+            class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+              user.hasSSO
+                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
+            }`}
+          >
+            {user.hasSSO ? 'SSO' : 'Local'}
+          </span>
+        );
+      },
+    },
     {
       key: 'memberships',
       label: 'Tenants',
@@ -272,16 +361,19 @@ const handleRoleChange = async (userTenantId: string, newRole: Role) => {
     },
   ];
 
+  const isSuperuserInvite = () => authStore.isPBAdmin;
+
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
         <Show when={authStore.isAdminOrAbove()}>
           <button
-            onClick={() => setShowInvite(true)}
-            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors`}
+            onClick={() => { setShowInvite(true); setError(''); }}
+            class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors flex items-center gap-2`}
           >
-            + Invite User
+            <UserPlus size={18} />
+            {isSuperuserInvite() ? 'Invite User' : 'Add User'}
           </button>
         </Show>
       </div>
@@ -294,88 +386,197 @@ const handleRoleChange = async (userTenantId: string, newRole: Role) => {
 
       <Show when={showInvite()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Invite User</h2>
-          <form onSubmit={handleInvite} class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                <input
-                  type="text"
-                  value={inviteName()}
-                  onInput={(e) => setInviteName(e.currentTarget.value)}
-                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-                  required
-                />
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+            {isSuperuserInvite() ? 'Invite User' : 'Add Existing User'}
+          </h2>
+
+          <Show when={isSuperuserInvite()}>
+            <form onSubmit={handleInvite} class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={inviteName()}
+                    onInput={(e) => setInviteName(e.currentTarget.value)}
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={inviteEmail()}
+                    onInput={(e) => setInviteEmail(e.currentTarget.value)}
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                  <input
+                    type="password"
+                    value={invitePassword()}
+                    onInput={(e) => setInvitePassword(e.currentTarget.value)}
+                    autocomplete="new-password"
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    value={invitePasswordConfirm()}
+                    autocomplete="new-password"
+                    onInput={(e) => setInvitePasswordConfirm(e.currentTarget.value)}
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                    required
+                  />
+                </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                <select
+                  value={inviteRole()}
+                  onChange={(e) => setInviteRole(e.currentTarget.value as Role)}
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+                <select
+                  value={inviteTenant()}
+                  onChange={(e) => setInviteTenant(e.currentTarget.value)}
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                  required
+                >
+                  <option value="" disabled>Select a tenant</option>
+                  <For each={authStore.tenants}>
+                    {(t) => <option value={t.tenant}>{t.tenantName}</option>}
+                  </For>
+                </select>
+              </div>
+
+              <Show when={error()}>
+                <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
+              </Show>
+
+              <div class="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={inviting()}
+                  class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
+                >
+                  {inviting() ? 'Inviting...' : 'Invite'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => resetInvite()}
+                  class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Show>
+
+          <Show when={!isSuperuserInvite()}>
+            <div class="bg-blue-500/10 border border-blue-500 rounded p-4 text-blue-600 dark:text-blue-400 text-sm">
+              Adding an existing user gives them access to the current tenant with the selected role.
+              Their password and other tenants stay unchanged.
+            </div>
+            <form onSubmit={handleSearch} class="space-y-4">
+              <div class="flex gap-2">
                 <input
                   type="email"
-                  value={inviteEmail()}
-                  onInput={(e) => setInviteEmail(e.currentTarget.value)}
-                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                  value={searchEmail()}
+                  onInput={(e) => setSearchEmail(e.currentTarget.value)}
+                  placeholder="Search by email"
+                  class="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
+                <button
+                  type="submit"
+                  disabled={searching()}
+                  class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors flex items-center gap-2 disabled:opacity-50`}
+                >
+                  <Search size={16} />
+                  {searching() ? 'Searching...' : 'Search'}
+                </button>
               </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-                <input
-                  type="password"
-                  value={invitePassword()}
-                  onInput={(e) => setInvitePassword(e.currentTarget.value)}
-                  autocomplete="new-password"
-                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
-                <input
-                  type="password"
-                  value={invitePasswordConfirm()}
-                  autocomplete="new-password"
-                  onInput={(e) => setInvitePasswordConfirm(e.currentTarget.value)}
-                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-              <select
-                value={inviteRole()}
-                onChange={(e) => setInviteRole(e.currentTarget.value as Role)}
-                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-              >
-                <option value="viewer">Viewer</option>
-                <option value="editor">Editor</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
 
-            <Show when={error()}>
-              <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
-            </Show>
+              <Show when={searchResults().length > 0}>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select user</label>
+                  <div class="space-y-2">
+                    <For each={searchResults()}>
+                      {(u) => (
+                        <label class="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <input
+                            type="radio"
+                            name="selectedUser"
+                            value={u.id}
+                            checked={selectedUser()?.id === u.id}
+                            onChange={() => setSelectedUser(u)}
+                          />
+                          <div>
+                            <div class="text-gray-900 dark:text-white font-medium">{u.name || u.email}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">{u.email}</div>
+                          </div>
+                        </label>
+                      )}
+                    </For>
+                  </div>
+                </div>
+              </Show>
 
-            <div class="flex gap-3">
-              <button
-                type="submit"
-                disabled={inviting()}
-                class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
-              >
-                {inviting() ? 'Inviting...' : 'Invite'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowInvite(false); setError(''); }}
-                class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
+              <Show when={selectedUser()}>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                  <select
+                    value={addRole()}
+                    onChange={(e) => setAddRole(e.currentTarget.value as Role)}
+                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+                  >
+                    <option value="viewer">Viewer</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+              </Show>
+
+              <Show when={error()}>
+                <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
+              </Show>
+
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  disabled={!selectedUser() || addingExisting()}
+                  onClick={handleAddExisting}
+                  class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
+                >
+                  {addingExisting() ? 'Adding...' : 'Add to Tenant'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowInvite(false); resetAddExisting(); }}
+                  class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </Show>
         </div>
       </Show>
 

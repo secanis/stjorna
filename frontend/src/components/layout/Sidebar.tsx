@@ -1,12 +1,21 @@
 import { createSignal, onMount, Show, For, createEffect } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
-import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info } from 'lucide-solid';
+import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info, Shield, ChevronRight, ChevronDown } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 
-const navItems = [
+type NavItem = {
+    path?: string;
+    label: string;
+    icon?: any;
+    roles?: readonly ('editor' | 'admin' | 'pb_admin')[];
+    showCount?: boolean;
+    children?: Omit<NavItem, 'icon' | 'children' | 'showCount'>[];
+};
+
+const baseNavItems: NavItem[] = [
     { path: '/', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/media', label: 'Media', icon: Image, showCount: true, roles: ['editor', 'admin'] as const },
     { path: '/categories', label: 'Categories', icon: Folder, showCount: true, roles: ['editor', 'admin'] as const },
@@ -14,11 +23,28 @@ const navItems = [
     { path: '/stats', label: 'Statistics', icon: BarChart3, roles: ['editor', 'admin'] as const },
     { path: '/activities', label: 'Activities', icon: History, roles: ['editor', 'admin', 'pb_admin'] as const },
     { path: '/api-docs', label: 'API Docs', icon: BookOpen, roles: ['editor', 'admin', 'pb_admin'] as const },
-    { path: '/settings', label: 'Settings', icon: Settings },
-    { path: '/users', label: 'Users', icon: Users, roles: ['pb_admin'] as const, showCount: true },
+    { path: '/users', label: 'Users', icon: Users, roles: ['admin', 'pb_admin'] as const, showCount: true },
     { path: '/tenants', label: 'Tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
     { path: '/api-keys', label: 'API Keys', icon: KeyRound, roles: ['pb_admin'] as const, showCount: true },
+    { path: '/superusers', label: 'Superusers', icon: Shield, roles: ['pb_admin'] as const, showCount: true },
 ];
+
+const settingsItem = (): NavItem => {
+    if (authStore.isPBAdmin) {
+        return {
+            path: '/settings/general',
+            label: 'Settings',
+            icon: Settings,
+            children: [
+                { path: '/settings/general', label: 'General' },
+                { path: '/settings/oidc', label: 'OIDC' },
+                { path: '/settings/smtp', label: 'SMTP' },
+                { path: '/settings/security', label: 'Security' },
+            ],
+        };
+    }
+    return { path: '/settings', label: 'Settings', icon: Settings };
+};
 
 export default function Sidebar() {
     const location = useLocation();
@@ -108,13 +134,21 @@ export default function Sidebar() {
     });
 
     const visibleItems = () => {
-        return navItems.filter((item) => {
+        const filtered = baseNavItems.filter((item) => {
             if (!item.roles) return true;
             const roles = [...item.roles];
             if (authStore.isPBAdmin) return roles.includes('pb_admin');
             const userRole = authStore.role;
             return userRole ? roles.includes(userRole as 'editor' | 'admin') : false;
         });
+        // Insert Settings at the same position it used to have (after API Docs).
+        const idx = filtered.findIndex((i) => i.path === '/users');
+        if (idx >= 0) {
+            filtered.splice(idx, 0, settingsItem());
+        } else {
+            filtered.push(settingsItem());
+        }
+        return filtered;
     };
 
     return (
@@ -133,86 +167,119 @@ export default function Sidebar() {
                 <For each={visibleItems()}>
                     {(item) => {
                         const Icon = item.icon;
-                        const itemPath = () => item.path;
+                        const itemPath = () => item.path || '';
                         const isActive = () => location.pathname === itemPath() || (itemPath() !== '/' && location.pathname.startsWith(itemPath()));
+                        const isChildActive = () => item.children?.some((c) => location.pathname === c.path || (c.path !== '/' && location.pathname.startsWith(c.path || ''))) ?? false;
+                        const parentActive = () => isActive() || isChildActive();
+
                         return (
-                            <A
-                                href={itemPath()}
-                                classList={{
-                                    'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors': true,
-                                    'bg-blue-600 text-gray-900 dark:text-white': isActive(),
-                                    'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !isActive(),
-                                }}
-                            >
+                            <>
+                                <A
+                                    href={itemPath()}
+                                    classList={{
+                                        'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors': true,
+                                        'bg-blue-600 text-gray-900 dark:text-white': parentActive(),
+                                        'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !parentActive(),
+                                    }}
+                                >
                                 <Icon size={20} />
                                 <span class="flex-1">{item.label}</span>
+                                <Show when={item.children}>
+                                    {parentActive() || isChildActive() ? (
+                                        <ChevronDown size={16} class="text-gray-500 dark:text-gray-400" />
+                                    ) : (
+                                        <ChevronRight size={16} class="text-gray-500 dark:text-gray-400" />
+                                    )}
+                                </Show>
                                 <Show when={item.showCount && item.path === '/media'}>
-                                    <span
-                                        classList={{
-                                            'text-xs px-2 py-0.5 rounded-full': true,
-                                            'bg-blue-700 text-white': isActive(),
-                                            'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
-                                        }}
-                                    >
-                                        {mediaCount() ?? '-'}
-                                    </span>
+                                        <span
+                                            classList={{
+                                                'text-xs px-2 py-0.5 rounded-full': true,
+                                                'bg-blue-700 text-white': parentActive(),
+                                                'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !parentActive(),
+                                            }}
+                                        >
+                                            {mediaCount() ?? '-'}
+                                        </span>
+                                    </Show>
+                                    <Show when={item.showCount && item.path === '/categories'}>
+                                        <span
+                                            classList={{
+                                                'text-xs px-2 py-0.5 rounded-full': true,
+                                                'bg-blue-700 text-white': parentActive(),
+                                                'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !parentActive(),
+                                            }}
+                                        >
+                                            {categoriesCount() ?? '-'}
+                                        </span>
+                                    </Show>
+                                    <Show when={item.showCount && item.path === '/products'}>
+                                        <span
+                                            classList={{
+                                                'text-xs px-2 py-0.5 rounded-full': true,
+                                                'bg-blue-700 text-white': parentActive(),
+                                                'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !parentActive(),
+                                            }}
+                                        >
+                                            {productsCount() ?? '-'}
+                                        </span>
+                                    </Show>
+                                    <Show when={item.showCount && item.path === '/users'}>
+                                        <span
+                                            classList={{
+                                                'text-xs px-2 py-0.5 rounded-full': true,
+                                                'bg-blue-700 text-white': parentActive(),
+                                                'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !parentActive(),
+                                            }}
+                                        >
+                                            {usersCount() ?? '-'}
+                                        </span>
+                                    </Show>
+                                    <Show when={item.showCount && item.path === '/tenants'}>
+                                        <span
+                                            classList={{
+                                                'text-xs px-2 py-0.5 rounded-full': true,
+                                                'bg-blue-700 text-white': parentActive(),
+                                                'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !parentActive(),
+                                            }}
+                                        >
+                                            {tenantsCount() ?? '-'}
+                                        </span>
+                                    </Show>
+                                    <Show when={item.showCount && item.path === '/api-keys'}>
+                                        <span
+                                            classList={{
+                                                'text-xs px-2 py-0.5 rounded-full': true,
+                                                'bg-blue-700 text-white': parentActive(),
+                                                'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !parentActive(),
+                                            }}
+                                        >
+                                            {apiKeysCount() ?? '-'}
+                                        </span>
+                                    </Show>
+                                </A>
+                                <Show when={item.children && (parentActive() || isChildActive())}>
+                                    <div class="ml-6 mt-1 space-y-1">
+                                        <For each={item.children}>
+                                            {(child) => {
+                                                const childActive = () => location.pathname === child.path || (child.path !== '/' && location.pathname.startsWith(child.path || ''));
+                                                return (
+                                                    <A
+                                                        href={child.path || ''}
+                                                        classList={{
+                                                            'block px-3 py-1.5 rounded-lg text-sm transition-colors': true,
+                                                            'bg-blue-600 text-gray-900 dark:text-white': childActive(),
+                                                            'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !childActive(),
+                                                        }}
+                                                    >
+                                                        {child.label}
+                                                    </A>
+                                                );
+                                            }}
+                                        </For>
+                                    </div>
                                 </Show>
-                                <Show when={item.showCount && item.path === '/categories'}>
-                                    <span
-                                        classList={{
-                                            'text-xs px-2 py-0.5 rounded-full': true,
-                                            'bg-blue-700 text-white': isActive(),
-                                            'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
-                                        }}
-                                    >
-                                        {categoriesCount() ?? '-'}
-                                    </span>
-                                </Show>
-                                <Show when={item.showCount && item.path === '/products'}>
-                                    <span
-                                        classList={{
-                                            'text-xs px-2 py-0.5 rounded-full': true,
-                                            'bg-blue-700 text-white': isActive(),
-                                            'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
-                                        }}
-                                    >
-                                        {productsCount() ?? '-'}
-                                    </span>
-                                </Show>
-                                <Show when={item.showCount && item.path === '/users'}>
-                                    <span
-                                        classList={{
-                                            'text-xs px-2 py-0.5 rounded-full': true,
-                                            'bg-blue-700 text-white': isActive(),
-                                            'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
-                                        }}
-                                    >
-                                        {usersCount() ?? '-'}
-                                    </span>
-                                </Show>
-                                <Show when={item.showCount && item.path === '/tenants'}>
-                                    <span
-                                        classList={{
-                                            'text-xs px-2 py-0.5 rounded-full': true,
-                                            'bg-blue-700 text-white': isActive(),
-                                            'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
-                                        }}
-                                    >
-                                        {tenantsCount() ?? '-'}
-                                    </span>
-                                </Show>
-                                <Show when={item.showCount && item.path === '/api-keys'}>
-                                    <span
-                                        classList={{
-                                            'text-xs px-2 py-0.5 rounded-full': true,
-                                            'bg-blue-700 text-white': isActive(),
-                                            'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400': !isActive(),
-                                        }}
-                                    >
-                                        {apiKeysCount() ?? '-'}
-                                    </span>
-                                </Show>
-                            </A>
+                            </>
                         );
                     }}
                 </For>
