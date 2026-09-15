@@ -96,8 +96,12 @@ pocketbase:
     # -- Name of an existing Kubernetes Secret containing PB_SECRET. If empty,
     # the chart auto-generates one (pre-install hook).
     existingSecret: ""
-    # -- Key inside `existingSecret` that holds the PB_SECRET value.
+    # -- Key inside `existingSecret` that holds PB_SECRET value.
     existingSecretKey: PB_SECRET
+  # -- Log generated superuser OTP codes to stdout. Only used when SMTP is not
+  # configured. Accepted values: "1", "true" or "yes". Leave empty to disable.
+  # NEVER enable in production — OTP codes are authentication secrets.
+  logOtp: ""
   podSecurityContext:
     # -- Run PB as the `pocketbase` user (uid 1000 in the image).
     runAsUser: 1000

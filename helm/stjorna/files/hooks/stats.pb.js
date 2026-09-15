@@ -8,27 +8,30 @@
 //   - storage (sum of media.size, largest media, per-mime breakdown)
 //   - activity (last 30 days)
 //
-// Auth (mirrors backup.pb.js IMPORT handler at L343-351):
+// Auth (mirrors backup.pb.js IMPORT handler):
 //   - PB superuser (JWT type=admin) → can query any tenant via ?tenant=
-//   - STJÓRN A user (JWT type=authRecord) → can query own tenant only.
+//   - STJÓRNA user (JWT type=authRecord) → can query own tenant only.
 //     The query param is IGNORED for tenant users so an admin can't
 //     craft a URL that flips their view to someone else's tenant by
 //     piggybacking on a tenant user's session.
 //   - No bearer / unknown JWT → 401.
 //
 // Why server-side aggregation instead of FE-side getFullList + fold:
-//   STJÓRN A's `media` collections can hold tens of thousands of rows
+//   STJÓRNA's `media` collections can hold tens of thousands of rows
 //   per tenant. Pulling every record just to sum `size` would chew
 //   bandwidth + memory on both ends. One server-side scan over the
 //   same rows gives us all five aggregates at once (sum, max, mime
 //   map, count, activity timestamps) with one HTTP round-trip.
 //
-// PB 0.22.7 JSVM notes (same gotchas as api_keys.pb.js /
+// PB v0.40.2 JSVM notes (same gotchas as api_keys.pb.js /
 // backup.pb.js — handlers are string-concatenated and wrapped in
-//   `new Function("c", BODY)` to dodge loader/executor VM closures):
-//   - `findRecordsByFilter` JS bindings are flaky on this goja build.
-//     Use `findRecordsByExpr(name)` then JS-side filter.
-//   - Pass collection NAME (string) to `findRecordById`/`findCollectionByNameOrId`.
+//   `new Function("e", BODY)` to dodge loader/executor VM closures):
+//   - e is a core.RequestEvent; e.request is *http.Request.
+//   - e.request.header.get(name) for request headers.
+//   - e.request.url.query().get(name) for query params.
+//   - e.response.header().set(name, value) for response headers.
+//   - e.string(status, body) for responses.
+//   - findRecordsByFilter now requires sort/limit/offset arguments.
 //   - Date fields come back as a goja time.Time wrapper, not a JS Date.
 //     Normalise via `String(v).replace(' ', 'T')` then `Date.parse`.
 //   - Row.get can throw on rows missing a field — wrap each access in
@@ -43,9 +46,9 @@ console.log("[stjorna-stats] loading");
 var JSON_REPLY_FN =
     "function _reply(status,obj){" +
         "var body=JSON.stringify(obj);" +
-        "c.response().header().set('Content-Type','application/json; charset=utf-8');" +
-        "c.response().header().set('Cache-Control','no-store');" +
-        "c.string(status,body);" +
+        "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+        "e.response.header().set('Cache-Control','no-store');" +
+        "e.string(status,body);" +
     "}";
 
 // Safe row.get — returns null if the field is missing or row is weird.
@@ -79,36 +82,39 @@ var STATS_BODY = "" +
     GET_R_FN +
     DATE_MS_FN +
     // ---- Auth -----------------------------------------------------------
-    "var _h=String(c.request().header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
+    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
     "if(!_h){_reply(401,{ok:false,error:{code:401,message:'missing bearer token'}});return;}" +
     "var _p={};try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_ea){_p={};}" +
     "var _authType=String(_p.type||'');" +
     "var _authId=String(_p.id||'');" +
-    "if(_authType!=='admin'&&_authType!=='authRecord'){" +
+    "var _authCollId=String(_p.collectionId||'');" +
+    "var _isSuperuser=_authType==='auth'&&_authCollId==='pbc_3142635823';" +
+    "var _isUser=_authType==='auth'&&_authCollId==='_pb_users_auth_';" +
+    "if(!_isSuperuser&&!_isUser){" +
         "_reply(401,{ok:false,error:{code:401,message:'unrecognized token type'}});return;" +
     "}" +
     // ---- Resolve target tenant -----------------------------------------
-    // Admin: must supply ?tenant=<id>. We DO NOT default to anything — that
-    // would let an admin accidentally see all tenants' stats at once.
-    // Tenant user: derive from their own users record, ignore ?tenant=.
+    // Superuser: must supply ?tenant=<id>. We DO NOT default to anything —
+    // that would let a superuser accidentally see all tenants' stats at once.
+    // Normal user: derive from their own users record, ignore ?tenant=.
     "var _tenantId='';" +
     "var _userTenant='';" +
-    "if(_authType==='admin'){" +
-        "_tenantId=String(c.queryParam('tenant')||'').trim();" +
-        "if(!_tenantId){_reply(400,{ok:false,error:{code:400,message:'tenant query param is required for admin callers'}});return;}" +
+    "if(_isSuperuser){" +
+        "_tenantId=String(e.request.url.query().get('tenant')||'').trim();" +
+        "if(!_tenantId){_reply(400,{ok:false,error:{code:400,message:'tenant query param is required for superuser callers'}});return;}" +
         "_userTenant=_tenantId;" +
     "}else{" +
     // Tenant user. Tenant membership lives in the `user_tenants` join
-    // collection (NOT on the users row — STJÓRN A's `users` collection
+    // collection (NOT on the users row — STJÓRNA's `users` collection
     // is PB's built-in `_pb_users_auth_`, where every non-auth schema
     // field is silently dropped on create). For users in multiple
     // tenants, the `last_tenant` field on the auth record (written by
-    // STJÓRN A's switchTenant) is the tiebreaker.
+    // STJÓRNA's switchTenant) is the tiebreaker.
     "if(!_authId){_reply(401,{ok:false,error:{code:401,message:'token missing record id'}});return;}" +
     "var _lastTenant='';" +
-    "try{var _au=$app.dao().findRecordById('_pb_users_auth_',_authId);_lastTenant=String(_getR(_au,'last_tenant')||'');}catch(_eau){}" +
+    "try{var _au=$app.findRecordById('_pb_users_auth_',_authId);_lastTenant=String(_getR(_au,'last_tenant')||'');}catch(_eau){}" +
     "var _userTenants=null;" +
-    "try{_userTenants=$app.dao().findRecordsByExpr('user_tenants')||[];}catch(_eut){_userTenants=[];}" +
+    "try{_userTenants=$app.findRecordsByFilter('user_tenants','','',0,0)||[];}catch(_eut){_userTenants=[];}" +
     "var _memberships=[];" +
     "for(var _mi2=0;_mi2<_userTenants.length;_mi2++){" +
         "var _ut=_userTenants[_mi2];" +
@@ -127,7 +133,7 @@ var STATS_BODY = "" +
     "}" +
     // Hardening: if a tenant user passes ?tenant=<other>, force 403.
     // Stops a UI bug or bookmarked URL from leaking cross-tenant data.
-    "var _reqTenant=String(c.queryParam('tenant')||'').trim();" +
+    "var _reqTenant=String(e.request.url.query().get('tenant')||'').trim();" +
     "if(_reqTenant&&_reqTenant!==_userTenant){" +
         "_reply(403,{ok:false,error:{code:403,message:'cannot query stats for a different tenant'}});return;" +
     "}" +
@@ -135,14 +141,14 @@ var STATS_BODY = "" +
     "}" +
     // ---- Verify tenant exists ------------------------------------------
     "var _tenant=null;" +
-    "try{_tenant=$app.dao().findRecordById('tenants',_tenantId);}catch(_et){_reply(404,{ok:false,error:{code:404,message:'tenant not found'}});return;}" +
+    "try{_tenant=$app.findRecordById('tenants',_tenantId);}catch(_et){_reply(404,{ok:false,error:{code:404,message:'tenant not found'}});return;}" +
     "if(!_tenant){_reply(404,{ok:false,error:{code:404,message:'tenant not found'}});return;}" +
     // ---- Helpers for the aggregation loop ------------------------------
-    // Safe per-collection fetch. `findRecordsByExpr` returns ALL rows; we
-    // post-filter by `tenant` in JS. Cheap on STJÓRN A's typical tenant
+    // using findRecordsByFilter
+    // post-filter by `tenant` in JS. Cheap on STJÓRNA's typical tenant
     // sizes; for very large tenants this should become a rollup table.
     "function _loadAll(name){" +
-        "try{return $app.dao().findRecordsByExpr(name)||[];}" +
+        "try{return $app.findRecordsByFilter(name,'','',0,0)||[];}" +
         "catch(_e){console.log('[stjorna-stats] '+name+' fetch failed: '+(_e&&(_e.message||_e)));return [];}" +
     "}" +
     "function _byTenant(rows,id){" +
@@ -159,7 +165,15 @@ var STATS_BODY = "" +
     "var _cats=_byTenant(_loadAll('categories'),_tenantId);" +
     "var _prods=_byTenant(_loadAll('products'),_tenantId);" +
     "var _mediaRows=_byTenant(_loadAll('media'),_tenantId);" +
-    "var _users=_byTenant(_loadAll('users'),_tenantId);" +
+    // Tenant user count comes from `user_tenants`, NOT `users` — STJÓRNA's
+    // `users` collection is PB's built-in `_pb_users_auth_`, where every
+    // non-auth field (including `tenant`) is silently dropped on create.
+    // Tenant membership is tracked in the `user_tenants` join table (see
+    // frontend/src/stores/auth.ts:loadTenants). PB superusers live in
+    // `_admins` and are intentionally NOT counted per-tenant — they have
+    // cross-tenant access and adding them to every tenant's user count
+    // would mislead.
+    "var _userMemberships=_byTenant(_loadAll('user_tenants'),_tenantId);" +
     // ---- Storage aggregation -------------------------------------------
     "var _mediaBytes=0;" +
     "var _largest=null;" +
@@ -224,7 +238,7 @@ var STATS_BODY = "" +
             "categories:_cats.length," +
             "products:_prods.length," +
             "media:_mediaCount," +
-            "users:_users.length" +
+            "users:_userMemberships.length" +
         "}," +
         "storage:{" +
             "media_bytes:_mediaBytes," +
@@ -243,5 +257,5 @@ var STATS_BODY = "" +
     "};" +
     "_reply(200,_resp);";
 
-routerAdd("GET", "/api/stjorna/stats", new Function("c", STATS_BODY));
+routerAdd("GET", "/api/stjorna/stats", new Function("e", STATS_BODY));
 console.log("[stjorna-stats] registered GET /api/stjorna/stats");
