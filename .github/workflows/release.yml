@@ -377,9 +377,15 @@ jobs:
             exit 1
           fi
           echo "Injecting chart version: $CHART_VERSION"
+          echo "Before sed:"
+          grep -n -E "(stjorna-)|--version" site/index.html || true
           sed -i "s|@@CHART_VERSION@@|$CHART_VERSION|g" site/index.html
-          echo "Patched site/index.html — relevant lines:"
+          echo "After sed:"
           grep -n -E "(stjorna-)|--version" site/index.html
+          if grep -q '@@CHART_VERSION@@' site/index.html; then
+            echo "::error::site/index.html still contains unreplaced @@CHART_VERSION@@ placeholder"
+            exit 1
+          fi
       - name: Push site to gh-pages
         # Overlay site/ on the existing branch, EXCLUDING chart artifacts
         # so this job never clobbers index.yaml or *.tgz that release-helm
@@ -387,13 +393,24 @@ jobs:
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name  "github-actions[bot]"
-          git worktree add /tmp/gh-pages-site gh-pages
+          git worktree add /tmp/gh-pages-site origin/gh-pages
+          echo "Worktree HEAD:"
+          git -C /tmp/gh-pages-site log -1 --oneline
+          echo "Before rsync — gh-pages index.html:"
+          grep -n -E "(stjorna-)|--version" /tmp/gh-pages-site/index.html || true
           rsync -a --delete \
                 --exclude '.git' \
                 --exclude 'index.yaml' \
                 --exclude '*.tgz' \
                 --filter='P CNAME' \
                 site/ /tmp/gh-pages-site/
+          # Belt-and-suspenders: rsync should have copied the patched files,
+          # but explicitly copy the two generated files so a future rsync
+          # quirk cannot leave stale versions on gh-pages.
+          cp -v site/index.html /tmp/gh-pages-site/index.html
+          cp -v site/openapi.json /tmp/gh-pages-site/openapi.json
+          echo "After copy — gh-pages index.html:"
+          grep -n -E "(stjorna-)|--version" /tmp/gh-pages-site/index.html
           cd /tmp/gh-pages-site
           # Use -f to force-add openapi.json despite the .gitignore rule
           # in site/.gitignore. The rule exists for the main branch (we
@@ -404,7 +421,8 @@ jobs:
             git commit -m "ci: publish site to gh-pages"
             git push origin gh-pages
           else
-            echo "No site changes to commit"
+            echo "::error::No site changes to commit after patching site/index.html — this should not happen"
+            exit 1
           fi
           git worktree remove --force /tmp/gh-pages-site
 
