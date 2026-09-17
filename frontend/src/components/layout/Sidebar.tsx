@@ -37,6 +37,7 @@ const settingsItem = (): NavItem => {
             icon: Settings,
             children: [
                 { path: '/settings/general', label: 'General' },
+                { path: '/settings/backup', label: 'Backup' },
                 { path: '/settings/oidc', label: 'OIDC' },
                 { path: '/settings/smtp', label: 'SMTP' },
                 { path: '/settings/security', label: 'Security' },

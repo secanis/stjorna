@@ -11,6 +11,7 @@ import ProductList from '~/pages/ProductList';
 import ProductEdit from '~/pages/ProductEdit';
 import Settings from '~/pages/Settings';
 import InstanceSettings from '~/pages/InstanceSettings';
+import BackupSettings from '~/pages/BackupSettings';
 import OidcSettings from '~/pages/OidcSettings';
 import SmtpSettings from '~/pages/SmtpSettings';
 import SecuritySettingsPage from '~/pages/SecuritySettingsPage';
@@ -46,6 +47,7 @@ export default function App() {
                 <Route path="/products" component={ProductList} />
                 <Route path="/settings" component={Settings} />
                 <Route path="/settings/general" component={InstanceSettings} />
+                <Route path="/settings/backup" component={BackupSettings} />
                 <Route path="/settings/oidc" component={OidcSettings} />
                 <Route path="/settings/smtp" component={SmtpSettings} />
                 <Route path="/settings/security" component={SecuritySettingsPage} />
