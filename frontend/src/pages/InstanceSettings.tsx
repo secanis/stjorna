@@ -24,6 +24,7 @@ export default function InstanceSettings() {
   const [success, setSuccess] = createSignal(false);
   const [downloading, setDownloading] = createSignal<'json' | 'zip' | null>(null);
   const [downloadError, setDownloadError] = createSignal('');
+  const [superuserIPs, setSuperuserIPs] = createSignal('');
 
   const handleDownload = async (format: 'json' | 'zip') => {
     setDownloading(format);
@@ -56,6 +57,10 @@ export default function InstanceSettings() {
           instance_name: s.instance_name || 'STJÓRNA',
         });
       }
+
+      const settings = await pb.settings.getAll();
+      const ips = Array.isArray(settings.superuserIPs) ? settings.superuserIPs : [];
+      setSuperuserIPs(ips.join('\n'));
     } catch (e: any) {
       console.warn('Failed to load instance settings:', e.message);
     } finally {
@@ -80,11 +85,16 @@ export default function InstanceSettings() {
       // Keep PocketBase's app name in sync so system emails use the
       // configured instance name instead of the default "Acme".
       const settings = await pb.settings.getAll();
+      const ips = superuserIPs()
+        .split(/[\s,]+/)
+        .map((ip) => ip.trim())
+        .filter(Boolean);
       await pb.settings.update({
         meta: {
           ...settings.meta,
           appName: formData().instance_name,
         },
+        superuserIPs: ips,
       });
 
       setSuccess(true);
@@ -167,6 +177,23 @@ export default function InstanceSettings() {
               onInput={(e) => setFormData(d => ({ ...d, instance_name: e.currentTarget.value }))}
               class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
             />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Superuser IPs
+              <span class="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">(optional)</span>
+            </label>
+            <textarea
+              value={superuserIPs()}
+              onInput={(e) => setSuperuserIPs(e.currentTarget.value)}
+              rows={4}
+              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+              placeholder="127.0.0.1&#10;10.0.0.0/8"
+            />
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Restrict superuser logins to these IPs or CIDR subnets. Leave empty to allow any IP.
+            </p>
           </div>
 
           <button
