@@ -409,6 +409,7 @@ export default function UserManagement() {
                     type="email"
                     value={inviteEmail()}
                     onInput={(e) => setInviteEmail(e.currentTarget.value)}
+                    autocomplete="username"
                     class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                     required
                   />
@@ -501,6 +502,7 @@ export default function UserManagement() {
                   value={searchEmail()}
                   onInput={(e) => setSearchEmail(e.currentTarget.value)}
                   placeholder="Search by email"
+                  autocomplete="email"
                   class="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />

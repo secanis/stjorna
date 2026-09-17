@@ -200,6 +200,7 @@ export default function SuperuserManagement() {
                   type="email"
                   value={newEmail()}
                   onInput={(e) => setNewEmail(e.currentTarget.value)}
+                  autocomplete="username"
                   class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
@@ -210,6 +211,7 @@ export default function SuperuserManagement() {
                   type="password"
                   value={newPassword()}
                   onInput={(e) => setNewPassword(e.currentTarget.value)}
+                  autocomplete="new-password"
                   class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
@@ -220,6 +222,7 @@ export default function SuperuserManagement() {
                   type="password"
                   value={newPasswordConfirm()}
                   onInput={(e) => setNewPasswordConfirm(e.currentTarget.value)}
+                  autocomplete="new-password"
                   class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
                 />
