@@ -331,14 +331,23 @@ export default function Setup() {
       if (existingSettings && existingSettings.items.length > 0) {
         await pb.collection('instance_settings').update(existingSettings.items[0].id, {
           setup_done: true,
+          instance_name: 'STJÓRNA',
           ...storageConfig,
         });
       } else {
         await pb.collection('instance_settings').create({
           setup_done: true,
+          instance_name: 'STJÓRNA',
           ...storageConfig,
         });
       }
+
+      // Sync the PocketBase app name so system emails don't show "Acme".
+      await pb.settings.update({
+        meta: {
+          appName: 'STJÓRNA',
+        },
+      });
 
       setStep('done');
       setTimeout(() => navigate('/login'), 1500);

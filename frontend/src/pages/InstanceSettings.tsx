@@ -10,9 +10,6 @@ import DescriptionBlock from '~/components/settings/DescriptionBlock';
 interface InstanceSettings {
   id?: string;
   instance_name: string;
-  instance_url: string;
-  instance_logo_url: string;
-  instance_tagline: string;
 }
 
 export default function InstanceSettings() {
@@ -20,9 +17,6 @@ export default function InstanceSettings() {
 
   const [formData, setFormData] = createSignal<InstanceSettings>({
     instance_name: 'STJÓRNA',
-    instance_url: (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || window.location.origin,
-    instance_logo_url: '',
-    instance_tagline: '',
   });
   const [loading, setLoading] = createSignal(true);
   const [saving, setSaving] = createSignal(false);
@@ -60,9 +54,6 @@ export default function InstanceSettings() {
         const s = records.items[0];
         setFormData({
           instance_name: s.instance_name || 'STJÓRNA',
-          instance_url: s.instance_url || '',
-          instance_logo_url: s.instance_logo_url || '',
-          instance_tagline: s.instance_tagline || '',
         });
       }
     } catch (e: any) {
@@ -85,6 +76,17 @@ export default function InstanceSettings() {
       } else {
         await pb.collection('instance_settings').create(formData());
       }
+
+      // Keep PocketBase's app name in sync so system emails use the
+      // configured instance name instead of the default "Acme".
+      const settings = await pb.settings.getAll();
+      await pb.settings.update({
+        meta: {
+          ...settings.meta,
+          appName: formData().instance_name,
+        },
+      });
+
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e: any) {
@@ -101,7 +103,7 @@ export default function InstanceSettings() {
       <DescriptionBlock>
         <p>Configure the public identity of this STJÓRNA instance.</p>
         <p>
-          The name, URL, logo and tagline are shown on the login page and in system emails.
+          The instance name is shown in system emails.
           Backups below contain all tenants, users, products, categories and media.
         </p>
       </DescriptionBlock>
@@ -164,39 +166,6 @@ export default function InstanceSettings() {
               value={formData().instance_name}
               onInput={(e) => setFormData(d => ({ ...d, instance_name: e.currentTarget.value }))}
               class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instance URL</label>
-            <input
-              type="url"
-              value={formData().instance_url}
-              onInput={(e) => setFormData(d => ({ ...d, instance_url: e.currentTarget.value }))}
-              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-              placeholder="http://localhost:8090"
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo URL</label>
-            <input
-              type="url"
-              value={formData().instance_logo_url}
-              onInput={(e) => setFormData(d => ({ ...d, instance_logo_url: e.currentTarget.value }))}
-              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-              placeholder="https://..."
-            />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tagline</label>
-            <input
-              type="text"
-              value={formData().instance_tagline}
-              onInput={(e) => setFormData(d => ({ ...d, instance_tagline: e.currentTarget.value }))}
-              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
-              placeholder="Product management made simple"
             />
           </div>
 
