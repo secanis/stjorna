@@ -5,7 +5,6 @@ const PB_URL = `http://localhost:${PB_PORT}`;
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
-const PB_VOLUME = 'stjorna-test-data';
 
 // Pick the container runtime. Prefer docker (works on GitHub Actions
 // and most Linux desktops); fall back to podman. The integration tests
@@ -58,7 +57,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     let stdout: string;
     try {
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host -v ${PB_VOLUME}:/app/pb_data ${PB_IMAGE}`,
+        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ${PB_IMAGE}`,
         { encoding: 'utf8' }
       );
       stdout = result.stdout;
@@ -81,28 +80,34 @@ export async function startPocketBase(): Promise<PocketBase> {
       const pb = new PocketBase(PB_URL);
       try {
         await pb.health.check();
-        // Wait for admin API to be ready - retry creation until it succeeds or admin exists
-        let adminCreated = false;
+        // The entrypoint created the superuser from env vars; verify via auth.
+        // Fall back to API create if admin doesn't exist yet (e.g. stale volume).
+        let adminReady = false;
         const adminDeadline = Date.now() + 30_000;
         while (Date.now() < adminDeadline) {
           try {
-            await pb.admins.create({
-              email: ADMIN_EMAIL,
-              password: ADMIN_PASSWORD,
-              passwordConfirm: ADMIN_PASSWORD,
-            });
-            adminCreated = true;
+            await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+            adminReady = true;
             break;
           } catch (e: any) {
-            if (e.status === 400 && e.message?.includes('already exists')) {
-              adminCreated = true;
+            try {
+              await pb.admins.create({
+                email: ADMIN_EMAIL,
+                password: ADMIN_PASSWORD,
+                passwordConfirm: ADMIN_PASSWORD,
+              });
+              adminReady = true;
               break;
+            } catch (ce: any) {
+              if (ce.status === 400 && ce.message?.includes('already exists')) {
+                adminReady = true;
+                break;
+              }
             }
-            // Admin API not ready yet, wait and retry
             await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
-        if (!adminCreated) {
+        if (!adminReady) {
           throw new Error('Admin API not ready after 30s');
         }
         await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
