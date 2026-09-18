@@ -14,8 +14,8 @@ describe('Authentication', () => {
 
     expect(authData).toBeDefined();
     expect(authData.token).toBeDefined();
-    expect(authData.admin).toBeDefined();
-    expect(authData.admin.email).toBe(email);
+    expect(authData.record).toBeDefined();
+    expect(authData.record.email).toBe(email);
   });
 
   it('should reject invalid password', async () => {
@@ -70,8 +70,8 @@ describe('Authentication', () => {
     await pb.admins.authWithPassword(email, password);
 
     const authData = await pb.admins.authWithPassword(email, password);
-    expect(authData.admin).toBeDefined();
-    expect(authData.admin.id).toBeDefined();
+    expect(authData.record).toBeDefined();
+    expect(authData.record.id).toBeDefined();
   });
 
   it('should auth as different users sequentially', async () => {

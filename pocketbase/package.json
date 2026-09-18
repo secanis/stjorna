@@ -18,6 +18,6 @@
     "vitest": "^3.2.7"
   },
   "dependencies": {
-    "pocketbase": "^0.21.0"
+    "pocketbase": "^0.28.1"
   }
 }
