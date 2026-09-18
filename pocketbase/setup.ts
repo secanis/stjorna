@@ -5,7 +5,6 @@ const PB_URL = `http://localhost:${PB_PORT}`;
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
-const PB_VOLUME = 'stjorna-test-data';
 
 // Pick the container runtime. Prefer docker (works on GitHub Actions
 // and most Linux desktops); fall back to podman. The integration tests
@@ -28,37 +27,13 @@ export async function startPocketBase(): Promise<PocketBase> {
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
 
-  const ensureAdminAuth = async (pb: PocketBase): Promise<boolean> => {
-    try {
-      await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-    } catch (e: any) {
-      if (e.status === 401 || e.message?.includes('fetch failed')) {
-
-        return false;
-      }
-      if (e.status !== 400) throw e;
-    }
-    return true;
-  };
-
-  const tryConnect = async (): Promise<PocketBase | null> => {
-    const pb = new PocketBase(PB_URL);
-    try {
-      await pb.health.check();
-      const canAuth = await ensureAdminAuth(pb);
-      if (canAuth) return pb;
-    } catch {
-    }
-    return null;
-  };
-
   const startContainer = async (): Promise<PocketBase> => {
     await cleanup();
 
     let stdout: string;
     try {
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host -v ${PB_VOLUME}:/app/pb_data ${PB_IMAGE}`,
+        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ${PB_IMAGE}`,
         { encoding: 'utf8' }
       );
       stdout = result.stdout;
@@ -73,39 +48,28 @@ export async function startPocketBase(): Promise<PocketBase> {
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
     // First-boot PocketBase can take a while (especially on CI runners
-    // with cold caches) to create the initial superuser, so give it
-    // up to 180s.
+    // with cold caches), so give it up to 180s.
     const deadline = Date.now() + 180_000;
     let lastError: unknown = null;
     while (Date.now() < deadline) {
       const pb = new PocketBase(PB_URL);
       try {
         await pb.health.check();
-        // Wait for admin API to be ready - retry creation until it succeeds or admin exists
-        let adminCreated = false;
-        const adminDeadline = Date.now() + 30_000;
-        while (Date.now() < adminDeadline) {
-          try {
-            await pb.admins.create({
-              email: ADMIN_EMAIL,
-              password: ADMIN_PASSWORD,
-              passwordConfirm: ADMIN_PASSWORD,
-            });
-            adminCreated = true;
-            break;
-          } catch (e: any) {
-            if (e.status === 400 && e.message?.includes('already exists')) {
-              adminCreated = true;
-              break;
-            }
-            // Admin API not ready yet, wait and retry
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+
+        // Use a raw fetch for admin auth. The JS client's admins.authWithPassword
+        // can return opaque 500s against PocketBase v0.40+ in containerized tests.
+        const authRes = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+        });
+        if (!authRes.ok) {
+          const body = await authRes.text();
+          throw new Error(`Admin auth failed ${authRes.status}: ${body}`);
         }
-        if (!adminCreated) {
-          throw new Error('Admin API not ready after 30s');
-        }
-        await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+        const authData = await authRes.json();
+        pb.authStore.save(authData.token, authData.admin);
+
         pbInstance = pb;
         await setupCollections(pbInstance);
         return pbInstance;
@@ -116,17 +80,18 @@ export async function startPocketBase(): Promise<PocketBase> {
     }
 
     const detail = lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(`Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}`);
-  };
-
-  try {
-    const existingPb = await tryConnect();
-    if (existingPb) {
-      pbInstance = existingPb;
-      return pbInstance;
+    let logs = '';
+    if (containerId) {
+      try {
+        const { stdout } = await execAsync(`${CONTAINER_CLI} logs --tail 50 ${containerId}`, { encoding: 'utf8' });
+        logs = stdout;
+      } catch {}
     }
-  } catch {
-  }
+    throw new Error(
+      `Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}\n` +
+      (logs ? `Container logs:\n${logs}` : '')
+    );
+  };
 
   return await startContainer();
 }
