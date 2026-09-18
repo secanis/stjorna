@@ -5,15 +5,42 @@ entries:
       category: CMS
       licenses: MIT
     apiVersion: v2
-    appVersion: v3.0.0-rc6
-    created: '2026-09-19T00:33:17.453219816+02:00'
+    appVersion: v3.0.0-rc7
+    created: "2026-09-18T22:54:27.622332675Z"
     dependencies:
     - condition: garage.enabled
       name: garage
       repository: file://../garage
       version: 0.7.3
-    description: "STJ\xD3RNA \u2014 multi-tenant product management (PocketBase +\
-      \ SolidJS frontend)"
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
+    digest: 43d121a1edae446f0baeed617d8906c392ec7bcfeb18f48aa75bc099a9d01301
+    home: https://github.com/secanis/stjorna
+    keywords:
+    - pocketbase
+    - cms
+    - product-management
+    - multi-tenant
+    kubeVersion: '>=1.20.0-0'
+    maintainers:
+    - email: support@secanis.ch
+      name: secanis
+    name: stjorna
+    type: application
+    urls:
+    - https://github.com/secanis/stjorna/releases/download/stjorna-3.0.0-rc7/stjorna-3.0.0-rc7.tgz
+    version: 3.0.0-rc7
+  - annotations:
+      category: CMS
+      licenses: MIT
+    apiVersion: v2
+    appVersion: v3.0.0-rc6
+    created: "2026-09-19T00:33:17.453219816+02:00"
+    dependencies:
+    - condition: garage.enabled
+      name: garage
+      repository: file://../garage
+      version: 0.7.3
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
     digest: 7a29910dcb65b6af8600b802a858a98b4ceadf3f8524cad95ecd39685a61d7fb
     home: https://github.com/secanis/stjorna
     keywords:
@@ -35,14 +62,13 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: v3.0.0-rc5
-    created: '2026-09-15T22:40:21.629879966Z'
+    created: "2026-09-15T22:40:21.629879966Z"
     dependencies:
     - condition: garage.enabled
       name: garage
       repository: file://../garage
       version: 0.7.3
-    description: "STJ\xD3RNA \u2014 multi-tenant product management (PocketBase +\
-      \ SolidJS frontend)"
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
     digest: 08899cfe2d0fd1819da50e1264a8bbc4e51a9ec097b3c05c38ddf5f151a7b307
     home: https://github.com/secanis/stjorna
     keywords:
@@ -64,14 +90,13 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: v3.0.0-rc4
-    created: '2026-09-12T23:29:59.244096751Z'
+    created: "2026-09-12T23:29:59.244096751Z"
     dependencies:
     - condition: garage.enabled
       name: garage
       repository: file://../garage
       version: 0.7.3
-    description: "STJ\xD3RNA \u2014 multi-tenant product management (PocketBase +\
-      \ SolidJS frontend)"
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
     digest: 9daa8d4039f7f8b94d1ef4c1550939e5e1f630a00f4070981dc8e9076c467446
     home: https://github.com/secanis/stjorna
     keywords:
@@ -93,14 +118,13 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: v3.0.0-rc3
-    created: '2026-09-05T21:31:55.331440659Z'
+    created: "2026-09-05T21:31:55.331440659Z"
     dependencies:
     - condition: garage.enabled
       name: garage
       repository: file://../garage
       version: 0.7.3
-    description: "STJ\xD3RNA \u2014 multi-tenant product management (PocketBase +\
-      \ SolidJS frontend)"
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
     digest: 7133580d0a0a144a50171ed17cf2016deade5bd4c79970f6ae52e6cc421dbb3f
     home: https://github.com/secanis/stjorna
     keywords:
@@ -122,14 +146,13 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: v3.0.0-rc2
-    created: '2026-08-24T21:40:53.71753721Z'
+    created: "2026-08-24T21:40:53.71753721Z"
     dependencies:
     - condition: garage.enabled
       name: garage
       repository: file://../garage
       version: 0.7.3
-    description: "STJ\xD3RNA \u2014 multi-tenant product management (PocketBase +\
-      \ SolidJS frontend)"
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
     digest: 183c9b7573af467145f26a66547d576dcdfb96489338471858fbc4eb633894ca
     home: https://github.com/secanis/stjorna
     keywords:
@@ -151,14 +174,13 @@ entries:
       licenses: MIT
     apiVersion: v2
     appVersion: v3.0.0-rc1
-    created: '2026-08-11T21:23:08.520156705Z'
+    created: "2026-08-11T21:23:08.520156705Z"
     dependencies:
     - condition: garage.enabled
       name: garage
       repository: file://../garage
       version: 0.7.3
-    description: "STJ\xD3RNA \u2014 multi-tenant product management (PocketBase +\
-      \ SolidJS frontend)"
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
     digest: 154d258ab97b41d6a332dedfe9d30740277c4c61138d7e204b6e7ff7c4a41ac5
     home: https://github.com/secanis/stjorna
     keywords:
@@ -175,4 +197,4 @@ entries:
     urls:
     - https://github.com/secanis/stjorna/releases/download/stjorna-3.0.0-rc1/stjorna-3.0.0-rc1.tgz
     version: 3.0.0-rc1
-generated: '2026-09-15T22:40:21.62990268Z'
+generated: "2026-09-18T22:54:27.622376176Z"
