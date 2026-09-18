@@ -27,37 +27,13 @@ export async function startPocketBase(): Promise<PocketBase> {
   const { promisify } = await import('util');
   const execAsync = promisify(exec);
 
-  const ensureAdminAuth = async (pb: PocketBase): Promise<boolean> => {
-    try {
-      await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-    } catch (e: any) {
-      if (e.status === 401 || e.message?.includes('fetch failed')) {
-
-        return false;
-      }
-      if (e.status !== 400) throw e;
-    }
-    return true;
-  };
-
-  const tryConnect = async (): Promise<PocketBase | null> => {
-    const pb = new PocketBase(PB_URL);
-    try {
-      await pb.health.check();
-      const canAuth = await ensureAdminAuth(pb);
-      if (canAuth) return pb;
-    } catch {
-    }
-    return null;
-  };
-
   const startContainer = async (): Promise<PocketBase> => {
     await cleanup();
 
     let stdout: string;
     try {
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ${PB_IMAGE}`,
+        `${CONTAINER_CLI} run -d --rm --network=host ${PB_IMAGE}`,
         { encoding: 'utf8' }
       );
       stdout = result.stdout;
@@ -71,46 +47,45 @@ export async function startPocketBase(): Promise<PocketBase> {
     // eslint-disable-next-line no-console
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
+    // Give PocketBase a moment to open the database before creating the
+    // initial admin via the CLI. On CI runners this can take a few seconds.
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    try {
+      const { stdout: execOut } = await execAsync(
+        `${CONTAINER_CLI} exec ${containerId} ./pocketbase admin create ${ADMIN_EMAIL} ${ADMIN_PASSWORD}`,
+        { encoding: 'utf8' }
+      );
+      // eslint-disable-next-line no-console
+      console.log(`[pb-test] admin create: ${execOut.trim()}`);
+    } catch (e: any) {
+      // The admin may already exist (idempotent re-runs); log and continue.
+      // eslint-disable-next-line no-console
+      console.warn(`[pb-test] admin create warning: ${e.stderr?.trim() || e.message}`);
+    }
+
     // First-boot PocketBase can take a while (especially on CI runners
-    // with cold caches) to create the initial superuser, so give it
-    // up to 180s.
+    // with cold caches), so give it up to 180s.
     const deadline = Date.now() + 180_000;
     let lastError: unknown = null;
     while (Date.now() < deadline) {
       const pb = new PocketBase(PB_URL);
       try {
         await pb.health.check();
-        // The entrypoint created the superuser from env vars; verify via auth.
-        // Fall back to API create if admin doesn't exist yet (e.g. stale volume).
-        let adminReady = false;
-        const adminDeadline = Date.now() + 30_000;
-        while (Date.now() < adminDeadline) {
-          try {
-            await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
-            adminReady = true;
-            break;
-          } catch (e: any) {
-            try {
-              await pb.admins.create({
-                email: ADMIN_EMAIL,
-                password: ADMIN_PASSWORD,
-                passwordConfirm: ADMIN_PASSWORD,
-              });
-              adminReady = true;
-              break;
-            } catch (ce: any) {
-              if (ce.status === 400 && ce.message?.includes('already exists')) {
-                adminReady = true;
-                break;
-              }
-            }
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+
+        // Use a raw fetch for admin auth. The JS client's admins.authWithPassword
+        // can return opaque 500s against PocketBase v0.40+ in containerized tests.
+        const authRes = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+        });
+        if (!authRes.ok) {
+          const body = await authRes.text();
+          throw new Error(`Admin auth failed ${authRes.status}: ${body}`);
         }
-        if (!adminReady) {
-          throw new Error('Admin API not ready after 30s');
-        }
-        await pb.admins.authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+        const authData = await authRes.json();
+        pb.authStore.save(authData.token, authData.admin);
+
         pbInstance = pb;
         await setupCollections(pbInstance);
         return pbInstance;
@@ -123,15 +98,6 @@ export async function startPocketBase(): Promise<PocketBase> {
     const detail = lastError instanceof Error ? lastError.message : String(lastError);
     throw new Error(`Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}`);
   };
-
-  try {
-    const existingPb = await tryConnect();
-    if (existingPb) {
-      pbInstance = existingPb;
-      return pbInstance;
-    }
-  } catch {
-  }
 
   return await startContainer();
 }
