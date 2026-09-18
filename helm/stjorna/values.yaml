@@ -71,11 +71,19 @@ pocketbase:
     # --   Without S3 (local only): size to fit your media library
     size: 5Gi
     # -- Storage class name. `longhorn` is the default on the target cluster.
+    # -- IMPORTANT: the StorageClass must have `reclaimPolicy: Retain` if you
+    # -- want the underlying PV (and your data) to survive PVC deletion or
+    # -- `helm uninstall`. This chart cannot enforce that policy from the PVC
+    # -- level; the value below is only a pointer. If your StorageClass uses
+    # -- `Delete` (the default for many provisioners including Longhorn), data
+    # -- will be destroyed when the PVC is deleted.
     storageClass: longhorn
     # -- PVC access modes.
     accessModes:
       - ReadWriteOnce
-    # -- Set to Retain so the PVC (and your data) survives `helm uninstall`.
+    # -- DOCUMENTATION ONLY. PVCs cannot declare a reclaim policy; the actual
+    # -- policy is defined on the StorageClass or PV. Make sure the selected
+    # -- StorageClass is configured with `reclaimPolicy: Retain`.
     reclaimPolicy: Retain
   resources:
     requests:
