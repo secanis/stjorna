@@ -33,7 +33,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     let stdout: string;
     try {
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host ${PB_IMAGE}`,
+        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ${PB_IMAGE}`,
         { encoding: 'utf8' }
       );
       stdout = result.stdout;
@@ -46,22 +46,6 @@ export async function startPocketBase(): Promise<PocketBase> {
     containerId = stdout.trim();
     // eslint-disable-next-line no-console
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
-
-    // Give PocketBase a moment to open the database before creating the
-    // initial admin via the CLI. On CI runners this can take a few seconds.
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    try {
-      const { stdout: execOut } = await execAsync(
-        `${CONTAINER_CLI} exec ${containerId} ./pocketbase admin create ${ADMIN_EMAIL} ${ADMIN_PASSWORD}`,
-        { encoding: 'utf8' }
-      );
-      // eslint-disable-next-line no-console
-      console.log(`[pb-test] admin create: ${execOut.trim()}`);
-    } catch (e: any) {
-      // The admin may already exist (idempotent re-runs); log and continue.
-      // eslint-disable-next-line no-console
-      console.warn(`[pb-test] admin create warning: ${e.stderr?.trim() || e.message}`);
-    }
 
     // First-boot PocketBase can take a while (especially on CI runners
     // with cold caches), so give it up to 180s.
@@ -96,7 +80,17 @@ export async function startPocketBase(): Promise<PocketBase> {
     }
 
     const detail = lastError instanceof Error ? lastError.message : String(lastError);
-    throw new Error(`Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}`);
+    let logs = '';
+    if (containerId) {
+      try {
+        const { stdout } = await execAsync(`${CONTAINER_CLI} logs --tail 50 ${containerId}`, { encoding: 'utf8' });
+        logs = stdout;
+      } catch {}
+    }
+    throw new Error(
+      `Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}\n` +
+      (logs ? `Container logs:\n${logs}` : '')
+    );
   };
 
   return await startContainer();
