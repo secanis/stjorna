@@ -1,4 +1,6 @@
 import PocketBase from 'pocketbase';
+import * as nodeFs from 'node:fs';
+import * as nodePath from 'node:path';
 
 const PB_PORT = 8090;
 const PB_URL = `http://localhost:${PB_PORT}`;
@@ -21,6 +23,33 @@ const CONTAINER_CLI = (() => {
 
 let pbInstance: PocketBase | null = null;
 let containerId: string | null = null;
+
+// Vitest globalSetup runs in the main process, but tests run in forked
+// workers. Module-level state is not shared, so persist the auth token to
+// a temp file that workers can read.
+const stateFilePath = (): string =>
+  nodePath.resolve(process.cwd(), 'test-results', 'pb-state.json');
+
+function writePbState(token: string, record: unknown): void {
+  const dir = nodePath.dirname(stateFilePath());
+  if (!nodeFs.existsSync(dir)) nodeFs.mkdirSync(dir, { recursive: true });
+  nodeFs.writeFileSync(stateFilePath(), JSON.stringify({ token, record, pbUrl: PB_URL }));
+}
+
+function readPbState(): { token: string; record: unknown; pbUrl: string } | null {
+  try {
+    const raw = nodeFs.readFileSync(stateFilePath(), 'utf8');
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function clearPbState(): void {
+  try {
+    nodeFs.unlinkSync(stateFilePath());
+  } catch {}
+}
 
 export async function startPocketBase(): Promise<PocketBase> {
   const { exec } = await import('child_process');
@@ -56,9 +85,9 @@ export async function startPocketBase(): Promise<PocketBase> {
       try {
         await pb.health.check();
 
-        // Use a raw fetch for admin auth. The JS client's admins.authWithPassword
-        // can return opaque 500s against PocketBase v0.40+ in containerized tests.
-        const authRes = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
+        // Use a raw fetch for admin auth. PocketBase v0.40 stores superusers in
+        // the _superusers auth collection, so the endpoint is the collection one.
+        const authRes = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
@@ -68,7 +97,8 @@ export async function startPocketBase(): Promise<PocketBase> {
           throw new Error(`Admin auth failed ${authRes.status}: ${body}`);
         }
         const authData = await authRes.json();
-        pb.authStore.save(authData.token, authData.admin);
+        pb.authStore.save(authData.token, authData.record);
+        writePbState(authData.token, authData.record);
 
         pbInstance = pb;
         await setupCollections(pbInstance);
@@ -438,11 +468,17 @@ export async function cleanup(): Promise<void> {
   }
 
   pbInstance = null;
+  clearPbState();
 }
 
 export function getPb(): PocketBase {
   if (!pbInstance) {
-    throw new Error('PocketBase not initialized. Call startPocketBase() first.');
+    const state = readPbState();
+    if (!state) {
+      throw new Error('PocketBase not initialized. Call startPocketBase() first.');
+    }
+    pbInstance = new PocketBase(state.pbUrl);
+    pbInstance.authStore.save(state.token, state.record as any);
   }
   return pbInstance;
 }
