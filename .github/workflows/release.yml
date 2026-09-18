@@ -255,6 +255,20 @@ jobs:
       - uses: azure/setup-helm@v5
         with:
           version: v4.2.2
+      # If a GitHub release for this chart version already exists (for
+      # example a maintainer created it manually before the workflow ran),
+      # delete it so chart-releaser can recreate it with the packaged chart
+      # attached. Otherwise `skip_existing` would silently skip both upload
+      # and index update, leaving ArtifactHub stale.
+      - name: Ensure clean GitHub release for chart
+        run: |
+          CHART_RELEASE="stjorna-${{ steps.version.outputs.chart_version }}"
+          if gh release view "$CHART_RELEASE" >/dev/null 2>&1; then
+            echo "Deleting existing empty release $CHART_RELEASE so chart-releaser can recreate it"
+            gh release delete "$CHART_RELEASE" --yes
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: helm/chart-releaser-action@v1
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
@@ -270,8 +284,6 @@ jobs:
           mark_as_latest: true
           # Push the chart + index.yaml to the gh-pages branch
           pages_branch: gh-pages
-          # Skip upload if a release for this version already exists
-          skip_existing: true
 
   # -------------------------------------------------------------------------
   # 4. Publish the static site (landing + Swagger UI) to gh-pages.
@@ -393,7 +405,10 @@ jobs:
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name  "github-actions[bot]"
-          git worktree add /tmp/gh-pages-site origin/gh-pages
+          # Create a worktree with a local gh-pages branch tracking origin/gh-pages.
+          # A detached worktree (the old default) causes 'git push origin gh-pages'
+          # to fail because the local branch ref does not exist.
+          git worktree add -B gh-pages /tmp/gh-pages-site origin/gh-pages
           echo "Worktree HEAD:"
           git -C /tmp/gh-pages-site log -1 --oneline
           echo "Before rsync — gh-pages index.html:"
