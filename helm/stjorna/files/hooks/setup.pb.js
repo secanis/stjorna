@@ -38,11 +38,28 @@ var SETUP_READ_BODY =
 // ---------------------------------------------------------------------------
 // GET /api/stjorna/setup-status
 // ---------------------------------------------------------------------------
+// PocketBase v0.40 seeds a placeholder record into `_superusers` on every
+// fresh data directory so the dashboard installer UI can authenticate
+// during the bootstrap flow. The placeholder has email
+// "__pbinstaller@example.com" and an invalid password hash — it cannot
+// actually be used to log in. We must NOT count it as a real admin or
+// the bootstrap endpoint will refuse to fire (HTTP 409) on every fresh
+// install. PB also deletes the placeholder itself once the user finishes
+// the installer UI flow, but since the wizard bypasses the installer we
+// just filter it out everywhere.
+var PB_INSTALLER_PLACEHOLDER_EMAIL = "__pbinstaller@example.com";
+
 var SETUP_STATUS_BODY =
     SETUP_JSON_REPLY +
     "var _exists=false;" +
     "try{" +
-        "var _rows=$app.findRecordsByFilter('_superusers','','',0,0);" +
+        // Escape single quotes for the filter (PB filter syntax wraps
+        // strings in single quotes; the placeholder email is a fixed
+        // literal with no quotes inside, so a literal-string
+        // concatenation is safe — but we escape defensively anyway in
+        // case the PB team changes the placeholder in a future release).
+        "var _ph='" + PB_INSTALLER_PLACEHOLDER_EMAIL.replace(/'/g, "\\'") + "';" +
+        "var _rows=$app.findRecordsByFilter('_superusers','email!=\"' + _ph + '\"','',0,0);" +
         "_exists=Array.isArray(_rows)&&_rows.length>0;" +
     "}catch(_e){}" +
     "var _done=false;" +
@@ -73,9 +90,14 @@ var SETUP_BOOTSTRAP_BODY =
     "if(_pw!==_pwC){_reply(400,{ok:false,error:{code:400,message:'password and confirmation do not match'}});return;}" +
     // Refuse if a superuser already exists. This gate is the whole point of
     // the endpoint — it cannot be used to mint additional superusers once
-    // the instance has been bootstrapped.
+    // the instance has been bootstrapped. PB v0.40's installer-placeholder
+    // record (email `__pbinstaller@example.com`) does not count — it has
+    // an invalid password hash and cannot be used to log in.
     "var _existing=null;" +
-    "try{_existing=$app.findRecordsByFilter('_superusers','','',0,0);}catch(_ef){}" +
+    "try{" +
+        "var _ph='" + PB_INSTALLER_PLACEHOLDER_EMAIL.replace(/'/g, "\\'") + "';" +
+        "_existing=$app.findRecordsByFilter('_superusers','email!=\"' + _ph + '\"','',0,0);" +
+    "}catch(_ef){}" +
     "if(Array.isArray(_existing)&&_existing.length>0){" +
         "_reply(409,{ok:false,error:{code:409,message:'superuser already exists; use the admin login instead'}});" +
         "return;" +
