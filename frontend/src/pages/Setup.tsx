@@ -18,9 +18,26 @@ export default function Setup() {
       const settings = await checkPb.collection('instance_settings').getList(1, 1);
       if (settings.items.length > 0 && settings.items[0].setup_done === true) {
         navigate('/login', { replace: true });
+        return;
       }
     } catch (e: any) {
       if (e.status !== 404) console.warn('Setup check warning:', e.message);
+    }
+    // Decide whether step 1 should CREATE the first superuser or LOG IN
+    // to an existing one. The status endpoint is registered by
+    // pocketbase/pb_hooks/setup.pb.js — fails open to bootstrapMode=true
+    // (assume a fresh install) if the hook is unreachable, since the
+    // bootstrap endpoint will safely 409 instead.
+    try {
+      const res = await fetch(`${resolvePbUrl()}/api/stjorna/setup-status`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data.superuserExists === 'boolean') {
+          setBootstrapMode(!data.superuserExists);
+        }
+      }
+    } catch {
+      // ignore — fall back to bootstrapMode=true
     }
   });
 
@@ -28,6 +45,11 @@ export default function Setup() {
   const [pbUrl] = createSignal(resolvePbUrl());
   const [adminEmail, setAdminEmail] = createSignal('');
   const [adminPassword, setAdminPassword] = createSignal('');
+  const [adminPasswordConfirm, setAdminPasswordConfirm] = createSignal('');
+  // `bootstrapMode` = true: no superuser exists yet, step 1 form CREATES one.
+  // `bootstrapMode` = false: a superuser already exists, step 1 form logs in.
+  // Determined on mount via GET /api/stjorna/setup-status.
+  const [bootstrapMode, setBootstrapMode] = createSignal(true);
   const [storageType, setStorageType] = createSignal<'local' | 's3'>('local');
   const [s3Bucket, setS3Bucket] = createSignal('');
   const [s3Region, setS3Region] = createSignal('');
@@ -235,10 +257,37 @@ export default function Setup() {
     try {
       const pb = new PocketBase(pbUrl());
 
-      // In PB v0.40+ superusers live in the _superusers collection and the
-      // backend entrypoint already bootstraps the first one from the env vars.
-      // The setup UI only logs in with those credentials; the schema is created
-      // by the backend migrations before the wizard runs.
+      if (bootstrapMode()) {
+        // Create the very first superuser. The route is registered by
+        // pocketbase/pb_hooks/setup.pb.js — it refuses (HTTP 409) once any
+        // superuser exists, so this branch can never mint an extra admin.
+        if (adminPassword() !== adminPasswordConfirm()) {
+          setError('Password and confirmation do not match');
+          setLoading(false);
+          return;
+        }
+        const res = await fetch(`${resolvePbUrl()}/api/stjorna/setup-bootstrap-superuser`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: adminEmail(),
+            password: adminPassword(),
+            passwordConfirm: adminPasswordConfirm(),
+          }),
+        });
+        if (!res.ok) {
+          let msg = `HTTP ${res.status}`;
+          try {
+            const body = await res.json();
+            if (body && body.error && body.error.message) msg = body.error.message;
+          } catch {}
+          throw new Error(msg);
+        }
+      }
+
+      // In PB v0.40+ superusers live in the _superusers collection. The
+      // setup UI logs in with those credentials; the schema is created by
+      // the backend migrations before the wizard runs.
       await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
       setStep('storage');
     } catch (e: any) {
@@ -389,8 +438,15 @@ export default function Setup() {
         <Show when={step() === 'admin'}>
           <div class="space-y-4">
             <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">
-              Log in with the PocketBase superuser configured in your docker-compose environment
-              (<code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_EMAIL</code> / <code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_PASSWORD</code>).
+              <Show
+                when={bootstrapMode()}
+                fallback={<>Log in with the PocketBase superuser that already exists.</>}
+              >
+                No PocketBase superuser exists yet. Create the first one — it
+                can administer every tenant in this instance, so pick something
+                you'll remember. (Helm installs: the chart ships default
+                credentials you can reuse; see the <code class="text-gray-700 dark:text-gray-300">helm install</code> output.)
+              </Show>
             </p>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Superuser Email</label>
@@ -407,16 +463,30 @@ export default function Setup() {
                 type="password"
                 value={adminPassword()}
                 onInput={(e) => setAdminPassword(e.currentTarget.value)}
-                autocomplete="current-password"
+                autocomplete={bootstrapMode() ? 'new-password' : 'current-password'}
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
             </div>
+            <Show when={bootstrapMode()}>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm password</label>
+                <input
+                  type="password"
+                  value={adminPasswordConfirm()}
+                  onInput={(e) => setAdminPasswordConfirm(e.currentTarget.value)}
+                  autocomplete="new-password"
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+            </Show>
             <button
               onClick={handleSuperuserLogin}
-              disabled={loading() || !adminEmail() || !adminPassword()}
+              disabled={loading() || !adminEmail() || !adminPassword() || (bootstrapMode() && !adminPasswordConfirm())}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
-              {loading() ? 'Logging in...' : 'Continue'}
+              {loading()
+                ? (bootstrapMode() ? 'Creating...' : 'Logging in...')
+                : (bootstrapMode() ? 'Create superuser & continue' : 'Continue')}
             </button>
           </div>
         </Show>

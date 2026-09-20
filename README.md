@@ -14,6 +14,27 @@ docker compose up -d
 # Open http://localhost:3000 and run through the setup wizard
 ```
 
+### First-run setup wizard
+
+On a fresh install there's no PocketBase superuser yet. The chart and
+`docker-compose.yml` both rely on the frontend `/setup` wizard to
+create the very first one — there is no need to copy installer URLs out
+of container logs.
+
+Docker Compose pre-seeds the bootstrap env vars
+(`PB_SUPERUSER_EMAIL` / `PB_SUPERUSER_PASSWORD`) so the wizard already
+has credentials on first boot; the helm chart does the same via a
+`pre-install` Secret (see the helm README for the `kubectl get secret`
+recovery command).
+
+The wizard walks through four steps:
+
+1. **Superuser** — create (first run) or sign in (subsequent). No
+   installer URL is shown anywhere; the wizard handles it.
+2. **Storage** — local filesystem (default) or S3-compatible bucket.
+3. **Tenant** — your first tenant's name and slug.
+4. **Link** — connect the superuser to the tenant as its first admin.
+
 ## Storage
 
 STJÓRNA supports two storage backends, configured in the setup wizard

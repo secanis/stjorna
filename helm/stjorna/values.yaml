@@ -106,6 +106,22 @@ pocketbase:
     existingSecret: ""
     # -- Key inside `existingSecret` that holds PB_SECRET value.
     existingSecretKey: PB_SECRET
+  # -- Default superuser credentials for the /setup wizard. The PB backend
+  # does NOT bootstrap a superuser automatically — the frontend wizard at
+  # /setup POSTs to /api/stjorna/setup-bootstrap-superuser to create the
+  # very first one. The Secret here is a suggestion: the wizard form
+  # reads it as the default values the operator can accept or override.
+  # To supply your own: create a Secret with two keys (email + password)
+  # and set `existingSecret` to its name. Leave empty to auto-generate.
+  superuser:
+    # -- Name of an existing Kubernetes Secret holding PB_SUPERUSER_EMAIL
+    # and PB_SUPERUSER_PASSWORD. If empty, the chart creates one on
+    # install (pre-install hook) with a random 24-char password.
+    existingSecret: ""
+    # -- Key inside `existingSecret` that holds the email value.
+    existingSecretEmailKey: PB_SUPERUSER_EMAIL
+    # -- Key inside `existingSecret` that holds the password value.
+    existingSecretPasswordKey: PB_SUPERUSER_PASSWORD
   # -- Log generated superuser OTP codes to stdout. Only used when SMTP is not
   # configured. Accepted values: "1", "true" or "yes". Leave empty to disable.
   # NEVER enable in production — OTP codes are authentication secrets.

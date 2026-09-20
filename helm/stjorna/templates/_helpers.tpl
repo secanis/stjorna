@@ -85,3 +85,15 @@ PB Secret name (auto-generated one).
 {{- include "stjorna.pocketbase.fullname" . -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Default superuser credentials Secret name. Skipped when the operator
+brings their own Secret via pocketbase.superuser.existingSecret.
+*/}}
+{{- define "stjorna.pocketbase.superuserSecretName" -}}
+{{- if .Values.pocketbase.superuser.existingSecret -}}
+{{- .Values.pocketbase.superuser.existingSecret -}}
+{{- else -}}
+{{- include "stjorna.pocketbase.fullname" . }}-superuser
+{{- end -}}
+{{- end -}}

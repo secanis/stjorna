@@ -15,7 +15,7 @@ export default function SuperuserLogin() {
         <LoginCard
           mode="admin"
           onSuccess={() => navigate('/')}
-          errorHint="If this is a fresh PocketBase, run First-time setup below."
+          errorHint="If no superuser exists yet, click 'First-time setup?' below to create one."
         />
 
         <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3 text-center">
