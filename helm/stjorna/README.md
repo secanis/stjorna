@@ -65,9 +65,75 @@ pocketbase:
 
 ## First-run
 
-1. Open `https://<your-host>/_/` in a browser.
-2. Create the initial PocketBase superuser (email + password).
-3. The setup wizard at `https://<your-host>/` will guide you through tenants, roles, categories, and storage.
+The chart **does not** auto-create a PocketBase superuser. Instead, the
+frontend `/setup` wizard creates the very first one through two custom
+routes registered by `pocketbase/pb_hooks/setup.pb.js`:
+
+- `GET  /api/stjorna/setup-status` — reports whether a superuser exists
+- `POST /api/stjorna/setup-bootstrap-superuser` — creates the first
+  superuser. Refuses (HTTP 409) once any admin exists, so the route can
+  never mint additional superusers after install.
+
+### Default flow (helm-managed credentials)
+
+1. `helm install` creates a Secret named `<release>-stjorna-pocketbase-superuser`
+   with `PB_SUPERUSER_EMAIL` (e.g. `admin@<your-host>`) and
+   `PB_SUPERUSER_PASSWORD` (a random 24-character string). The `helm
+   install` output prints the values — **copy them now, the password is
+   only shown once.**
+2. Open `https://<your-host>/setup` in a browser.
+3. Step 1 ("Create first superuser") shows the default credentials
+   pre-filled. Click **Create superuser & continue** to accept them, or
+   change them first. The wizard then walks through storage, tenant,
+   and admin-link steps.
+4. Subsequent visits to `/setup` detect the existing superuser and
+   show the **Sign in as superuser** form instead.
+
+### Bring-your-own credentials
+
+If you'd rather not let helm manage the default:
+
+```bash
+kubectl create secret generic my-stjorna-superuser \
+  --from-literal=PB_SUPERUSER_EMAIL=admin@example.com \
+  --from-literal=PB_SUPERUSER_PASSWORD="$(openssl rand -hex 16)" \
+  -n stjorna
+
+helm install stjorna ./helm/stjorna \
+  --set pocketbase.superuser.existingSecret=my-stjorna-superuser \
+  --set ingress.hosts[0].host=stjorna.yourdomain.com
+```
+
+The wizard at `/setup` will still create the first superuser from the
+form values you enter — the Secret is only a defaults source for the
+wizard.
+
+### Manual fallback (no wizard)
+
+If you'd rather not use the wizard at all (e.g. fully headless CI):
+
+```bash
+kubectl exec -n stjorna deploy/stjorna-pocketbase -- \
+  /app/pocketbase superuser upsert admin@example.com 'yourPassword123' \
+  --dir /app/pb_data --hooksDir /app/pb_hooks
+```
+
+The PB v0.40 installer URL is **not** reachable from outside the
+cluster when running behind the chart's default Traefik ingress, so the
+manual exec is the only escape hatch if you don't want to use the
+frontend wizard.
+
+### Reset
+
+To wipe the bootstrap and run the wizard again from scratch:
+
+```bash
+kubectl delete pvc -n stjorna stjorna-pocketbase
+```
+
+The Secret persists — the wizard will reuse its defaults the next time
+you visit `/setup`. Delete the Secret separately if you want fresh
+random credentials too.
 
 ## Upgrading
 
