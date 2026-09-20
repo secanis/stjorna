@@ -436,7 +436,13 @@ export default function Setup() {
         </div>
 
         <Show when={step() === 'admin'}>
-          <div class="space-y-4">
+          <form
+            class="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSuperuserLogin();
+            }}
+          >
             <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">
               <Show
                 when={bootstrapMode()}
@@ -480,7 +486,7 @@ export default function Setup() {
               </div>
             </Show>
             <button
-              onClick={handleSuperuserLogin}
+              type="submit"
               disabled={loading() || !adminEmail() || !adminPassword() || (bootstrapMode() && !adminPasswordConfirm())}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
@@ -488,11 +494,17 @@ export default function Setup() {
                 ? (bootstrapMode() ? 'Creating...' : 'Logging in...')
                 : (bootstrapMode() ? 'Create superuser & continue' : 'Continue')}
             </button>
-          </div>
+          </form>
         </Show>
 
         <Show when={step() === 'storage'}>
-          <div class="space-y-4">
+          <form
+            class="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleConfigureStorage();
+            }}
+          >
             <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">Choose how STJÓRNA should store uploaded files:</p>
 
             <div class="space-y-2">
@@ -639,17 +651,23 @@ export default function Setup() {
             </Show>
 
             <button
-              onClick={handleConfigureStorage}
+              type="submit"
               disabled={!isS3Valid() || (storageType() === 's3' && !s3TestPassed())}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               Continue
             </button>
-          </div>
+          </form>
         </Show>
 
         <Show when={step() === 'tenant'}>
-          <div class="space-y-4">
+          <form
+            class="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreateTenant();
+            }}
+          >
             <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Create your first tenant:</p>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
@@ -670,13 +688,13 @@ export default function Setup() {
               />
             </div>
             <button
-              onClick={handleCreateTenant}
+              type="submit"
               disabled={loading() || !tenantName() || !tenantSlug()}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Creating...' : 'Create Tenant'}
             </button>
-          </div>
+          </form>
         </Show>
 
         <Show when={step() === 'link'}>
