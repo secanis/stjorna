@@ -27,6 +27,28 @@ onRecordCreateRequest((e) => {
   e.next();
 }, "_superusers");
 
+// `onRecordCreateRequest` only fires for API-driven record creates. The
+// `pocketbase superuser upsert` CLI (used by entrypoint.sh's bootstrap
+// path) and direct `$app.save()` from JSVM hooks bypass the API layer,
+// so the above handler never sees those paths. Without this fallback a
+// newly-inserted `_superusers` row can carry the schema's BoolField
+// default (`active=false`) and the auth guard below then rejects the
+// login with "Superuser account is disabled".
+//
+// `onRecordCreateExecute` fires for every record create — API, CLI,
+// `$app.save()`, batch — right before the INSERT, so modifying `e.record`
+// here gets persisted atomically with the row. PB docs explicitly call
+// this out: "Modifications BEFORE the e.next() execute before the INSERT
+// DB statement."
+onRecordCreateExecute((e) => {
+  try {
+    if (e.record.get("active") !== true && e.record.get("active") !== 1) {
+      e.record.set("active", true);
+    }
+  } catch (_) {}
+  e.next();
+}, "_superusers");
+
 onRecordUpdateRequest((e) => {
   try {
     var active = e.record.get("active");
