@@ -5,11 +5,19 @@
 //   GET    /api/stjorna/api-keys             → list metadata. Never returns secret.
 //   DELETE /api/stjorna/api-keys/{id}        → revoke (sets revoked=true).
 //   GET    /api/stjorna/api-keys/me          → introspect bearer (any caller).
+//   POST   /api/stjorna/api-keys/exchange    → API key bearer → STJÓRNA user creds.
 //
 // Collection access:
 //   The `api_keys` collection has ALL rules locked to null. STJÓRNA user
 //   JWTs CANNOT list/get/create/update api_keys at all. Only PB superusers
 //   (PB admins via `pb.admins.authWithPassword`) can use these routes.
+//
+// Auth (T-01): admin-only routes use $apis.requireSuperuserAuth() so PB
+//   itself verifies the JWT signature. The inline ADMIN_AUTH_FN below
+//   is kept as defense-in-depth (throws ForbiddenError if e.auth is not
+//   a verified superuser) but no longer parses JWTs by hand.
+//   Bearer-key routes (/me, /exchange) only accept the API key shape;
+//   they do NOT consult any Authorization JWT.
 //
 // Key shape:
 //   stjorna_<tenantShort6>_<keyShort6>.<secret40>
@@ -21,11 +29,14 @@
 // backup.pb.js — handlers are string-concatenated and wrapped in
 //   `new Function("e", BODY)` to dodge loader/executor VM closures):
 //   - e is a core.RequestEvent; e.request is *http.Request.
+//   - e.auth is the verified AuthContext (null for anonymous, populated
+//     by PB after a successful JWT verification).
+//   - e.hasSuperuserAuth() returns true iff e.auth is a _superusers record.
 //   - e.response.header().set(name, value) for response headers.
 //   - e.string(status, body) for responses.
 //   - e.request.url.query().get(name) for query params.
 //   - e.request.header.get(name) for request headers.
-//   - $app for DB; $security.sha256/parseUnverifiedJWT/randomString.
+//   - $app for DB; $security.sha256/randomString.
 
 console.log("[stjorna-apikeys] loading");
 
@@ -46,14 +57,13 @@ var CMP_FN =
         "return d===0;" +
     "}";
 
-// Auth: require PB superuser. In PB v0.40+ superuser tokens have
-// `type==='auth'` and `collectionId==='pbc_3142635823'`. Regular user JWTs
-// share `type==='auth'` but a different collectionId, so we must check the
-// collection id.
+// Defense-in-depth admin check. $apis.requireSuperuserAuth() middleware
+// already enforces this at route registration; the inline check exists
+// so a future code change can't accidentally drop the middleware and
+// silently expose admin routes. Uses e.hasSuperuserAuth() (PB has
+// already verified the JWT signature before populating e.auth).
 var ADMIN_AUTH_FN =
-    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
-    "var _p={};try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_e){_p={};}" +
-    "if(!(_p.type==='auth'&&_p.collectionId==='pbc_3142635823')){" +
+    "if(!e.hasSuperuserAuth()){" +
         "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
         "e.string(401,'{\"ok\":false,\"error\":{\"code\":401,\"message\":\"admin auth required\"}}');" +
         "return;" +
@@ -215,7 +225,7 @@ var ISSUE_BODY = "" +
     "};" +
     "_reply(200,_resp);";
 
-routerAdd("POST", "/api/stjorna/api-keys", new Function("e", ISSUE_BODY));
+routerAdd("POST", "/api/stjorna/api-keys", new Function("e", ISSUE_BODY), $apis.requireSuperuserAuth());
 console.log("[stjorna-apikeys] registered POST /api/stjorna/api-keys");
 
 // ---------------------------------------------------------------------------
@@ -279,7 +289,7 @@ var LIST_BODY = "" +
     "_reply(200,{ok:true,items:_items,page:_page,perPage:_perPage,totalItems:_total});" +
     "}catch(_eAll){console.log('[stjorna-apikeys] LIST outer error: '+((_eAll&&_eAll.stack)||(_eAll&&_eAll.message)||_eAll));_reply(500,{ok:false,error:{code:500,message:'list handler crashed: '+((_eAll&&_eAll.message)||String(_eAll))}});return;}" ;
 
-routerAdd("GET", "/api/stjorna/api-keys", new Function("e", LIST_BODY));
+routerAdd("GET", "/api/stjorna/api-keys", new Function("e", LIST_BODY), $apis.requireSuperuserAuth());
 console.log("[stjorna-apikeys] registered GET /api/stjorna/api-keys");
 
 // ---------------------------------------------------------------------------
@@ -298,7 +308,7 @@ var REVOKE_BODY = "" +
     "try{$app.save(_rec);}catch(_es){_reply(500,{ok:false,error:{code:500,message:'revoke failed: '+(_es.message||_es)}});return;}" +
     "_reply(200,{ok:true,id:_id,revoked:true});";
 
-routerAdd("DELETE", "/api/stjorna/api-keys/{id...}", new Function("e", REVOKE_BODY));
+routerAdd("DELETE", "/api/stjorna/api-keys/{id...}", new Function("e", REVOKE_BODY), $apis.requireSuperuserAuth());
 console.log("[stjorna-apikeys] registered DELETE /api/stjorna/api-keys/{id...}");
 
 // ---------------------------------------------------------------------------

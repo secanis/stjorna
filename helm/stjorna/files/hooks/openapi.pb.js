@@ -330,45 +330,22 @@ var JSON_SPEC_FULL     = JSON.stringify(FULL_SPEC);
 var JSON_SPEC_PRIVATE  = JSON.stringify(PRIVATE_SPEC);
 var JSON_SPEC_PUBLIC   = JSON.stringify(PUBLIC_SPEC);
 
-var B64URL_DECODE_FN =
-    "var _B='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';" +
-    "var _L={};" +
-    "var _i=0;" +
-    "while(_i<_B.length){_L[_B[_i]]=_i;_i=_i+1;}" +
-    "function b64(s){" +
-        "s=String(s).replace(/-/g,'+').replace(/_/g,'/');" +
-        "while(s.length%4)s=s+'=';" +
-        "var out='';" +
-        "var buf=0;" +
-        "var bits=0;" +
-        "var j=0;" +
-        "while(j<s.length){" +
-            "var c=s[j];" +
-            "j=j+1;" +
-            "if(c==='=')break;" +
-            "var v=_L[c];" +
-            "if(v===undefined)continue;" +
-            "buf=(buf<<6)|v;" +
-            "bits=bits+6;" +
-            "if(bits>=8){" +
-                "bits=bits-8;" +
-                "out=out+String.fromCharCode((buf>>bits)&0xFF);" +
+// Tier-pick from the verified AuthContext populated by PB (no signature
+// checks here — PB only sets e.auth after verifying the JWT). Falling
+// back to PUBLIC for anonymous and unknown-collection callers keeps the
+// endpoint open (it has no auth decision of its own; only spec visibility).
+var BODY =
+    "var body=" + JSON.stringify(JSON_SPEC_PUBLIC) + ";" +
+    "try{" +
+        "if(e.auth){" +
+            "var _isSuper=!!e.hasSuperuserAuth();" +
+            "if(_isSuper){" +
+                "body=" + JSON.stringify(JSON_SPEC_FULL) + ";" +
+            "}else{" +
+                "body=" + JSON.stringify(JSON_SPEC_PRIVATE) + ";" +
             "}" +
         "}" +
-        "return out;" +
-    "}";
-
-var BODY =
-    "var h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
-    "var body=" + JSON.stringify(JSON_SPEC_PUBLIC) + ";" +
-    "if(h.length>0){" +
-        B64URL_DECODE_FN +
-        "try{" +
-            "var p=JSON.parse(b64(h.split('.')[1]||''));" +
-            "if(p&&p.type==='auth'&&p.collectionId==='pbc_3142635823')body=" + JSON.stringify(JSON_SPEC_FULL) + ";" +
-            "else if(p&&p.type==='auth')body=" + JSON.stringify(JSON_SPEC_PRIVATE) + ";" +
-        "}catch(e){}" +
-    "}" +
+    "}catch(_e){}" +
     "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
     "e.string(200,body);";
 
