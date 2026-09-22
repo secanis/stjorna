@@ -11,14 +11,22 @@
 //
 // Notes on v0.40.2 JSVM:
 //   - e is a core.RequestEvent. e.request is *http.Request.
+//   - e.auth is the verified AuthContext (null for anonymous, populated
+//     by PB after a successful JWT verification).
+//   - e.hasSuperuserAuth() returns true iff e.auth is a _superusers record.
 //   - e.response is *echo.Response. Use e.response.header().set().
 //   - e.string(200, str), e.blob(200, contentType, []byte) for responses.
 //   - readerToString(r, maxBytes) reads an io.Reader into a JS string.
 //   - $app for DB access.
 //   - $os.readFile(path) returns []byte (Uint8Array-like in goja).
-//   - $security.parseUnverifiedJWT(token) decodes JWT payload safely.
 //   - $filesystem.fileFromBytes(content, name) creates a file object.
 //   - Set file objects on record fields and call $app.save(record).
+//
+// Auth (T-01): /json and /zip require $apis.requireSuperuserAuth()
+//   middleware so PB verifies the JWT signature. /import accepts either
+//   a superuser (any tenant) or a tenant admin (only their own tenant);
+//   it uses $apis.requireAuth() + an inline user_tenants membership
+//   lookup against e.auth.id (verified by PB).
 //
 // All handlers are inlined as `new Function("e", BODY)` to avoid the
 // loader/executor VM closure issue (see openapi.pb.js for the pattern).
@@ -139,18 +147,24 @@ var STR_TO_BYTES_FN =
         "return JSON.stringify(v);" +
     "}";
 
-// auth snippet: reads Authorization header, decodes JWT, sets `authType`.
-// If type is not in allowedTypes, returns 401 and stops execution (uses `return;`).
-function authCheckSnippet(allowedTypes) {
+// auth snippet: defense-in-depth check that runs AFTER PB's middleware
+// already verified the JWT signature. Only used where it adds a tier
+// the middleware can't express (e.g. /import accepts both superuser AND
+// tenant admin, which requireAuth alone does not enforce).
+//   - allowed = ['superuser']        → e.hasSuperuserAuth() must be true
+//   - allowed = ['superuser','user'] → any verified auth record is OK
+function authCheckSnippet(allowed) {
+    var allowSuper = allowed.indexOf('superuser') >= 0;
+    var allowUser   = allowed.indexOf('user') >= 0;
     return "" +
-        "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
-        "var _p={};" +
-        "if(_h.length>0){" +
-            "try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_e){_p={};}" +
+        "if(!e.auth){" +
+            "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+            "e.string(401,'{\"error\":\"unauthorized\"}');" +
+            "return;" +
         "}" +
-        "var authType=_p.type||'';" +
-        "var authId=_p.id||'';" +
-        "if(" + JSON.stringify(allowedTypes) + ".indexOf(authType)<0){" +
+        "var _isSuper=!!e.hasSuperuserAuth();" +
+        "var _isUser=!_isSuper && e.auth && !!e.auth.id;" +
+        "if(!(_isSuper?" + (allowSuper?'true':'false') + ":" + (allowUser?'_isUser':'false') + ")){" +
             "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
             "e.string(401,'{\"error\":\"unauthorized\"}');" +
             "return;" +
@@ -206,14 +220,15 @@ function manifestSnippet() {
 // GET /api/backup/json
 // ---------------------------------------------------------------------------
 var JSON_BODY = "" +
-    authCheckSnippet(["admin"]) +
+    // Defense-in-depth: middleware already enforces superuser.
+    "if(!e.hasSuperuserAuth()){e.string(401,'{\"error\":\"unauthorized\"}');return;}" +
     manifestSnippet() +
     "var _body=JSON.stringify(manifest,null,2);" +
     "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
     "e.response.header().set('Content-Disposition','attachment; filename=\"stjorna-backup-' + Date.now() + '.json\"');" +
     "e.string(200,_body);";
 
-routerAdd("GET", "/api/backup/json", new Function("e", JSON_BODY));
+routerAdd("GET", "/api/backup/json", new Function("e", JSON_BODY), $apis.requireSuperuserAuth());
 console.log("[stjorna-backup] registered GET /api/backup/json");
 
 // ---------------------------------------------------------------------------
@@ -223,7 +238,7 @@ console.log("[stjorna-backup] registered GET /api/backup/json");
 // at media/<id>/<filename>.
 
 var ZIP_BODY = "" +
-    authCheckSnippet(["admin"]) +
+    "if(!e.hasSuperuserAuth()){e.string(401,'{\"error\":\"unauthorized\"}');return;}" +
     manifestSnippet() +
     "var manifestStr=JSON.stringify(manifest,null,2);" +
     // CRC32
@@ -322,7 +337,7 @@ var ZIP_BODY = "" +
         "e.blob(200,'application/zip',_zip);" +
     "})();";
 
-routerAdd("GET", "/api/backup/zip", new Function("e", ZIP_BODY));
+routerAdd("GET", "/api/backup/zip", new Function("e", ZIP_BODY), $apis.requireSuperuserAuth());
 console.log("[stjorna-backup] registered GET /api/backup/zip");
 
 // ---------------------------------------------------------------------------
@@ -340,14 +355,32 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
     "var _source=String(_req.source||'v3');" +
     "if(!_tenantId){e.string(400,'{\"error\":\"tenant required\"}');return;}" +
     "if(_source!=='v1'&&_source!=='v3'){e.string(400,'{\"error\":\"source must be v1 or v3\"}');return;}" +
-    // Auth
-    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
-    "var _p={};" +
-    "if(_h.length>0){try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_e){_p={};}}" +
+    // Auth (T-01): requireAuth middleware already validated the JWT signature
+    // and populated e.auth. We then accept either:
+    //   - a superuser (any tenant), OR
+    //   - a tenant user whose user_tenants row for the target tenant has the
+    //     "admin" role (looked up via the `roles` collection).
+    // The legacy _ur.get('tenant') / _ur.get('role') lookup on `users` was
+    // wrong: STJÓRN A's `users` collection IS PB's `_pb_users_auth_` and
+    // every non-auth schema field (tenant, role) is silently dropped on
+    // create, so the check always evaluated to false for real tenant admins.
+    "if(!e.auth){e.string(401,'{\"error\":\"unauthorized\"}');return;}" +
     "var _allowed=false;" +
-    "if(_p.type==='admin'){_allowed=true;}" +
-    "else if(_p.type==='authRecord'&&_p.id){" +
-        "try{var _ur=$app.findRecordById('users',_p.id);if(_ur.get('tenant')===_tenantId&&_ur.get('role')==='admin')_allowed=true;}catch(_ue){}" +
+    "if(e.hasSuperuserAuth()){_allowed=true;}" +
+    "else{" +
+        "var _uid=String(e.auth.id||'');" +
+        "if(_uid){" +
+            "try{" +
+                "var _uts=$app.findRecordsByFilter('user_tenants','user={:u} && tenant={:t}','',1,0,{u:_uid,t:_tenantId});" +
+                "if(_uts&&_uts.length>0){" +
+                    "var _ut=_uts[0];" +
+                    "var _roleId='';try{_roleId=String(_ut.get('role')||'');}catch(_r){}" +
+                    "if(_roleId){" +
+                        "try{var _role=$app.findRecordById('roles',_roleId);if(_role&&String(_role.get('name')||'')==='admin')_allowed=true;}catch(_rnf){}" +
+                    "}" +
+                "}" +
+            "}catch(_ue){}" +
+        "}" +
     "}" +
     "if(!_allowed){e.string(403,'{\"error\":\"forbidden: admin of target tenant required\"}');return;}" +
     // Verify tenant
@@ -544,8 +577,11 @@ var IMPORT_BODY = B64_DECODE_FN + SLUGIFY_FN + STR_TO_BYTES_FN + UTF8_DECODE_FN 
 
 // 500MB body limit — v1 backups with many images can exceed the 32MB default.
 // Only applies to the import route; other routes keep the default.
+// requireAuth covers both superuser and tenant-user; the inline check above
+// narrows it to superuser OR tenant-admin-of-target-tenant.
 routerAdd("POST", "/api/backup/import",
     new Function("e", IMPORT_BODY),
+    $apis.requireAuth(),
     $apis.bodyLimit(500 * 1024 * 1024));
 console.log("[stjorna-backup] registered POST /api/backup/import");
 

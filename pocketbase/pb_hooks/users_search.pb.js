@@ -4,14 +4,17 @@
 //
 // Endpoint: GET /api/stjorna/users/search?q=<email>
 //
-// Auth:
-//   - superuser: any query
-//   - tenant admin: any query (result is limited and will be linked to the
-//     admin's tenant by the caller)
+// Auth (T-01):
+//   - requireAuth() middleware verifies the JWT signature and populates
+//     e.auth. e.hasSuperuserAuth() decides superuser vs tenant user.
+//   - superuser: any query (caller-side narrows to a tenant if needed).
+//   - tenant admin: only when at least one of their user_tenants rows
+//     has role.name === "admin". The q-match is exact-email only to
+//     avoid leaking account enumeration.
 //
-// Why a custom route? The `users` collection list rule is locked so regular
-// users cannot enumerate accounts. Tenant admins still need to find existing
-// users when adding them to a tenant.
+// Why a custom route? The `users` collection list rule is locked so
+// regular users cannot enumerate accounts. Tenant admins still need to
+// find existing users when adding them to a tenant.
 
 console.log("[stjorna-users-search] loading");
 
@@ -22,16 +25,14 @@ var USERS_SEARCH_BODY = "" +
       "e.response.header().set('Cache-Control','no-store');" +
       "e.string(status,body);" +
   "}" +
-  "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
-  "if(!_h){_reply(401,{ok:false,error:{code:401,message:'missing bearer token'}});return;}" +
-  "var _p={};try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_ea){_p={};}" +
-  "var _isSuperuser=_p.type==='auth'&&_p.collectionId==='pbc_3142635823';" +
-  "var _isUser=_p.type==='auth'&&_p.collectionId==='_pb_users_auth_';" +
-  "if(!_isSuperuser&&!_isUser){_reply(401,{ok:false,error:{code:401,message:'unrecognized token type'}});return;}" +
+  "if(!e.auth){_reply(401,{ok:false,error:{code:401,message:'unauthorized'}});return;}" +
+  "var _isSuperuser=!!e.hasSuperuserAuth();" +
   // Only superusers or tenant admins may search user accounts.
   "if(!_isSuperuser){" +
+      "var _uid=String(e.auth.id||'');" +
+      "if(!_uid){_reply(403,{ok:false,error:{code:403,message:'only tenant admins can search users'}});return;}" +
       "try{" +
-          "var _uts=$app.findRecordsByFilter('user_tenants','user={:u}','',0,0,{u:_p.id});" +
+          "var _uts=$app.findRecordsByFilter('user_tenants','user={:u}','',0,0,{u:_uid});" +
           "var _isAdmin=false;" +
           "for(var _i2=0;_i2<_uts.length;_i2++){" +
               "var _ut=_uts[_i2];if(!_ut)continue;" +
@@ -45,7 +46,11 @@ var USERS_SEARCH_BODY = "" +
   "if(!_q){_reply(200,{ok:true,users:[]});return;}" +
   "var _users=[];" +
   "try{" +
-      "var _rows=$app.findRecordsByFilter('users','email~{:q}','',10,0,{q:_q});" +
+      // Tenant admins: restrict to exact-email matches so they can't
+      // enumerate by substring. Superusers keep the substring search
+      // (useful for admin tooling).
+      "var _filter=_isSuperuser?('email~{:q}'):('email={:q}');" +
+      "var _rows=$app.findRecordsByFilter('users',_filter,'',10,0,{q:_q});" +
       "for(var _i=0;_i<_rows.length;_i++){" +
           "var _r=_rows[_i];" +
           "if(!_r)continue;" +
@@ -60,5 +65,5 @@ var USERS_SEARCH_BODY = "" +
   "}" +
   "_reply(200,{ok:true,users:_users});";
 
-routerAdd("GET", "/api/stjorna/users/search", new Function("e", USERS_SEARCH_BODY));
+routerAdd("GET", "/api/stjorna/users/search", new Function("e", USERS_SEARCH_BODY), $apis.requireAuth());
 console.log("[stjorna-users-search] registered GET /api/stjorna/users/search");

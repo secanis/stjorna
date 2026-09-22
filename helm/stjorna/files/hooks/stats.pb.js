@@ -8,13 +8,15 @@
 //   - storage (sum of media.size, largest media, per-mime breakdown)
 //   - activity (last 30 days)
 //
-// Auth (mirrors backup.pb.js IMPORT handler):
-//   - PB superuser (JWT type=admin) → can query any tenant via ?tenant=
-//   - STJÓRNA user (JWT type=authRecord) → can query own tenant only.
-//     The query param is IGNORED for tenant users so an admin can't
-//     craft a URL that flips their view to someone else's tenant by
-//     piggybacking on a tenant user's session.
-//   - No bearer / unknown JWT → 401.
+// Auth (T-01):
+//   - requireAuth() middleware — PB verifies the JWT signature and
+//     populates e.auth (null only for anonymous callers).
+//   - Superuser (e.hasSuperuserAuth()) → can query any tenant via ?tenant=
+//   - Tenant user (e.auth.id) → can query own tenant only. The query
+//     param is IGNORED for tenant users so an admin can't craft a URL
+//     that flips their view to someone else's tenant by piggybacking
+//     on a tenant user's session.
+//   - No bearer → 401 from middleware.
 //
 // Why server-side aggregation instead of FE-side getFullList + fold:
 //   STJÓRNA's `media` collections can hold tens of thousands of rows
@@ -82,14 +84,11 @@ var STATS_BODY = "" +
     GET_R_FN +
     DATE_MS_FN +
     // ---- Auth -----------------------------------------------------------
-    "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
-    "if(!_h){_reply(401,{ok:false,error:{code:401,message:'missing bearer token'}});return;}" +
-    "var _p={};try{_p=$security.parseUnverifiedJWT(_h)||{};}catch(_ea){_p={};}" +
-    "var _authType=String(_p.type||'');" +
-    "var _authId=String(_p.id||'');" +
-    "var _authCollId=String(_p.collectionId||'');" +
-    "var _isSuperuser=_authType==='auth'&&_authCollId==='pbc_3142635823';" +
-    "var _isUser=_authType==='auth'&&_authCollId==='_pb_users_auth_';" +
+    // requireAuth() middleware already verified the JWT signature and
+    // populated e.auth. e.hasSuperuserAuth() is the only decision left.
+    "if(!e.auth){_reply(401,{ok:false,error:{code:401,message:'unauthorized'}});return;}" +
+    "var _isSuperuser=!!e.hasSuperuserAuth();" +
+    "var _isUser=!_isSuperuser && !!e.auth.id;" +
     "if(!_isSuperuser&&!_isUser){" +
         "_reply(401,{ok:false,error:{code:401,message:'unrecognized token type'}});return;" +
     "}" +
@@ -110,16 +109,22 @@ var STATS_BODY = "" +
     // field is silently dropped on create). For users in multiple
     // tenants, the `last_tenant` field on the auth record (written by
     // STJÓRNA's switchTenant) is the tiebreaker.
+    "var _authId=String(e.auth.id||'');" +
     "if(!_authId){_reply(401,{ok:false,error:{code:401,message:'token missing record id'}});return;}" +
     "var _lastTenant='';" +
-    "try{var _au=$app.findRecordById('_pb_users_auth_',_authId);_lastTenant=String(_getR(_au,'last_tenant')||'');}catch(_eau){}" +
+    "try{_lastTenant=String(_getR(e.auth.record?e.auth.record():null,'last_tenant')||'');}catch(_eauth){}" +
+    // Fall back to a direct auth-record lookup if the AuthContext
+    // doesn't expose .record() (varies by PB build).
+    "if(!_lastTenant){" +
+        "try{var _au=$app.findRecordById('_pb_users_auth_',_authId);_lastTenant=String(_getR(_au,'last_tenant')||'');}catch(_eau){}" +
+    "}" +
     "var _userTenants=null;" +
-    "try{_userTenants=$app.findRecordsByFilter('user_tenants','','',0,0)||[];}catch(_eut){_userTenants=[];}" +
+    "try{_userTenants=$app.findRecordsByFilter('user_tenants','user={:u}','',0,0,{u:_authId})||[];}catch(_eut){_userTenants=[];}" +
     "var _memberships=[];" +
     "for(var _mi2=0;_mi2<_userTenants.length;_mi2++){" +
         "var _ut=_userTenants[_mi2];" +
         "if(!_ut)continue;" +
-        "if(String(_getR(_ut,'user'))===_authId)_memberships.push(String(_getR(_ut,'tenant')||''));" +
+        "_memberships.push(String(_getR(_ut,'tenant')||''));" +
     "}" +
     // Dedup + drop empties.
     "var _seen={};var _unique=[];" +
@@ -257,5 +262,5 @@ var STATS_BODY = "" +
     "};" +
     "_reply(200,_resp);";
 
-routerAdd("GET", "/api/stjorna/stats", new Function("e", STATS_BODY));
+routerAdd("GET", "/api/stjorna/stats", new Function("e", STATS_BODY), $apis.requireAuth());
 console.log("[stjorna-stats] registered GET /api/stjorna/stats");

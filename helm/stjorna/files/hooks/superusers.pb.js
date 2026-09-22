@@ -12,6 +12,13 @@
 // hooks, so we use a `routerUse` middleware to inspect those paths.
 // Per-request handler bodies are inlined as strings because top-level
 // helpers are not visible across the loader/executor VM boundary.
+//
+// T-01: the refresh guard reads the superuser id from `e.auth.id`
+// (PB has already verified the JWT signature before populating e.auth)
+// rather than from $security.parseUnverifiedJWT. The password-login
+// guard still queries by the email submitted in the body — PB itself
+// rejects the credentials before minting a token, this just short-
+// circuits early for disabled accounts.
 
 console.log("[stjorna-superusers] loading");
 
@@ -81,20 +88,17 @@ var AUTH_GUARD_BODY = "" +
           "}" +
       "}catch(_){}" +
   "}" +
-  // Refresh: read id from the current token.
+  // Refresh: PB has already verified the JWT signature and populated
+  // e.auth. We only need the superuser id for the active-check.
   "if(_path==='/api/collections/_superusers/auth-refresh'||_path==='/api/admins/auth-refresh'){" +
       "try{" +
-          "var _h=String(e.request.header.get('Authorization')||'').replace(/^Bearer\\s+/i,'').trim();" +
-          "if(_h){" +
-              "var _p=$security.parseUnverifiedJWT(_h)||{};" +
-              "if(_p.type==='auth'&&_p.collectionId==='pbc_3142635823'&&_p.id){" +
-                  "var _rec2=$app.findRecordById('_superusers',_p.id);" +
-                  "var _active2=_rec2.get('active');" +
-                  "if(_active2===false||_active2==='false'||_active2===0||_active2==='0'){" +
-                      "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
-                      "e.string(403,JSON.stringify({message:'Superuser account is disabled'}));" +
-                      "return;" +
-                  "}" +
+          "if(e.auth && e.hasSuperuserAuth && e.hasSuperuserAuth() && e.auth.id){" +
+              "var _rec2=$app.findRecordById('_superusers',e.auth.id);" +
+              "var _active2=_rec2.get('active');" +
+              "if(_active2===false||_active2==='false'||_active2===0||_active2==='0'){" +
+                  "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+                  "e.string(403,JSON.stringify({message:'Superuser account is disabled'}));" +
+                  "return;" +
               "}" +
           "}" +
       "}catch(_){}" +

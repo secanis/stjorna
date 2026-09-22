@@ -8,6 +8,7 @@ scripts/node_modules
 **/.nyc_output
 **/*.tsbuildinfo
 frontend/ai-failed-tests
+.claude
 
 # Test outputs
 **/test-results/

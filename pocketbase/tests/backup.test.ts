@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getPbUrl } from './setup.ts';
-import { createAdminClient, createTenantClient } from './helpers/client.ts';
+import { createAdminClient, createTenantClient, createTenantUser } from './helpers/client.ts';
 import {
   createTenantFixture,
   createCategoryFixture,
@@ -516,11 +516,21 @@ describe('Backup Hook', () => {
     expect(res.status).toBe(400);
   });
 
-  it('POST /api/backup/import rejects non-admin', async () => {
-    const tenantPb = await createTenantClient(tenantId);
-    const res = await fetchWithAuth(tenantPb, '/api/backup/import', {
+  it('POST /api/backup/import rejects a viewer (non-admin) tenant user', async () => {
+    // T-01: tenant admins SHOULD be able to import into their own
+    // tenant; viewers and editors cannot. The legacy test asserted the
+    // opposite (any tenant user = 403), which only passed because the
+    // old code looked up `users.role === 'admin'`, a field PB silently
+    // dropped on auth-record creates — so every tenant user got 403 by
+    // accident. The fixed hook does a proper user_tenants + roles
+    // lookup, so a viewer is the right fixture for the negative case.
+    const { pb: viewerPb } = await createTenantUser(tenantId, 'viewer');
+    const res = await fetch(getPbUrl() + '/api/backup/import', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: viewerPb.authStore.token,
+      },
       body: JSON.stringify({ tenant: tenantId, source: 'v1', data_base64: 'e30=' }),
     });
     expect(res.status).toBe(403);
