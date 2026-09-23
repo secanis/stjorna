@@ -13,8 +13,8 @@ export default defineConfig({
     // they are too flaky on shared runners. Pure unit tests (*.unit.test.ts)
     // still run. Locally the full suite including integration tests runs.
     include: isCI ? ['**/*.unit.test.ts'] : ['**/*.test.ts', '**/*.unit.test.ts'],
+    // global-setup.ts returns the teardown (vitest has no globalTeardown option)
     globalSetup: isCI ? [] : ['./tests/global-setup.ts'],
-    globalTeardown: isCI ? [] : ['./tests/global-teardown.ts'],
     // Single process (no forks) — globalSetup/Teardown run once per run
     pool: 'forks',
     poolOptions: {

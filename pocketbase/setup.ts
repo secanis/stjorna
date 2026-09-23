@@ -59,6 +59,17 @@ export async function startPocketBase(): Promise<PocketBase> {
   const startContainer = async (): Promise<PocketBase> => {
     await cleanup();
 
+    // With --network=host a second PB can't bind the port and exits, while
+    // the health loop below happily talks to whatever is already there.
+    // Refuse to run against a leftover instance instead of testing stale hooks.
+    const alreadyUp = await fetch(`${PB_URL}/api/health`).then(() => true, () => false);
+    if (alreadyUp) {
+      throw new Error(
+        `${PB_URL} is already serving before the test container started — ` +
+        `stop the leftover instance (e.g. \`${CONTAINER_CLI} ps\`) and re-run.`
+      );
+    }
+
     let stdout: string;
     try {
       const result = await execAsync(
@@ -331,7 +342,8 @@ async function setupCollections(pb: PocketBase): Promise<void> {
   for (const col of collections) {
     if (!existingNames.includes(col.name.toLowerCase())) {
       try {
-        await pb.collections.create(col);
+        const { schema, ...rest } = col;
+        await pb.collections.create({ ...rest, fields: toFields(schema) });
       } catch (e: any) {
         if (e.status !== 400) throw e;
       }
@@ -425,6 +437,16 @@ async function setupCollections(pb: PocketBase): Promise<void> {
   // The first pass may have failed to create a relation because the target
   // collection didn't exist yet (e.g. `categories.media` → `media`).
   await resolveRelationPlaceholders(pb);
+}
+
+// PocketBase v0.23+ dropped the `schema` key (with nested `options`) in favour
+// of a flat `fields` array; the legacy shape is silently ignored, leaving the
+// collection with no user fields. Translate the declarations above on create.
+function toFields(schema: any[]): any[] {
+  return schema.map(({ options = {}, ...field }) => {
+    const { maxLen, ...opts } = options;
+    return { ...field, ...opts, ...(maxLen !== undefined ? { max: maxLen } : {}) };
+  });
 }
 
 // Add the `media` relation field to categories after both collections exist.

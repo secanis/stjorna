@@ -114,7 +114,27 @@ var CRYPTO_FN =
 // ---------------------------------------------------------------------------
 // POST /api/stjorna/api-keys  — issue
 // ---------------------------------------------------------------------------
+// Ensure the service user is a `viewer` member of the key's tenant. Since
+// migration 1770001000 (T-02) every tenant collection's list/view rule
+// requires a user_tenants row, so a service user without one gets empty
+// result sets. Idempotent: called on issue and on every exchange so keys
+// minted before T-02 are healed on their next exchange. `viewer` keeps
+// API keys read-only (the `permissions` column is informational only).
+var SVC_MEMBERSHIP_FN =
+    "function _ensureSvcMembership(_uid,_tid){" +
+        "var _ex=[];try{_ex=$app.findRecordsByFilter('user_tenants','user={:u} && tenant={:t}','',1,0,{u:_uid,t:_tid});}catch(_e){}" +
+        "if(_ex&&_ex.length>0)return;" +
+        "var _role=$app.findFirstRecordByFilter('roles','name={:n}',{n:'viewer'});" +
+        "var _ut=new Record($app.findCollectionByNameOrId('user_tenants'));" +
+        "_ut.set('user',_uid);" +
+        "_ut.set('tenant',_tid);" +
+        "_ut.set('role',_role.id);" +
+        "try{_ut.set('source','api_key');}catch(_es){}" +
+        "$app.save(_ut);" +
+    "}";
+
 var ISSUE_BODY = "" +
+    SVC_MEMBERSHIP_FN +
     ADMIN_AUTH_FN +
     READ_BODY_FN +
     JSON_REPLY_FN +
@@ -158,11 +178,6 @@ var ISSUE_BODY = "" +
     "try{" +
         "_svcPassword=_rand(40);" +
         "_svcEmail='svc-'+_tid+'-'+_rand(8)+'@stjorna.internal';" +
-        // PB auth records require `username` (auto-derived from email
-        // when going through the SDK, but the DAO Record path needs
-        // it set explicitly — save fails with "unable to save auth
-        // record without username" otherwise).
-        "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
         // Find or create the auth collection. `users` in STJÓRNA IS
         // `_pb_users_auth_` — every non-auth field on a base record
         // there is silently dropped, but we only set email + password
@@ -180,7 +195,6 @@ var ISSUE_BODY = "" +
             // set('password', ...) on an auth collection doesn't
             // hash it; the SDK's auth path is the only documented
             // way, but Record.setPassword exists too on this build.
-            "_u.setUsername(_svcUsername);" +
             "_u.setEmail(_svcEmail);" +
             "_u.setPassword(_svcPassword);" +
             // verified=false is fine — the user will never log in
@@ -194,6 +208,7 @@ var ISSUE_BODY = "" +
             "try{if(typeof _u.set==='function')_u.set('tenant',_tenantId);else if(typeof _u.tenant!=='undefined')_u.tenant=_tenantId;}catch(_es){}" +
             "try{$app.save(_u);_svcUserId=String(_u.id||'');}catch(_esu){console.log('[stjorna-apikeys] svc user save failed: '+(_esu&&_esu.message))}" +
         "}" +
+        "if(_svcUserId){try{_ensureSvcMembership(_svcUserId,_tenantId);}catch(_eMem){console.log('[stjorna-apikeys] svc membership failed: '+(_eMem&&_eMem.message))}}" +
     "}catch(_eSvc){console.log('[stjorna-apikeys] svc user block error: '+(_eSvc&&_eSvc.message))}" +
     // ---- Persist the api_keys row ----
     "var _coll=$app.findCollectionByNameOrId('api_keys');" +
@@ -386,6 +401,7 @@ console.log("[stjorna-apikeys] registered GET /api/stjorna/api-keys/me");
 // caller a real STJÓRNA user JWT that passes the rules.
 
 var EXCHANGE_BODY = "" +
+    SVC_MEMBERSHIP_FN +
     JSON_REPLY_FN +
     READ_BODY_FN +
     KEY_SHAPE_FN +
@@ -436,10 +452,8 @@ var EXCHANGE_BODY = "" +
             "_svcPassword=_rand(40);" +
             "var _tid=String(_tenantId).replace(/[^a-zA-Z0-9]/g,'').slice(0,6).toLowerCase()||'tenant';" +
             "_svcEmail='svc-'+_tid+'-'+_rand(8)+'@stjorna.internal';" +
-            "var _svcUsername=_svcEmail.replace(/[^a-zA-Z0-9._-]/g,'_').slice(0,80);" +
             "var _authCol=$app.findCollectionByNameOrId('_pb_users_auth_');" +
             "var _u=new Record(_authCol);" +
-            "_u.setUsername(_svcUsername);" +
             "_u.setEmail(_svcEmail);" +
             "_u.setPassword(_svcPassword);" +
             "_u.setVerified(true);" +
@@ -465,6 +479,9 @@ var EXCHANGE_BODY = "" +
         "}" +
     "}catch(_em){" +
         "_reply(500,{ok:false,error:{code:500,message:'service user lookup failed — re-issue the key'}});return;" +
+    "}" +
+    "try{_ensureSvcMembership(_svcId,_tenantId);}catch(_eMem){" +
+        "_reply(500,{ok:false,error:{code:500,message:'service user membership failed: '+(_eMem&&_eMem.message||_eMem)}});return;" +
     "}" +
     // Best-effort last_used update.
     "try{_rec.set('last_used',new Date().toISOString().replace('T',' ').replace(/\\..*$/,'Z'));$app.save(_rec);}catch(_eu){}" +
