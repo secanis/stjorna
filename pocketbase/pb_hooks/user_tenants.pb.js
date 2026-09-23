@@ -3,7 +3,12 @@
 // Enforces tenant-scoped membership management.
 //
 // - Superusers may create/update/delete any user_tenants row.
-// - The OIDC group-sync hook may create rows with source = "oidc".
+// - The OIDC group-sync hook writes rows with source = "oidc" via
+//   `$app.save(record)`, which uses the model-save path and bypasses
+//   every `*Request` hook in this chain. The OIDC sync therefore does
+//   NOT need any bypass here — and historically a `if(source==='oidc')
+//   return e.next()` bypass on create + update was dead code that API
+//   callers could use to skip the admin check entirely (T-03).
 // - Authenticated tenant admins may manage memberships for tenants where
 //   they have the "admin" role.
 // - Everyone else is rejected.
@@ -39,11 +44,21 @@ var CHECK_ADMIN_FN =
     "throw new Error(msg||'Only superusers or tenant admins can manage memberships');" +
   "}";
 
+var REJECT_OIDC_SOURCE =
+  // `source='oidc'` is reserved for the OIDC sync hook, which writes
+  // through the model-save path ($app.save) and does not fire *Request
+  // hooks. If an API caller (PB user JWT) tries to stamp that value
+  // through the request path, reject — that's the T-03 bypass.
+  // Superusers keep the escape hatch for backfill / disaster recovery.
+  "var _src=String(e.record.get('source')||'');" +
+  "if(_src==='oidc' && !e.hasSuperuserAuth()){" +
+    "throw new Error(\"source='oidc' is reserved for OIDC sync and cannot be set via the API\");" +
+  "}";
+
 onRecordCreateRequest(
   new Function("e",
     CHECK_ADMIN_FN +
-    "var source=String(e.record.get('source')||'');" +
-    "if(source==='oidc')return e.next();" +
+    REJECT_OIDC_SOURCE +
     "requireTenantAdmin(e,String(e.record.get('tenant')||''),'Only tenant admins can invite users to this tenant');" +
     "e.next();"
   ),
@@ -53,13 +68,25 @@ onRecordCreateRequest(
 onRecordUpdateRequest(
   new Function("e",
     CHECK_ADMIN_FN +
-    "var source=String(e.record.get('source')||'');" +
-    "if(source==='oidc')return e.next();" +
-    "var newTenant=String(e.record.get('tenant')||'');" +
-    "var oldTenant='';" +
-    "try{var old=$app.findRecordById('user_tenants',e.record.id);oldTenant=String(old.get('tenant')||'');}catch(_){}" +
-    "requireTenantAdmin(e,oldTenant,'Only tenant admins can update memberships');" +
-    "if(newTenant&&newTenant!==oldTenant){requireTenantAdmin(e,newTenant,'Only tenant admins can move users to this tenant');}" +
+    REJECT_OIDC_SOURCE +
+    // Block silent reassignment of a membership to a different user.
+    // Reassigning is a delete + recreate flow so the audit trail is
+    // explicit (created_by / deleted_by / reason etc. stay consistent).
+    "var _newUser=String(e.record.get('user')||'');" +
+    "var _oldUser='';" +
+    "try{var _ou=$app.findRecordById('user_tenants',e.record.id);_oldUser=String(_ou.get('user')||'');}catch(_){}" +
+    "if(_newUser && _newUser!==_oldUser){" +
+      "throw new Error('Cannot reassign a user_tenants row to a different user; delete + recreate instead');" +
+    "}" +
+    // Tenant admins must hold the admin role on BOTH the old and new
+    // tenant. Reassigning across tenants would otherwise let an admin
+    // of Tenant A move a membership into Tenant B even though they have
+    // no rights there.
+    "var _newTenant=String(e.record.get('tenant')||'');" +
+    "var _oldTenant='';" +
+    "try{var _ot=$app.findRecordById('user_tenants',e.record.id);_oldTenant=String(_ot.get('tenant')||'');}catch(_){}" +
+    "requireTenantAdmin(e,_oldTenant,'Only tenant admins can update memberships');" +
+    "if(_newTenant && _newTenant!==_oldTenant){requireTenantAdmin(e,_newTenant,'Only tenant admins can move users to this tenant');}" +
     "e.next();"
   ),
   "user_tenants"

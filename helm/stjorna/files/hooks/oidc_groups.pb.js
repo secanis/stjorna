@@ -233,23 +233,23 @@ onRecordAuthWithOAuth2Request(function (e) {
             var item = desired[d];
             var existingInfo = existingByTenant[item.tenantId];
             if (existingInfo) {
-                try {
-                    var currentRole = String(existingInfo.record.get("role") || "");
-                    var needsSave = false;
-                    if (currentRole !== item.roleId) {
-                        existingInfo.record.set("role", item.roleId);
-                        needsSave = true;
+                // T-03: respect manual rows. A membership that an admin
+                // created (source != "oidc") stays manual — we only
+                // update its role. Flipping `source` to "oidc" would
+                // also make it eligible for `replace-oidc` deletion the
+                // next time the user leaves that group.
+                if (existingInfo.source === "oidc") {
+                    try {
+                        var currentRole = String(existingInfo.record.get("role") || "");
+                        if (currentRole !== item.roleId) {
+                            existingInfo.record.set("role", item.roleId);
+                            $app.save(existingInfo.record);
+                        }
+                    } catch (upErr) {
+                        console.log("[stjorna-oidc] membership update failed: " + (upErr && upErr.message));
                     }
-                    if (existingInfo.source !== "oidc") {
-                        existingInfo.record.set("source", "oidc");
-                        needsSave = true;
-                    }
-                    if (needsSave) {
-                        $app.save(existingInfo.record);
-                    }
-                } catch (upErr) {
-                    console.log("[stjorna-oidc] membership update failed: " + (upErr && upErr.message));
                 }
+                // else: leave manual rows alone.
             } else {
                 try {
                     var ut = new Record(utColl);
