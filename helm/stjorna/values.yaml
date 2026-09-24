@@ -106,13 +106,16 @@ pocketbase:
     existingSecret: ""
     # -- Key inside `existingSecret` that holds PB_SECRET value.
     existingSecretKey: PB_SECRET
-  # -- Default superuser credentials for the /setup wizard. The PB backend
-  # does NOT bootstrap a superuser automatically — the frontend wizard at
-  # /setup POSTs to /api/stjorna/setup-bootstrap-superuser to create the
-  # very first one. The Secret here is a suggestion: the wizard form
-  # reads it as the default values the operator can accept or override.
+  # -- First superuser credentials. The Secret is mounted into the pod as
+  # PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD and entrypoint.sh creates
+  # the superuser headlessly on the first boot (`pocketbase superuser
+  # upsert`, guarded by a marker file in pb_data). The /setup wizard then
+  # only has to LOG IN with these credentials to configure storage and the
+  # first tenant — the unauthenticated bootstrap route is never used on a
+  # Helm install (T-04).
   # To supply your own: create a Secret with two keys (email + password)
   # and set `existingSecret` to its name. Leave empty to auto-generate.
+  # PB requires the password to be at least 8 characters.
   superuser:
     # -- Name of an existing Kubernetes Secret holding PB_SUPERUSER_EMAIL
     # and PB_SUPERUSER_PASSWORD. If empty, the chart creates one on
@@ -122,6 +125,17 @@ pocketbase:
     existingSecretEmailKey: PB_SUPERUSER_EMAIL
     # -- Key inside `existingSecret` that holds the password value.
     existingSecretPasswordKey: PB_SUPERUSER_PASSWORD
+  # -- Optional fixed setup token for POST /api/stjorna/setup-bootstrap-superuser.
+  # Only relevant if the headless superuser upsert above did not run (e.g.
+  # a bring-your-own Secret with a too-short password). When unset, the
+  # backend generates a random token at boot and prints it to the pod log
+  # (`kubectl logs deploy/<release>-stjorna-pocketbase | grep STJORNA_SETUP_TOKEN`).
+  # Minimum 16 characters; shorter values are ignored.
+  setupToken:
+    # -- Name of an existing Kubernetes Secret holding the token. Empty = generated at boot.
+    existingSecret: ""
+    # -- Key inside `existingSecret` that holds the token value.
+    existingSecretKey: STJORNA_SETUP_TOKEN
   # -- Log generated superuser OTP codes to stdout. Only used when SMTP is not
   # configured. Accepted values: "1", "true" or "yes". Leave empty to disable.
   # NEVER enable in production — OTP codes are authentication secrets.

@@ -46,6 +46,31 @@ spec:
                   key: {{ .Values.pocketbase.secret.existingSecretKey | default "PB_SECRET" }}
             - name: STJORNA_LOG_OTP
               value: {{ .Values.pocketbase.logOtp | default "" | quote }}
+            # T-04: create the first superuser headlessly on the first boot.
+            # entrypoint.sh runs `pocketbase superuser upsert` when both
+            # vars are set (guarded by a marker file in pb_data), so the
+            # unauthenticated /setup bootstrap route is never needed on a
+            # Helm install — it reports superuserExists=true and refuses
+            # with 409. Should the upsert ever fail, the route still
+            # requires the one-time token printed in the pod log.
+            - name: PB_SUPERUSER_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "stjorna.pocketbase.superuserSecretName" . }}
+                  key: {{ .Values.pocketbase.superuser.existingSecretEmailKey | default "PB_SUPERUSER_EMAIL" }}
+            - name: PB_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "stjorna.pocketbase.superuserSecretName" . }}
+                  key: {{ .Values.pocketbase.superuser.existingSecretPasswordKey | default "PB_SUPERUSER_PASSWORD" }}
+            {{- if .Values.pocketbase.setupToken.existingSecret }}
+            # Optional fixed setup token for the /setup bootstrap route.
+            - name: STJORNA_SETUP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.pocketbase.setupToken.existingSecret }}
+                  key: {{ .Values.pocketbase.setupToken.existingSecretKey | default "STJORNA_SETUP_TOKEN" }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: {{ .Values.pocketbase.healthcheck.path }}

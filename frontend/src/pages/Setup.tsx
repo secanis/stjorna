@@ -1,6 +1,6 @@
-import { createSignal, Show, onMount, createEffect } from 'solid-js';
+import { createSignal, Show, onMount, onCleanup, createEffect } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import PocketBase from 'pocketbase';
+import PocketBase, { BaseAuthStore } from 'pocketbase';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 type Step = 'admin' | 'storage' | 'tenant' | 'link' | 'done';
@@ -12,44 +12,21 @@ export default function Setup() {
     (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') ||
     (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090');
 
-  onMount(async () => {
-    try {
-      const checkPb = new PocketBase(resolvePbUrl());
-      const settings = await checkPb.collection('instance_settings').getList(1, 1);
-      if (settings.items.length > 0 && settings.items[0].setup_done === true) {
-        navigate('/login', { replace: true });
-        return;
-      }
-    } catch (e: any) {
-      if (e.status !== 404) console.warn('Setup check warning:', e.message);
-    }
-    // Decide whether step 1 should CREATE the first superuser or LOG IN
-    // to an existing one. The status endpoint is registered by
-    // pocketbase/pb_hooks/setup.pb.js — fails open to bootstrapMode=true
-    // (assume a fresh install) if the hook is unreachable, since the
-    // bootstrap endpoint will safely 409 instead.
-    try {
-      const res = await fetch(`${resolvePbUrl()}/api/stjorna/setup-status`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data.superuserExists === 'boolean') {
-          setBootstrapMode(!data.superuserExists);
-        }
-      }
-    } catch {
-      // ignore — fall back to bootstrapMode=true
-    }
-  });
-
   const [step, setStep] = createSignal<Step>('admin');
   const [pbUrl] = createSignal(resolvePbUrl());
   const [adminEmail, setAdminEmail] = createSignal('');
   const [adminPassword, setAdminPassword] = createSignal('');
   const [adminPasswordConfirm, setAdminPasswordConfirm] = createSignal('');
-  // `bootstrapMode` = true: no superuser exists yet, step 1 form CREATES one.
+  // T-04: one-time setup token required by POST /api/stjorna/setup-bootstrap-superuser.
+  const [setupToken, setSetupToken] = createSignal('');
+  // Where the backend got its token from: "env" (STJORNA_SETUP_TOKEN) or
+  // "log" (generated at boot and printed to the PocketBase server log).
+  const [setupTokenSource, setSetupTokenSource] = createSignal<'env' | 'log'>('log');
+  // `bootstrapMode` = true:  no superuser exists yet, step 1 form CREATES one.
   // `bootstrapMode` = false: a superuser already exists, step 1 form logs in.
   // Determined on mount via GET /api/stjorna/setup-status.
   const [bootstrapMode, setBootstrapMode] = createSignal(true);
+  const [statusChecked, setStatusChecked] = createSignal(false);
   const [storageType, setStorageType] = createSignal<'local' | 's3'>('local');
   const [s3Bucket, setS3Bucket] = createSignal('');
   const [s3Region, setS3Region] = createSignal('');
@@ -62,8 +39,62 @@ export default function Setup() {
   const [s3TestPassed, setS3TestPassed] = createSignal(false);
   const [tenantName, setTenantName] = createSignal('Default Company');
   const [tenantSlug, setTenantSlug] = createSignal('default-company');
+  // Set by the tenant step; consumed by the link step. Kept in component
+  // state (was window.__setupTenantId before T-04).
+  const [tenantId, setTenantId] = createSignal('');
+  const [tenantReused, setTenantReused] = createSignal(false);
+  // The tenant-admin `users` account gets its OWN password. Reusing the
+  // superuser password for a tenant-level account was a T-04 finding.
+  const [userPassword, setUserPassword] = createSignal('');
+  const [userPasswordConfirm, setUserPasswordConfirm] = createSignal('');
   const [error, setError] = createSignal('');
   const [loading, setLoading] = createSignal(false);
+
+  // One in-memory PocketBase client for the whole wizard. `BaseAuthStore`
+  // keeps the superuser JWT in memory only — the SDK's default
+  // LocalAuthStore would persist it to localStorage where it outlives the
+  // wizard. The store is cleared on finish and on unmount.
+  const setupPb = new PocketBase(pbUrl(), new BaseAuthStore());
+  onCleanup(() => setupPb.authStore.clear());
+
+  onMount(async () => {
+    // GET /api/stjorna/setup-status (pocketbase/pb_hooks/setup.pb.js) is
+    // the single source of truth. It is unauthenticated on purpose — on a
+    // fresh install there is no admin yet — and reports both flags the
+    // wizard needs. It fails open to bootstrapMode=true (assume a fresh
+    // install) if the hook is unreachable; the bootstrap route safely
+    // 401s/409s if that assumption is wrong.
+    try {
+      const res = await fetch(`${pbUrl()}/api/stjorna/setup-status`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.setupDone === true) {
+          navigate('/login', { replace: true });
+          return;
+        }
+        if (data && typeof data.superuserExists === 'boolean') {
+          setBootstrapMode(!data.superuserExists);
+        }
+        if (data && data.setupTokenSource === 'env') {
+          setSetupTokenSource('env');
+        }
+      }
+    } catch {
+      // ignore — fall back to bootstrapMode=true
+    }
+    setStatusChecked(true);
+  });
+
+  // Every step after the first needs a live superuser session on the
+  // shared client. If it is gone (token expired, page reloaded) send the
+  // operator back to step 1 instead of failing with an opaque 401/403.
+  const requireSession = (): boolean => {
+    if (setupPb.authStore.isValid && setupPb.authStore.isSuperuser) return true;
+    setupPb.authStore.clear();
+    setStep('admin');
+    setError('Superuser session expired — please sign in again.');
+    return false;
+  };
 
   const isS3Valid = () => {
     if (storageType() !== 's3') return true;
@@ -109,14 +140,13 @@ export default function Setup() {
 
   const handleTestS3 = async () => {
     if (!isS3Valid()) return;
+    if (!requireSession()) return;
     setS3TestStatus('testing');
     setS3TestMessage('');
     setS3TestPassed(false);
-    const testPb = new PocketBase(pbUrl());
     let testRecordId: string | null = null;
     try {
-      await testPb.admins.authWithPassword(adminEmail(), adminPassword());
-      await saveS3Settings(testPb);
+      await saveS3Settings(setupPb);
 
       const ts = Date.now();
       const testFilename = `__stjorna_s3_test__${ts}.png`;
@@ -135,7 +165,7 @@ export default function Setup() {
 
       let testRecord: any;
       try {
-        testRecord = await testPb.collection('media').create(formData);
+        testRecord = await setupPb.collection('media').create(formData);
         testRecordId = testRecord.id;
       } catch (e: any) {
         throw new Error(`Upload to S3 failed: ${categorizeS3Error(e)}`);
@@ -145,7 +175,7 @@ export default function Setup() {
       let fileRes: Response;
       try {
         fileRes = await fetch(fileUrl, {
-          headers: { Authorization: testPb.authStore.token },
+          headers: { Authorization: setupPb.authStore.token },
         });
       } catch (e: any) {
         throw new Error(`Could not reach S3 file URL: ${e?.message || e}`);
@@ -155,7 +185,7 @@ export default function Setup() {
       }
 
       try {
-        await testPb.collection('media').delete(testRecord.id);
+        await setupPb.collection('media').delete(testRecord.id);
         testRecordId = null;
       } catch (e: any) {
         setS3TestStatus('success');
@@ -176,7 +206,7 @@ export default function Setup() {
       setS3TestMessage(categorizeS3Error(e));
       if (testRecordId) {
         try {
-          await testPb.collection('media').delete(testRecordId);
+          await setupPb.collection('media').delete(testRecordId);
         } catch {}
       }
     }
@@ -255,20 +285,27 @@ export default function Setup() {
     setLoading(true);
     setError('');
     try {
-      const pb = new PocketBase(pbUrl());
-
       if (bootstrapMode()) {
         // Create the very first superuser. The route is registered by
-        // pocketbase/pb_hooks/setup.pb.js — it refuses (HTTP 409) once any
-        // superuser exists, so this branch can never mint an extra admin.
+        // pocketbase/pb_hooks/setup.pb.js — it requires the one-time setup
+        // token and refuses (HTTP 409) once any superuser exists or once
+        // setup_done is set, so this branch can never mint an extra admin.
         if (adminPassword() !== adminPasswordConfirm()) {
           setError('Password and confirmation do not match');
           setLoading(false);
           return;
         }
-        const res = await fetch(`${resolvePbUrl()}/api/stjorna/setup-bootstrap-superuser`, {
+        if (!setupToken().trim()) {
+          setError('Setup token is required');
+          setLoading(false);
+          return;
+        }
+        const res = await fetch(`${pbUrl()}/api/stjorna/setup-bootstrap-superuser`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Stjorna-Setup-Token': setupToken().trim(),
+          },
           body: JSON.stringify({
             email: adminEmail(),
             password: adminPassword(),
@@ -281,14 +318,21 @@ export default function Setup() {
             const body = await res.json();
             if (body && body.error && body.error.message) msg = body.error.message;
           } catch {}
+          if (res.status === 409) {
+            // Somebody (or a previous attempt) already bootstrapped —
+            // flip to login mode so the operator can continue.
+            setBootstrapMode(false);
+          }
           throw new Error(msg);
         }
+        // The token was single-use from the wizard's point of view; drop it.
+        setSetupToken('');
       }
 
       // In PB v0.40+ superusers live in the _superusers collection. The
-      // setup UI logs in with those credentials; the schema is created by
-      // the backend migrations before the wizard runs.
-      await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
+      // session lives in the in-memory store on `setupPb` and is reused
+      // by every later step (no more re-auth with the raw password).
+      await setupPb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
       setStep('storage');
     } catch (e: any) {
       setError(e.message || 'Superuser login failed');
@@ -303,11 +347,10 @@ export default function Setup() {
       setError('Please fill in all required S3 fields');
       return;
     }
+    if (!requireSession()) return;
     if (storageType() === 's3') {
       try {
-        const pb = new PocketBase(pbUrl());
-        await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
-        await saveS3Settings(pb);
+        await saveS3Settings(setupPb);
       } catch (e: any) {
         setError(`Could not save S3 settings: ${e?.message || e}`);
         return;
@@ -320,16 +363,32 @@ export default function Setup() {
     setLoading(true);
     setError('');
     try {
-      const pb = new PocketBase(pbUrl());
-      await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
-      const tenant = await pb.collection('tenants').create({
-        name: tenantName(),
-        slug: tenantSlug(),
-        plan: 'starter',
-      });
+      if (!requireSession()) return;
+      const slug = tenantSlug().trim();
+      // Idempotent: re-running the step (or a re-run of the wizard by a
+      // superuser) reuses the tenant with this slug instead of creating a
+      // duplicate. UNIQUE(tenant, slug) on the child collections (T-02)
+      // makes duplicates actively harmful.
+      let tenant: any = null;
+      try {
+        tenant = await setupPb.collection('tenants').getFirstListItem(
+          setupPb.filter('slug = {:slug}', { slug })
+        );
+      } catch (e: any) {
+        if (e?.status !== 404) throw e;
+      }
+      if (tenant) {
+        setTenantReused(true);
+      } else {
+        setTenantReused(false);
+        tenant = await setupPb.collection('tenants').create({
+          name: tenantName(),
+          slug,
+          plan: 'starter',
+        });
+      }
+      setTenantId(tenant.id);
       setStep('link');
-      (window as any).__setupTenantId = tenant.id;
-      (window as any).__setupTenantSlug = tenantSlug();
     } catch (e: any) {
       setError(e.message || 'Failed to create tenant');
     } finally {
@@ -341,50 +400,70 @@ export default function Setup() {
     setLoading(true);
     setError('');
     try {
-      const pb = new PocketBase(pbUrl());
-      await pb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
-      const tenants = await pb.collection('tenants').getList(1, 1, {
-        filter: `slug = "${(window as any).__setupTenantSlug}"`,
-      });
-      if (tenants.items.length === 0) throw new Error('Tenant not found');
+      if (!requireSession()) return;
+      if (!tenantId()) throw new Error('Tenant not found — go back one step');
 
-      let adminUser: any;
+      // Tenant-admin `users` account. Reused if it already exists (e.g. the
+      // wizard is being re-run); otherwise it gets its own password —
+      // never the superuser one.
+      let adminUser: any = null;
       try {
-        const existingUsers = await pb.collection('users').getList(1, 1, {
-          filter: `email = "${adminEmail()}"`,
-        });
-        if (existingUsers.items.length > 0) {
-          adminUser = existingUsers.items[0];
-        }
-      } catch {}
+        adminUser = await setupPb.collection('users').getFirstListItem(
+          setupPb.filter('email = {:email}', { email: adminEmail() })
+        );
+      } catch (e: any) {
+        if (e?.status !== 404) throw e;
+      }
 
       if (!adminUser) {
-        adminUser = await pb.collection('users').create({
+        if (userPassword().length < 10) {
+          throw new Error('Tenant admin password must be at least 10 characters');
+        }
+        if (userPassword() !== userPasswordConfirm()) {
+          throw new Error('Tenant admin password and confirmation do not match');
+        }
+        if (userPassword() === adminPassword()) {
+          throw new Error('Tenant admin password must differ from the superuser password');
+        }
+        adminUser = await setupPb.collection('users').create({
           email: adminEmail(),
-          password: adminPassword(),
-          passwordConfirm: adminPassword(),
+          password: userPassword(),
+          passwordConfirm: userPasswordConfirm(),
           name: 'Admin',
         });
       }
 
-      const adminRole = await pb.collection('roles').getFirstListItem('name="admin"');
+      const adminRole = await setupPb.collection('roles').getFirstListItem('name="admin"');
 
-      await pb.collection('user_tenants').create({
-        user: adminUser.id,
-        tenant: tenants.items[0].id,
-        role: adminRole.id,
-      });
+      // Idempotent membership: UNIQUE(user, tenant) exists since T-02, so
+      // look before creating.
+      let membership: any = null;
+      try {
+        membership = await setupPb.collection('user_tenants').getFirstListItem(
+          setupPb.filter('user = {:user} && tenant = {:tenant}', { user: adminUser.id, tenant: tenantId() })
+        );
+      } catch (e: any) {
+        if (e?.status !== 404) throw e;
+      }
+      if (!membership) {
+        await setupPb.collection('user_tenants').create({
+          user: adminUser.id,
+          tenant: tenantId(),
+          role: adminRole.id,
+          source: 'manual',
+        });
+      }
 
-      const existingSettings = await pb.collection('instance_settings').getList(1, 1).catch(() => null);
+      const existingSettings = await setupPb.collection('instance_settings').getList(1, 1).catch(() => null);
       const storageConfig = buildStorageConfig();
       if (existingSettings && existingSettings.items.length > 0) {
-        await pb.collection('instance_settings').update(existingSettings.items[0].id, {
+        await setupPb.collection('instance_settings').update(existingSettings.items[0].id, {
           setup_done: true,
           instance_name: 'STJÓRNA',
           ...storageConfig,
         });
       } else {
-        await pb.collection('instance_settings').create({
+        await setupPb.collection('instance_settings').create({
           setup_done: true,
           instance_name: 'STJÓRNA',
           ...storageConfig,
@@ -392,12 +471,18 @@ export default function Setup() {
       }
 
       // Sync the PocketBase app name so system emails don't show "Acme".
-      await pb.settings.update({
+      await setupPb.settings.update({
         meta: {
           appName: 'STJÓRNA',
         },
       });
 
+      // Done — drop the superuser session and the passwords held in state.
+      setupPb.authStore.clear();
+      setAdminPassword('');
+      setAdminPasswordConfirm('');
+      setUserPassword('');
+      setUserPasswordConfirm('');
       setStep('done');
       setTimeout(() => navigate('/login'), 1500);
     } catch (e: any) {
@@ -446,12 +531,12 @@ export default function Setup() {
             <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">
               <Show
                 when={bootstrapMode()}
-                fallback={<>Log in with the PocketBase superuser that already exists.</>}
+                fallback={<>Log in with the PocketBase superuser that already exists. (Helm and Docker Compose installs create it from <code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_EMAIL</code> / <code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_PASSWORD</code>.)</>}
               >
                 No PocketBase superuser exists yet. Create the first one — it
                 can administer every tenant in this instance, so pick something
-                you'll remember. (Helm installs: the chart ships default
-                credentials you can reuse; see the <code class="text-gray-700 dark:text-gray-300">helm install</code> output.)
+                you'll remember. You also need the one-time setup token from
+                the server.
               </Show>
             </p>
             <div>
@@ -485,9 +570,31 @@ export default function Setup() {
                 />
               </div>
             </Show>
+            <Show when={bootstrapMode()}>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="setup-token">Setup token</label>
+                <input
+                  id="setup-token"
+                  type="password"
+                  value={setupToken()}
+                  onInput={(e) => setSetupToken(e.currentTarget.value)}
+                  autocomplete="off"
+                  spellcheck={false}
+                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white font-mono text-sm focus:outline-none focus:border-blue-500"
+                />
+                <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">
+                  <Show
+                    when={setupTokenSource() === 'env'}
+                    fallback={<>Printed in the PocketBase server log at startup as <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">STJORNA_SETUP_TOKEN=…</code> (e.g. <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">docker compose logs pocketbase</code> / <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">kubectl logs</code>).</>}
+                  >
+                    The value of the <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">STJORNA_SETUP_TOKEN</code> environment variable on the PocketBase server.
+                  </Show>
+                </p>
+              </div>
+            </Show>
             <button
               type="submit"
-              disabled={loading() || !adminEmail() || !adminPassword() || (bootstrapMode() && !adminPasswordConfirm())}
+              disabled={loading() || !statusChecked() || !adminEmail() || !adminPassword() || (bootstrapMode() && (!adminPasswordConfirm() || !setupToken()))}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading()
@@ -668,7 +775,7 @@ export default function Setup() {
               handleCreateTenant();
             }}
           >
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Create your first tenant:</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Create your first tenant (an existing tenant with the same slug is reused):</p>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
               <input
@@ -692,22 +799,57 @@ export default function Setup() {
               disabled={loading() || !tenantName() || !tenantSlug()}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
-              {loading() ? 'Creating...' : 'Create Tenant'}
+              {loading() ? 'Saving...' : 'Continue'}
             </button>
           </form>
         </Show>
 
         <Show when={step() === 'link'}>
-          <div class="space-y-4">
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Linking admin to tenant...</p>
+          <form
+            class="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleLinkAdmin();
+            }}
+          >
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">
+              A tenant-level admin account (<code class="text-gray-700 dark:text-gray-300">{adminEmail()}</code>) is
+              created in <Show when={tenantReused()} fallback={<>the new tenant</>}>the existing tenant</Show>{' '}
+              <code class="text-gray-700 dark:text-gray-300">{tenantSlug()}</code>. It is separate from the
+              superuser and gets its own password. If a user with this email already exists, it is
+              linked as-is and the fields below are ignored.
+            </p>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="user-password">Tenant admin password</label>
+              <input
+                id="user-password"
+                type="password"
+                value={userPassword()}
+                onInput={(e) => setUserPassword(e.currentTarget.value)}
+                autocomplete="new-password"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+              />
+              <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">At least 10 characters, different from the superuser password.</p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="user-password-confirm">Confirm tenant admin password</label>
+              <input
+                id="user-password-confirm"
+                type="password"
+                value={userPasswordConfirm()}
+                onInput={(e) => setUserPasswordConfirm(e.currentTarget.value)}
+                autocomplete="new-password"
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
             <button
-              onClick={handleLinkAdmin}
+              type="submit"
               disabled={loading()}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading() ? 'Linking...' : 'Complete Setup'}
             </button>
-          </div>
+          </form>
         </Show>
 
         <Show when={step() === 'done'}>

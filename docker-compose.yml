@@ -15,6 +15,11 @@ services:
             # deployments; defaults below are for local development only.
             - PB_SUPERUSER_EMAIL=${PB_SUPERUSER_EMAIL:-admin@stjorna.local}
             - PB_SUPERUSER_PASSWORD=${PB_SUPERUSER_PASSWORD:-changeme}
+            # Optional (T-04): fixed one-time token for the /setup wizard's
+            # "create first superuser" route (min. 16 chars). Only relevant
+            # when PB_SUPERUSER_* above are unset; if empty, PocketBase prints
+            # a random token to its log at startup (`docker compose logs pocketbase`).
+            - STJORNA_SETUP_TOKEN=${STJORNA_SETUP_TOKEN:-}
             # PB_SECRET must be exactly 32 ASCII characters if set.
             - PB_SECRET=${PB_SECRET:-}
             - PB_AUTOMIGRATE=${PB_AUTOMIGRATE:-true}
