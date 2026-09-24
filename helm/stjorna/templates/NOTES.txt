@@ -8,21 +8,31 @@ STJÓRNA has been installed in namespace {{ .Values.namespace.name | default .Re
 {{- end }}
 
 2. First-run setup:
-   The first PocketBase superuser is created by the frontend /setup wizard
-   (no env-var bootstrap needed). The chart ships a Secret with a random
-   default email + password the wizard pre-fills — you can accept or override.
+   The first PocketBase superuser is created automatically on the first
+   pod start from the Secret below (PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD
+   are mounted into the pod; entrypoint.sh runs `pocketbase superuser upsert`).
+   The /setup wizard only has to sign in with those credentials and then
+   walks through the storage, tenant, and admin-link steps.
 {{- if .Values.ingress.enabled }}
    - Open https://{{ (index .Values.ingress.hosts 0).host }}/setup in your browser
-   - Step 1 shows the default credentials. Click "Continue" to accept, or
-     change them first. The wizard then walks through storage, tenant, and
-     admin-link steps.
 {{- else }}
    - Port-forward the frontend (proxies /api/* to PocketBase):
      kubectl port-forward -n {{ .Values.namespace.name | default .Release.Namespace }} svc/{{ include "stjorna.frontend.fullname" . }} 8080:{{ .Values.frontend.service.port }}
-   - Open http://localhost:8080/setup and follow the wizard.
+   - Open http://localhost:8080/setup
+{{- end }}
+   - Step 1: sign in with the superuser credentials from step 3 below.
+   - The wizard is locked once setup completes (instance_settings.setup_done);
+     re-open /setup afterwards and it redirects to /login.
+
+   Fallback: if the automatic superuser creation did not run (the wizard
+   shows "No PocketBase superuser exists yet"), the bootstrap route
+   requires a one-time setup token printed in the pod log:
+     kubectl logs -n {{ .Values.namespace.name | default .Release.Namespace }} deploy/{{ include "stjorna.pocketbase.fullname" . }} | grep STJORNA_SETUP_TOKEN
+{{- if .Values.pocketbase.setupToken.existingSecret }}
+   (this release pins the token via Secret "{{ .Values.pocketbase.setupToken.existingSecret }}")
 {{- end }}
 
-3. Default superuser credentials (also visible in the wizard form):
+3. Superuser credentials:
 {{- if .Values.pocketbase.superuser.existingSecret }}
    - Using existing Secret "{{ .Values.pocketbase.superuser.existingSecret }}"
 {{- else }}
@@ -30,10 +40,12 @@ STJÓRNA has been installed in namespace {{ .Values.namespace.name | default .Re
                (key: {{ .Values.pocketbase.superuser.existingSecretEmailKey }})
    - Password: from Secret "{{ include "stjorna.pocketbase.superuserSecretName" . }}"
                (key: {{ .Values.pocketbase.superuser.existingSecretPasswordKey }})
+{{- end }}
    - Retrieve with:
        kubectl get secret -n {{ .Values.namespace.name | default .Release.Namespace }} {{ include "stjorna.pocketbase.superuserSecretName" . }} \
-         -o jsonpath='{.data.{{ .Values.pocketbase.superuser.existingSecretPasswordKey }}}' | base64 -d
-{{- end }}
+         -o jsonpath='{.data.{{ .Values.pocketbase.superuser.existingSecretEmailKey }}}' | base64 -d; echo
+       kubectl get secret -n {{ .Values.namespace.name | default .Release.Namespace }} {{ include "stjorna.pocketbase.superuserSecretName" . }} \
+         -o jsonpath='{.data.{{ .Values.pocketbase.superuser.existingSecretPasswordKey }}}' | base64 -d; echo
 
 4. PB_SECRET:
 {{- if .Values.pocketbase.secret.existingSecret }}
@@ -51,5 +63,5 @@ STJÓRNA has been installed in namespace {{ .Values.namespace.name | default .Re
    To wipe the PB data and re-run the wizard, drop the PVC (the Secret is
    independent and can be re-read):
      kubectl delete pvc -n {{ .Values.namespace.name | default .Release.Namespace }} {{ include "stjorna.pocketbase.fullname" . }}
-   The next pod start re-creates an empty pb_data directory and the /setup
-   wizard becomes available again.
+   The next pod start re-creates an empty pb_data directory, re-creates the
+   superuser from the Secret, and the /setup wizard becomes available again.

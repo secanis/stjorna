@@ -134,6 +134,12 @@ if [[ "$MODE" == "lint" ]]; then
   # path is what we get.
   grep -q '^  name: stjorna-pocketbase-superuser$' "$RENDER_OUT" \
     || fail "rendered output missing default superuser Secret"
+  # T-04: the Secret must be wired into the pod so entrypoint.sh creates
+  # the superuser headlessly (the /setup bootstrap route is a fallback).
+  grep -q '^            - name: PB_SUPERUSER_EMAIL$' "$RENDER_OUT" \
+    || fail "rendered Deployment does not mount PB_SUPERUSER_EMAIL"
+  grep -q '^            - name: PB_SUPERUSER_PASSWORD$' "$RENDER_OUT" \
+    || fail "rendered Deployment does not mount PB_SUPERUSER_PASSWORD"
   ok "lint + render checks passed"
   exit 0
 fi
@@ -296,53 +302,68 @@ assert_http_status  "http://localhost:$FE_PORT/"        200 "FE /"
 assert_http_status  "http://localhost:$FE_PORT/api/health" 200 "FE /api/health (proxied)"
 assert_json_valid   "http://localhost:$FE_PORT/api/openapi.json" "FE /api/openapi.json (proxied)"
 
-# First-run setup bootstrap. The helm chart does NOT auto-create a
-# superuser, so the kind cluster's PB starts with an empty _superusers
-# collection. The frontend wizard hits the /api/stjorna/setup-* routes
-# to create the first one; verify that end-to-end path here.
-SETUP_EMAIL="admin@stjorna-helm-test.local"
-SETUP_PASSWORD="HelmTestPass1234abcd"
-log "probing setup-status (expect superuserExists=false on fresh install) ..."
-assert_json_field "http://localhost:$PB_PORT/api/stjorna/setup-status" '["superuserExists"]' "False" "setup-status.superuserExists"
+# First-run setup (T-04). The chart mounts the superuser Secret into the
+# pod as PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD and entrypoint.sh
+# creates the superuser headlessly on the first boot. So on a fresh kind
+# install:
+#   - setup-status must already report superuserExists=true
+#   - the unauthenticated bootstrap route must refuse: 401 without the
+#     setup token, and never 200 (the superuser exists → 409)
+#   - the credentials from the Secret must actually log in
+SUPERUSER_SECRET_NAME="${PB_DEPLOY}-superuser"
+log "probing setup-status (expect superuserExists=true: headless upsert from the Secret) ..."
+assert_json_field "http://localhost:$PB_PORT/api/stjorna/setup-status" '["superuserExists"]' "True" "setup-status.superuserExists"
+assert_json_field "http://localhost:$PB_PORT/api/stjorna/setup-status" '["setupDone"]' "False" "setup-status.setupDone"
 
-log "POSTing /api/stjorna/setup-bootstrap-superuser ..."
+log "POSTing /api/stjorna/setup-bootstrap-superuser WITHOUT a setup token (expect 401) ..."
 SETUP_BOOTSTRAP_BODY=$(mktemp)
 trap 'rm -f "$SETUP_BOOTSTRAP_BODY"; cleanup_portforwards; cleanup_kind; [[ "$CHART_DIR" != "$HELM_CHART" && -n "$CHART_DIR" ]] && rm -rf "$CHART_DIR"' EXIT INT TERM
 cat > "$SETUP_BOOTSTRAP_BODY" <<EOF
-{"email":"$SETUP_EMAIL","password":"$SETUP_PASSWORD","passwordConfirm":"$SETUP_PASSWORD"}
+{"email":"attacker@stjorna-helm-test.local","password":"AttackerPass1234abcd","passwordConfirm":"AttackerPass1234abcd"}
 EOF
 SETUP_BOOTSTRAP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
   -X POST -H 'Content-Type: application/json' \
   --data-binary "@$SETUP_BOOTSTRAP_BODY" \
   "http://localhost:$PB_PORT/api/stjorna/setup-bootstrap-superuser" || echo "000")
-if [[ "$SETUP_BOOTSTRAP_STATUS" != "200" ]]; then
-  fail "setup-bootstrap-superuser: expected HTTP 200, got $SETUP_BOOTSTRAP_STATUS"
+if [[ "$SETUP_BOOTSTRAP_STATUS" != "401" ]]; then
+  fail "setup-bootstrap-superuser without token: expected HTTP 401, got $SETUP_BOOTSTRAP_STATUS"
 fi
-ok "setup-bootstrap-superuser: HTTP 200"
+ok "setup-bootstrap-superuser without token rejected with HTTP 401"
 
-# Confirm we can authenticate with the freshly-created admin
+# With a (wrong) token the route must still never mint an admin.
+SETUP_BOOTSTRAP_STATUS_2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+  -X POST -H 'Content-Type: application/json' \
+  -H 'X-Stjorna-Setup-Token: definitely-not-the-real-token' \
+  --data-binary "@$SETUP_BOOTSTRAP_BODY" \
+  "http://localhost:$PB_PORT/api/stjorna/setup-bootstrap-superuser" || echo "000")
+if [[ "$SETUP_BOOTSTRAP_STATUS_2" == "200" ]]; then
+  fail "setup-bootstrap-superuser with a bogus token returned HTTP 200 — the guard is broken"
+fi
+ok "setup-bootstrap-superuser with a bogus token rejected with HTTP $SETUP_BOOTSTRAP_STATUS_2"
+
+# Read the headless-bootstrap credentials back from the Secret and confirm
+# they log in (this is what the /setup wizard does in step 1).
+log "reading superuser credentials from Secret $SUPERUSER_SECRET_NAME ..."
+SETUP_EMAIL=$(kubectl get secret -n "$NS" "$SUPERUSER_SECRET_NAME" -o jsonpath='{.data.PB_SUPERUSER_EMAIL}' | base64 -d)
+SETUP_PASSWORD=$(kubectl get secret -n "$NS" "$SUPERUSER_SECRET_NAME" -o jsonpath='{.data.PB_SUPERUSER_PASSWORD}' | base64 -d)
+if [[ -z "$SETUP_EMAIL" || -z "$SETUP_PASSWORD" ]]; then
+  fail "superuser Secret $SUPERUSER_SECRET_NAME is missing PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD"
+fi
+SETUP_LOGIN_BODY=$(mktemp)
+trap 'rm -f "$SETUP_BOOTSTRAP_BODY" "$SETUP_LOGIN_BODY"; cleanup_portforwards; cleanup_kind; [[ "$CHART_DIR" != "$HELM_CHART" && -n "$CHART_DIR" ]] && rm -rf "$CHART_DIR"' EXIT INT TERM
+python3 -c 'import json,sys; print(json.dumps({"identity": sys.argv[1], "password": sys.argv[2]}))' \
+  "$SETUP_EMAIL" "$SETUP_PASSWORD" > "$SETUP_LOGIN_BODY"
 SETUP_TOKEN=$(curl -fsS --max-time 10 \
   -X POST -H 'Content-Type: application/json' \
-  -d "{\"identity\":\"$SETUP_EMAIL\",\"password\":\"$SETUP_PASSWORD\"}" \
+  --data-binary "@$SETUP_LOGIN_BODY" \
   "http://localhost:$PB_PORT/api/collections/_superusers/auth-with-password" \
   | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
 if [[ -z "$SETUP_TOKEN" ]]; then
-  fail "could not extract admin token after bootstrap"
+  fail "could not log in with the superuser credentials from the Secret"
 fi
-ok "admin token issued (${#SETUP_TOKEN} chars)"
-
-# Second POST must refuse (409 guard)
-SETUP_BOOTSTRAP_STATUS_2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
-  -X POST -H 'Content-Type: application/json' \
-  --data-binary "@$SETUP_BOOTSTRAP_BODY" \
-  "http://localhost:$PB_PORT/api/stjorna/setup-bootstrap-superuser" || echo "000")
-if [[ "$SETUP_BOOTSTRAP_STATUS_2" != "409" ]]; then
-  fail "second bootstrap: expected HTTP 409, got $SETUP_BOOTSTRAP_STATUS_2"
-fi
-ok "second bootstrap rejected with HTTP 409"
+ok "superuser from Secret logs in (${#SETUP_TOKEN}-char token)"
 
 # Verify the auto-generated superuser Secret was created and is readable
-SUPERUSER_SECRET_NAME="${PB_DEPLOY}-superuser"
 log "checking superuser Secret $SUPERUSER_SECRET_NAME exists in $NS ..."
 if ! kubectl get secret -n "$NS" "$SUPERUSER_SECRET_NAME" >/dev/null 2>&1; then
   fail "superuser Secret $SUPERUSER_SECRET_NAME not found in $NS"

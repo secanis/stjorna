@@ -1,24 +1,39 @@
 import { describe, it, expect, beforeAll } from 'vitest';
-import { getPb, getPbUrl } from '../setup.ts';
+import { getPb, getPbUrl, SETUP_TOKEN } from '../setup.ts';
 
 const STATUS_URL = () => getPbUrl() + '/api/stjorna/setup-status';
 const BOOTSTRAP_URL = () => getPbUrl() + '/api/stjorna/setup-bootstrap-superuser';
 
-// These tests verify the hook registered by pocketbase/pb_hooks/setup.pb.js.
+const postBootstrap = (body: unknown, token?: string) =>
+  fetch(BOOTSTRAP_URL(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token !== undefined ? { 'X-Stjorna-Setup-Token': token } : {}),
+    },
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+  });
+
+const VALID_BODY = {
+  email: 'second-admin@test.stjorna.local',
+  password: 'secondPassword123',
+  passwordConfirm: 'secondPassword123',
+};
+
+// These tests verify the hook registered by pocketbase/pb_hooks/setup.pb.js
+// against the SHARED PB container (tests/global-setup.ts). That container
+// was seeded with a superuser via PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD
+// and with a fixed STJORNA_SETUP_TOKEN, so here we exercise the GUARD paths:
 //
-// The shared PB container (started by tests/global-setup.ts) was seeded
-// with a superuser via the PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD env
-// vars on `docker run`, so by the time these tests run there is already
-// a superuser. That means we can only exercise the GUARD path here:
+//   - status endpoint reports superuserExists=true and the token source
+//   - bootstrap endpoint: 401 without / with a wrong token (T-04)
+//   - bootstrap endpoint: 409 with the right token (superuser exists)
+//   - body validation still runs (400) once the token is right
 //
-//   - status endpoint reports superuserExists=true
-//   - bootstrap endpoint refuses with 409 (refuses to mint a 2nd admin)
-//
-// The full CREATE path (empty PB → POST bootstrap → first admin exists)
-// is covered by scripts/test-helm.sh against a kind cluster, since it
-// needs a PB instance whose pb_data starts empty. Vitest's shared
-// container can't be reset between tests cheaply.
-describe('Setup bootstrap hook', () => {
+// The full CREATE path on an empty PB (token from the server log, race
+// between concurrent requests, setup_done lock) is covered by
+// tests/setup-bootstrap-fresh.test.ts, which starts its own container.
+describe('Setup bootstrap hook (shared container — guard paths)', () => {
   let adminAuthHeader: string;
 
   beforeAll(async () => {
@@ -26,12 +41,15 @@ describe('Setup bootstrap hook', () => {
     adminAuthHeader = 'Bearer ' + pb.authStore.token;
   });
 
-  it('status endpoint reports the existing superuser', async () => {
+  it('status endpoint reports the existing superuser and the token source', async () => {
     const res = await fetch(STATUS_URL());
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(typeof body.superuserExists).toBe('boolean');
     expect(body.superuserExists).toBe(true);
+    expect(typeof body.setupDone).toBe('boolean');
+    expect(body.setupTokenRequired).toBe(true);
+    // setup.ts passes STJORNA_SETUP_TOKEN to the container.
+    expect(body.setupTokenSource).toBe('env');
   });
 
   it('status endpoint treats the PB v0.40 installer placeholder as no superuser', async () => {
@@ -88,33 +106,71 @@ describe('Setup bootstrap hook', () => {
     expect(res.status).toBe(200);
   });
 
-  it('bootstrap endpoint refuses when a superuser already exists (409)', async () => {
-    const res = await fetch(BOOTSTRAP_URL(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'second-admin@test.stjorna.local',
-        password: 'secondPassword123',
-        passwordConfirm: 'secondPassword123',
-      }),
-    });
+  it('status endpoint requires no auth header (no 401)', async () => {
+    // Sanity check that we didn't accidentally require auth on the route.
+    const res = await fetch(STATUS_URL(), { headers: { Authorization: 'Bearer obviously-wrong' } });
+    expect(res.status).toBe(200);
+  });
+
+  // ---------------------------------------------------------------------
+  // T-04: setup token gate
+  // ---------------------------------------------------------------------
+
+  it('bootstrap endpoint refuses without a setup token (401)', async () => {
+    const res = await postBootstrap(VALID_BODY);
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.ok).toBe(false);
+    expect(String(body.error.message || '')).toMatch(/setup token/i);
+  });
+
+  it('bootstrap endpoint refuses with a wrong setup token (401)', async () => {
+    const res = await postBootstrap(VALID_BODY, 'definitely-not-the-token-000000');
+    expect(res.status).toBe(401);
+  });
+
+  it('bootstrap endpoint refuses with an empty setup token header (401)', async () => {
+    const res = await postBootstrap(VALID_BODY, '');
+    expect(res.status).toBe(401);
+  });
+
+  it('bootstrap endpoint refuses a token that only shares a prefix (401)', async () => {
+    // Constant-time compare via $security.equal — a prefix must not pass.
+    const res = await postBootstrap(VALID_BODY, SETUP_TOKEN.slice(0, -1));
+    expect(res.status).toBe(401);
+  });
+
+  it('token check runs before body validation (invalid body + wrong token → 401, not 400)', async () => {
+    const res = await postBootstrap({ email: 'not-an-email', password: 'x', passwordConfirm: 'y' }, 'wrong-token-wrong-token');
+    expect(res.status).toBe(401);
+  });
+
+  it('bootstrap endpoint refuses when a superuser already exists (409) even with the right token', async () => {
+    const res = await postBootstrap(VALID_BODY, SETUP_TOKEN);
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body.ok).toBe(false);
     expect(body.error).toBeDefined();
-    expect(String(body.error.message || '')).toMatch(/already exists/i);
+    expect(String(body.error.message || '')).toMatch(/already/i);
+
+    // And it really did not mint a second admin.
+    const pb = getPb();
+    const list = await pb.collection('_superusers').getList(1, 1, {
+      filter: pb.filter('email = {:email}', { email: VALID_BODY.email }),
+    });
+    expect(list.totalItems).toBe(0);
   });
 
+  // ---------------------------------------------------------------------
+  // Body validation (needs the right token to get past the gate)
+  // ---------------------------------------------------------------------
+
   it('bootstrap endpoint validates email shape', async () => {
-    const res = await fetch(BOOTSTRAP_URL(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'not-an-email',
-        password: 'longenough123',
-        passwordConfirm: 'longenough123',
-      }),
-    });
+    const res = await postBootstrap({
+      email: 'not-an-email',
+      password: 'longenough123',
+      passwordConfirm: 'longenough123',
+    }, SETUP_TOKEN);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.ok).toBe(false);
@@ -122,62 +178,38 @@ describe('Setup bootstrap hook', () => {
   });
 
   it('bootstrap endpoint enforces minimum password length', async () => {
-    const res = await fetch(BOOTSTRAP_URL(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'fresh-admin@test.stjorna.local',
-        password: 'short',
-        passwordConfirm: 'short',
-      }),
-    });
+    const res = await postBootstrap({
+      email: 'fresh-admin@test.stjorna.local',
+      password: 'short',
+      passwordConfirm: 'short',
+    }, SETUP_TOKEN);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(String(body.error.message || '')).toMatch(/10 characters/i);
   });
 
   it('bootstrap endpoint requires password + confirmation to match', async () => {
-    const res = await fetch(BOOTSTRAP_URL(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'fresh-admin@test.stjorna.local',
-        password: 'longenough123',
-        passwordConfirm: 'differentPassword1',
-      }),
-    });
+    const res = await postBootstrap({
+      email: 'fresh-admin@test.stjorna.local',
+      password: 'longenough123',
+      passwordConfirm: 'differentPassword1',
+    }, SETUP_TOKEN);
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(String(body.error.message || '')).toMatch(/do not match/i);
   });
 
   it('bootstrap endpoint rejects malformed JSON', async () => {
-    const res = await fetch(BOOTSTRAP_URL(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: 'not-json',
-    });
+    const res = await postBootstrap('not-json', SETUP_TOKEN);
     expect(res.status).toBe(400);
-  });
-
-  it('status endpoint requires no auth header (no 401)', async () => {
-    // Sanity check that we didn't accidentally require auth on the route.
-    const res = await fetch(STATUS_URL(), { headers: { Authorization: 'Bearer obviously-wrong' } });
-    expect(res.status).toBe(200);
   });
 
   it('the admin token continues to work after probing the setup routes', async () => {
     // Make sure probing the public setup routes didn't invalidate the
     // admin session (they share the same PB instance; just a smoke test).
+    expect(adminAuthHeader).toMatch(/^Bearer /);
     const pb = getPb();
     const list = await pb.collection('_superusers').getList(1, 1);
     expect(list.items.length).toBeGreaterThanOrEqual(1);
-  });
-
-  // Avoid TS unused-var lint complaints; the header is referenced for
-  // documentation but the bootstrap guard tests intentionally send no
-  // auth header to prove the route is open.
-  it('uses no auth header on bootstrap calls (route is intentionally open)', () => {
-    expect(adminAuthHeader).toMatch(/^Bearer /);
   });
 });

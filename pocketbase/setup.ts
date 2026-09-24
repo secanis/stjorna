@@ -7,6 +7,9 @@ const PB_URL = `http://localhost:${PB_PORT}`;
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
+// T-04: the shared container gets a fixed setup token so the bootstrap
+// route's token gate can be exercised (tests/setup-bootstrap.test.ts).
+export const SETUP_TOKEN = 'vitest-setup-token-0123456789';
 
 // Pick the container runtime. Prefer docker (works on GitHub Actions
 // and most Linux desktops); fall back to podman. The integration tests
@@ -73,7 +76,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     let stdout: string;
     try {
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ${PB_IMAGE}`,
+        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} -e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ${PB_IMAGE}`,
         { encoding: 'utf8' }
       );
       stdout = result.stdout;

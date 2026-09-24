@@ -16,24 +16,34 @@ docker compose up -d
 
 ### First-run setup wizard
 
-On a fresh install there's no PocketBase superuser yet. The chart and
-`docker-compose.yml` both rely on the frontend `/setup` wizard to
-create the very first one — there is no need to copy installer URLs out
-of container logs.
+Both `docker-compose.yml` and the helm chart create the first PocketBase
+superuser headlessly on the first boot from `PB_SUPERUSER_EMAIL` /
+`PB_SUPERUSER_PASSWORD` (Compose: `.env`; Helm: a `pre-install` Secret,
+see the helm README for the `kubectl get secret` command). The frontend
+`/setup` wizard then signs in with those credentials.
 
-Docker Compose pre-seeds the bootstrap env vars
-(`PB_SUPERUSER_EMAIL` / `PB_SUPERUSER_PASSWORD`) so the wizard already
-has credentials on first boot; the helm chart does the same via a
-`pre-install` Secret (see the helm README for the `kubectl get secret`
-recovery command).
+If those env vars are **not** set (bare `pocketbase serve`, custom
+images), the wizard offers to create the first superuser instead. That
+path requires a one-time **setup token**: either the `STJORNA_SETUP_TOKEN`
+env var (min. 16 chars) or, when unset, a random token that PocketBase
+prints to its log at startup:
+
+```bash
+docker compose logs pocketbase | grep STJORNA_SETUP_TOKEN
+```
+
+The bootstrap route refuses once any superuser exists or once setup has
+completed, so it can never be used to mint an extra admin later.
 
 The wizard walks through four steps:
 
-1. **Superuser** — create (first run) or sign in (subsequent). No
-   installer URL is shown anywhere; the wizard handles it.
+1. **Superuser** — sign in (default) or create with the setup token.
 2. **Storage** — local filesystem (default) or S3-compatible bucket.
-3. **Tenant** — your first tenant's name and slug.
-4. **Link** — connect the superuser to the tenant as its first admin.
+3. **Tenant** — your first tenant's name and slug (an existing tenant
+   with the same slug is reused).
+4. **Link** — create the tenant admin account (own password, separate
+   from the superuser) and connect it to the tenant. This marks setup as
+   done; `/setup` redirects to `/login` from then on.
 
 ## Storage
 

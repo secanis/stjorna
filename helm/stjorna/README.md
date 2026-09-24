@@ -65,29 +65,47 @@ pocketbase:
 
 ## First-run
 
-The chart **does not** auto-create a PocketBase superuser. Instead, the
-frontend `/setup` wizard creates the very first one through two custom
-routes registered by `pocketbase/pb_hooks/setup.pb.js`:
+The chart creates the first PocketBase superuser **headlessly on the first
+pod start**: the Secret `<release>-stjorna-pocketbase-superuser` is mounted
+into the pod as `PB_SUPERUSER_EMAIL` / `PB_SUPERUSER_PASSWORD` and
+`entrypoint.sh` runs `pocketbase superuser upsert` (guarded by a marker
+file in `pb_data`, so a restart never resets the password).
 
-- `GET  /api/stjorna/setup-status` — reports whether a superuser exists
+The frontend `/setup` wizard then only has to **sign in** with those
+credentials and walks through the storage, tenant, and admin-link steps.
+Once it finishes it sets `instance_settings.setup_done = true`; every later
+visit to `/setup` redirects to `/login`.
+
+Two custom routes registered by `pocketbase/pb_hooks/setup.pb.js` back the
+wizard:
+
+- `GET  /api/stjorna/setup-status` — unauthenticated; reports
+  `superuserExists`, `setupDone` and where the setup token comes from.
 - `POST /api/stjorna/setup-bootstrap-superuser` — creates the first
-  superuser. Refuses (HTTP 409) once any admin exists, so the route can
-  never mint additional superusers after install.
+  superuser **only** when all of the following hold:
+  - the request carries the one-time setup token in the
+    `X-Stjorna-Setup-Token` header (`STJORNA_SETUP_TOKEN` env, or a random
+    token generated at boot and printed in the pod log);
+  - no real superuser exists yet (HTTP 409 otherwise);
+  - `instance_settings.setup_done` is not set (HTTP 409 otherwise);
+  - the existence check and the insert run in one transaction, so
+    concurrent requests cannot both succeed.
+
+  On a Helm install the superuser already exists when the pod is ready, so
+  this route always answers 409 — it is a fallback, not the primary path.
 
 ### Default flow (helm-managed credentials)
 
 1. `helm install` creates a Secret named `<release>-stjorna-pocketbase-superuser`
    with `PB_SUPERUSER_EMAIL` (e.g. `admin@<your-host>`) and
    `PB_SUPERUSER_PASSWORD` (a random 24-character string). The `helm
-   install` output prints the values — **copy them now, the password is
-   only shown once.**
+   install` output prints the `kubectl get secret` commands to read them.
 2. Open `https://<your-host>/setup` in a browser.
-3. Step 1 ("Create first superuser") shows the default credentials
-   pre-filled. Click **Create superuser & continue** to accept them, or
-   change them first. The wizard then walks through storage, tenant,
-   and admin-link steps.
-4. Subsequent visits to `/setup` detect the existing superuser and
-   show the **Sign in as superuser** form instead.
+3. Step 1 ("Log in with the PocketBase superuser that already exists")
+   — enter the credentials from the Secret. The wizard then walks through
+   storage, tenant, and admin-link steps. The tenant admin account created
+   in the last step gets its **own** password.
+4. Subsequent visits to `/setup` redirect to `/login`.
 
 ### Bring-your-own credentials
 
@@ -104,9 +122,16 @@ helm install stjorna ./helm/stjorna \
   --set ingress.hosts[0].host=stjorna.yourdomain.com
 ```
 
-The wizard at `/setup` will still create the first superuser from the
-form values you enter — the Secret is only a defaults source for the
-wizard.
+PocketBase requires the password to be at least 8 characters. If the
+upsert fails for any reason the pod still starts; the wizard then shows
+the **create** form and asks for the setup token from the pod log:
+
+```bash
+kubectl logs -n stjorna deploy/stjorna-pocketbase | grep STJORNA_SETUP_TOKEN
+```
+
+To pin that token instead of reading it from the log, put it in a Secret
+(min. 16 characters) and set `pocketbase.setupToken.existingSecret`.
 
 ### Manual fallback (no wizard)
 
@@ -131,9 +156,9 @@ To wipe the bootstrap and run the wizard again from scratch:
 kubectl delete pvc -n stjorna stjorna-pocketbase
 ```
 
-The Secret persists — the wizard will reuse its defaults the next time
-you visit `/setup`. Delete the Secret separately if you want fresh
-random credentials too.
+The Secret persists — the next pod start re-creates the superuser from
+it. Delete the Secret separately if you want fresh random credentials
+too.
 
 ## Upgrading
 

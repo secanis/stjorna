@@ -353,21 +353,19 @@ export async function checkHasAdmins(): Promise<boolean> {
 }
 
 export async function checkSetupDone(): Promise<boolean | null> {
+  // `instance_settings` is superuser-only (all rules null), so reading it
+  // as an anonymous/tenant user always 403s and the answer was never
+  // trustworthy. The unauthenticated status route registered by
+  // pocketbase/pb_hooks/setup.pb.js reports the flag directly (T-04).
   try {
-    const settings = await pb.collection('instance_settings').getList(1, 1);
-    if (settings.items && settings.items.length > 0) {
-      return settings.items[0].setup_done === true;
-    }
-    return false;
-  } catch (e: any) {
+    const res = await fetch(`${pb.baseURL.replace(/\/+$/, '')}/api/stjorna/setup-status`);
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data?.setupDone === true;
+  } catch {
     // Network error / PB unreachable: report null so callers don't
     // push the user into the setup flow when the real problem is
     // that the backend is down.
-    if (!e || e.status === 0 || e.isAbort || e.message?.includes('fetch')) {
-      return null;
-    }
-    // 404 on the collection is also "not set up" — treat as false.
-    if (e.status === 404) return false;
-    return false;
+    return null;
   }
 }
