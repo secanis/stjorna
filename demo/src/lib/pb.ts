@@ -55,10 +55,11 @@ export function isApiKey(raw: string): boolean {
 // collection rules reference @request.auth, so PB only injects an auth
 // record for a JWT it can validate — an STJÓRN A API key alone gets
 // 200 /items:[] from /api/collections/* because PB sees an empty
-// @request.auth. The exchange route hands back per-tenant service-user
-// credentials (email + password) that the caller auths as to get a
-// real STJÓRN A user JWT.
-async function exchangeApiKey(apiKey: string): Promise<{ email: string; password: string; tenant: string }> {
+// @request.auth. T-05: the exchange route now mints the JWT
+// server-side via record.newAuthToken() and hands back the token
+// string directly. The service-user password never leaves the server
+// again after issue.
+async function exchangeApiKey(apiKey: string): Promise<{ token: string; tenant: string; email: string }> {
   const url = (pb.baseUrl || '').replace(/\/+$/, '') + '/api/stjorna/api-keys/exchange';
   const res = await fetch(url, {
     method: 'POST',
@@ -74,10 +75,14 @@ async function exchangeApiKey(apiKey: string): Promise<{ email: string; password
     throw new Error(`API key exchange failed (${res.status}${detail ? ': ' + detail : ''})`);
   }
   const body = await res.json();
-  if (!body?.email || !body?.password) {
-    throw new Error('API key exchange returned no credentials');
+  if (!body?.token) {
+    throw new Error('API key exchange returned no token');
   }
-  return { email: body.email, password: body.password, tenant: body.tenant || '' };
+  return {
+    token: String(body.token),
+    tenant: String(body.tenant || ''),
+    email: String(body?.record?.email || ''),
+  };
 }
 
 // Swap a saved API key for a real STJÓRN A user JWT. The JWT is what's
@@ -85,15 +90,8 @@ async function exchangeApiKey(apiKey: string): Promise<{ email: string; password
 // is kept around in demo_pb_api_key so we can refresh when the JWT
 // expires.
 async function upgradeApiKeyToJwt(apiKey: string): Promise<string> {
-  const { email, password } = await exchangeApiKey(apiKey);
-  // Use a one-shot PB client so we don't pollute the main pb.authStore
-  // until we know the auth actually succeeded.
-  const probe = new PocketBase(pb.baseUrl || '/');
-  const result = await probe.collection('users').authWithPassword(email, password);
-  if (!result?.token) {
-    throw new Error('authWithPassword returned no token');
-  }
-  return result.token;
+  const { token } = await exchangeApiKey(apiKey);
+  return token;
 }
 
 // Update the on-screen status banner. The demo's App.tsx subscribes to
