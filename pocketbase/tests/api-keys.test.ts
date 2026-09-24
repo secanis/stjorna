@@ -200,7 +200,8 @@ describe('API Keys — collection (PB admin only)', () => {
     expect(issue.status).toBe(200);
     const { plaintext } = await issue.json();
 
-    // 1. exchange the API key
+    // 1. exchange the API key — T-05: server mints the JWT, no password
+    // ever leaves the hook.
     const ex = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + plaintext },
@@ -209,26 +210,19 @@ describe('API Keys — collection (PB admin only)', () => {
     const exBody = await ex.json();
     expect(exBody.ok).toBe(true);
     expect(exBody.tenant).toBe(tenantId);
-    expect(typeof exBody.email).toBe('string');
-    expect(exBody.email).toMatch(/^svc-/);
-    expect(exBody.email.endsWith('@stjorna.internal')).toBe(true);
-    expect(typeof exBody.password).toBe('string');
-    expect(exBody.password.length).toBeGreaterThanOrEqual(16);
+    expect(typeof exBody.token).toBe('string');
+    expect(exBody.token.split('.').length).toBe(3); // header.payload.signature
+    // The response includes no password — the JWT IS the credential.
+    expect(exBody.password).toBeUndefined();
+    expect(exBody.email).toBeUndefined();
+    expect(exBody.record).toBeDefined();
+    expect(typeof exBody.record.email).toBe('string');
+    expect(exBody.record.email).toMatch(/^svc-/);
+    expect(exBody.record.email.endsWith('@stjorna.internal')).toBe(true);
 
-    // 2. exchange auth-with-password using the returned credentials
-    const authRes = await fetch(getPbUrl() + '/api/collections/users/auth-with-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity: exBody.email, password: exBody.password }),
-    });
-    expect(authRes.status).toBe(200);
-    const authBody = await authRes.json();
-    expect(typeof authBody.token).toBe('string');
-    expect(authBody.token.split('.').length).toBe(3);
-
-    // 3. with the JWT, list categories — should now return the seeded rows.
+    // 2. with the minted JWT, list categories — should return the seeded rows.
     const catRes = await fetch(getPbUrl() + '/api/collections/categories/records?perPage=200&filter=' + encodeURIComponent('tenant="' + tenantId + '"'), {
-      headers: { Authorization: 'Bearer ' + authBody.token },
+      headers: { Authorization: 'Bearer ' + exBody.token },
     });
     expect(catRes.status).toBe(200);
     const catBody = await catRes.json();
@@ -277,52 +271,35 @@ describe('API Keys — collection (PB admin only)', () => {
     expect(r.status).toBe(401);
   });
 
-  it('exchange: lazily backfills service-user credentials on legacy api_keys rows', async () => {
+  it('exchange: refuses 409 on legacy rows that predate T-05', async () => {
     // Issue a key, then strip the service-user fields to simulate a
-    // pre-exchange-feature row that was around before the upgrade.
+    // pre-T-05 row (e.g. one created before the new exchange flow
+    // shipped). T-05 deliberately does NOT auto-backfill any more —
+    // keys predating the redesign must be re-issued, otherwise the
+    // migration's "delete legacy service users" step (which already
+    // ran) would orphan the row anyway.
     const issue = await fetch(getPbUrl() + '/api/stjorna/api-keys', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pb.authStore.token },
-      body: JSON.stringify({ tenant: tenantId, name: 'legacy-backfill' }),
+      body: JSON.stringify({ tenant: tenantId, name: 'legacy-no-backfill' }),
     });
-    const { apiKey, plaintext } = await issue.json();
+    const { plaintext, apiKey } = await issue.json();
 
     // Wipe the service-user fields. The api_keys collection rules are
     // null so only PB admin can do this — same trust level as the
     // hook itself.
     await pb.collection('api_keys').update(apiKey.id, {
       service_user_id: '',
-      service_user_email: '',
-      service_user_password: '',
     });
 
-    // Exchange should now lazy-mint a service user and succeed.
     const ex = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + plaintext },
     });
-    expect(ex.status).toBe(200);
+    expect(ex.status).toBe(409);
     const body = await ex.json();
-    expect(body.ok).toBe(true);
-    expect(body.backfilled).toBe(true);
-    expect(body.email).toMatch(/^svc-/);
-    expect(typeof body.password).toBe('string');
-    expect(body.password.length).toBeGreaterThanOrEqual(16);
-
-    // And the auth-with-password round-trip should work with the
-    // new credentials.
-    const auth = await fetch(getPbUrl() + '/api/collections/users/auth-with-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity: body.email, password: body.password }),
-    });
-    expect(auth.status).toBe(200);
-    const authBody = await auth.json();
-    expect(typeof authBody.token).toBe('string');
-
-    // The api_keys row should now have the fields populated.
-    const reread = await pb.collection('api_keys').getOne(apiKey.id);
-    expect(typeof reread.service_user_id).toBe('string');
-    expect(reread.service_user_id.length).toBeGreaterThan(0);
+    expect(body.ok).toBe(false);
+    expect(body.error?.message).toMatch(/predates the T-05 redesign/i);
+    expect(body.legacy).toBe(true);
   });
 });
