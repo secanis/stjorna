@@ -271,11 +271,20 @@ pocketbase:
 
 ### Bring-your-own PB_SECRET
 
-By default the chart auto-generates a `Secret` containing `PB_SECRET` on the first install (pre-install hook). To supply your own:
+By default the chart auto-generates a `Secret` containing `PB_SECRET` on the first install (`randAlphaNum 32`, 32 chars). To supply your own:
 
 ```bash
+# PB_SECRET must be exactly 32 ASCII chars. `openssl rand -hex 32` is
+# 64 chars and would be rejected by the container's startup check (T-07).
+# Use one of these instead:
+PB_SECRET_VAL="$(openssl rand -hex 16)"                            # 32 hex chars
+# or:
+PB_SECRET_VAL="$(openssl rand -base64 32 | tr -d '=+/' | head -c 32)"
+# or:
+PB_SECRET_VAL="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)"
+
 kubectl create secret generic stjorna-pb-secret \
-  --from-literal=PB_SECRET=$(openssl rand -hex 32) \
+  --from-literal=PB_SECRET="$PB_SECRET_VAL" \
   -n stjorna
 
 helm install stjorna ./helm/stjorna \
