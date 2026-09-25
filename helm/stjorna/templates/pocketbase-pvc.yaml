@@ -7,6 +7,15 @@ metadata:
   labels:
     {{- include "stjorna.labels" . | nindent 4 }}
     app.kubernetes.io/component: pocketbase
+  annotations:
+    # T-06: never let Helm delete this PVC. Without this annotation,
+    # `helm uninstall` removes the PVC; with most StorageClasses
+    # (reclaimPolicy: Delete) the underlying PV is then deleted too,
+    # and all PB data — including the encrypted settings that depend
+    # on PB_SECRET — is gone. With `keep`, the PVC and its PV survive
+    # uninstall; the operator deletes them by hand when they really
+    # want the storage back.
+    "helm.sh/resource-policy": keep
 spec:
   accessModes:
     {{- toYaml .Values.pocketbase.persistence.accessModes | nindent 4 }}
@@ -24,4 +33,11 @@ That field belongs on a PersistentVolume (PV), not a PVC. To get
 with reclaimPolicy: Retain (cluster-side). The chart documents this in
 README.md; the values.pocketbase.persistence.reclaimPolicy key is kept
 for documentation purposes only.
+
+T-06: the cluster-side reclaim policy covers the *PV* lifecycle
+(e.g. PV deleted → volume data gone). The PVC-level
+`helm.sh/resource-policy: keep` annotation above covers the *Helm*
+lifecycle (helm uninstall leaves the PVC in place, so the underlying
+PV is never deleted by Helm either). The two are complementary —
+you want both.
 */ -}}
