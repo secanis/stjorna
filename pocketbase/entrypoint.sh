@@ -8,15 +8,31 @@ set -e
 # script creates the initial superuser automatically so the container can start
 # headless.
 
-# Optional: provide a 32-character ASCII key in PB_SECRET to encrypt app settings.
-# PocketBase uses AES-256 and expects exactly 32 bytes; wrong size aborts startup.
+# T-07: PB_SECRET must be exactly 32 characters (AES-256 key). Silently
+# running PB without --encryptionEnv when the operator thought encryption
+# was on is worse than crashing the pod with a loud error — that operator
+# would otherwise find out the cluster was unencrypted the first time they
+# read a backup file or restored to a new instance.
+#
+# Generating a fresh key (any of these work; PocketBase uses PB_SECRET
+# directly as the AES-256 key string, so 32 ASCII chars are required):
+#   openssl rand -hex 16                       # 32 hex chars
+#   openssl rand -base64 32 | tr -d '=+/' | head -c 32
+#   head -c 32 /dev/urandom | base64 | tr -d '=+/\\n' | head -c 32
+#   LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32
 ENCRYPTION_FLAG=""
 if [ -n "$PB_SECRET" ]; then
-    if [ "${#PB_SECRET}" -eq 32 ]; then
-        ENCRYPTION_FLAG="--encryptionEnv PB_SECRET"
-    else
-        echo "WARNING: PB_SECRET must be exactly 32 characters, got ${#PB_SECRET}; encryption disabled."
+    if [ "${#PB_SECRET}" -ne 32 ]; then
+        echo "FATAL: PB_SECRET must be exactly 32 characters (PocketBase AES-256 key)." >&2
+        echo "       got ${#PB_SECRET} characters; refusing to start with encryption disabled." >&2
+        echo "" >&2
+        echo "Generate a fresh key with one of:" >&2
+        echo "  openssl rand -hex 16" >&2
+        echo "  openssl rand -base64 32 | tr -d '=+/' | head -c 32" >&2
+        echo "  LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32" >&2
+        exit 1
     fi
+    ENCRYPTION_FLAG="--encryptionEnv PB_SECRET"
 fi
 
 # Create the first superuser automatically on a fresh data directory. A marker

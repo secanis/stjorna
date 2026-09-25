@@ -6,7 +6,10 @@ Multi-tenant product management built with SolidJS + PocketBase.
 
 ```bash
 cp .env.example .env
-# Edit .env to set PB_SECRET (generate with: openssl rand -hex 32)
+# Edit .env to set PB_SECRET (32 ASCII chars; e.g. `openssl rand -hex 16`).
+# NOTE: `openssl rand -hex 32` produces 64 chars and the container will
+# refuse to start (T-07) — use `-hex 16` or one of the alternatives in
+# .env.example.
 
 docker compose up -d
 # or: podman compose up -d

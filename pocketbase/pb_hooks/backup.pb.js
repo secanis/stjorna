@@ -174,6 +174,14 @@ function authCheckSnippet(allowed) {
 // manifest builder: queries each collection and exports all records.
 // Defines `manifest` JS object with shape { version, kind, schema_version,
 // exported_at, collections: { <name>: [record, ...] } }.
+//
+// T-07: strip plaintext-secret fields defensively from the export.
+// The fields were also marked hidden:true on instance_settings, and
+// PB's publicExport() does respect hidden — but we strip them here
+// too because (a) an older PB that didn't filter hidden, or a future
+// one that added a flag to override it, would silently leak the
+// values into every backup file. Keeping the strip here means the
+// guarantee is independent of PB's behavior.
 var COLLECTION_NAMES = [
     "tenants",
     "roles",
@@ -189,9 +197,15 @@ var COLLECTION_NAMES = [
     "settings",
 ];
 
+// Field names that MUST NOT appear in the manifest regardless of
+// schema flags. Keep in sync with the migration that marked them
+// hidden. If you add a new secret field, add it here too.
+var SECRET_FIELDS = ["s3_secret_key", "s3_access_key", "oidc_client_secret"];
+
 function manifestSnippet() {
     return "" +
         "var _cols=" + JSON.stringify(COLLECTION_NAMES) + ";" +
+        "var _secrets=" + JSON.stringify(SECRET_FIELDS) + ";" +
         "var manifest={" +
             "version:'3.0.0'," +
             "kind:'stjorna-backup'," +
@@ -209,6 +223,17 @@ function manifestSnippet() {
                     "var _exp={};" +
                     "try{_exp=_rec.publicExport();}catch(_e){continue;}" +
                     "_exp.id=_rec.id;" +
+                    // T-07: scrub known-secret fields. We do this even
+                    // when the schema already marked them hidden:true
+                    // so a backup file can never carry plaintext
+                    // credentials regardless of PB's publicExport
+                    // behavior across versions.
+                    "for(var _sf=0;_sf<_secrets.length;_sf++){" +
+                        "var _sn=_secrets[_sf];" +
+                        "if(Object.prototype.hasOwnProperty.call(_exp,_sn)){" +
+                            "delete _exp[_sn];" +
+                        "}" +
+                    "}" +
                     "_arr.push(_exp);" +
                 "}" +
             "}catch(_e){console.log('[stjorna-backup] collection '+_n+' read failed: '+_e);}" +

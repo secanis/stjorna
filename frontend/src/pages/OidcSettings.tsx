@@ -185,12 +185,21 @@ export default function OidcSettings() {
 
     try {
       // Save instance_settings mapping config.
-      const instancePayload = {
+      //
+      // T-07: instance_settings.oidc_client_secret is marked hidden:true
+      // on the schema (migration 1770001300) and the real secret lives
+      // on the `users` auth collection's oauth2.providers[] (also updated
+      // further below). We only send oidc_client_secret to instance_settings
+      // when the user typed a new value — otherwise the empty string would
+      // WIPE the previously stored value (PB treats "" as a real update).
+      // On a fresh install with no existing secret, clientSecret is also
+      // validated as required by the check above (hasExistingSecret is
+      // false).
+      const instancePayload: Record<string, unknown> = {
         oidc_enabled: f.enabled,
         oidc_provider_name: f.providerName,
         oidc_display_name: f.displayName,
         oidc_client_id: f.clientId,
-        oidc_client_secret: f.clientSecret,
         oidc_auth_url: f.authUrl,
         oidc_token_url: f.tokenUrl,
         oidc_user_info_url: f.userInfoUrl,
@@ -203,6 +212,9 @@ export default function OidcSettings() {
         oidc_deny_on_no_group: f.denyOnNoGroup,
         oidc_disable_password_login: f.disablePasswordLogin,
       };
+      if (f.clientSecret) {
+        instancePayload.oidc_client_secret = f.clientSecret;
+      }
 
       if (settingsId()) {
         await pb.collection('instance_settings').update(settingsId()!, instancePayload);
