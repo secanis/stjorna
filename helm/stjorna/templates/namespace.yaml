@@ -1,14 +1,22 @@
 {{- /*
-Render the Namespace only if:
-  - namespace.create is true, AND
-  - the namespace does not already exist in the cluster (via lookup).
-This makes the chart idempotent for both `install` and `upgrade`.
+Render the Namespace whenever the chart is told to manage it.
 
-NOTE: When using `helm install --create-namespace`, set
-`namespace.create: false` so this template does not race with the
-namespace that Helm itself creates.
+NOTE: do NOT add a `lookup` here. With a lookup, on `helm upgrade` the
+template would render nothing (the NS already exists), which makes
+Helm think the resource has been removed from the release — Helm then
+calls `kubectl delete namespace`, which cascades through the PVC, the
+deployments, and the data. `resource-policy: keep` below blocks the
+delete on `helm uninstall`, but a deleted-on-upgrade path is a worse
+failure mode (cascades through PVC) and the keep annotation does NOT
+block that path.
+
+The trade-off is documented in helm/stjorna/README.md (T-06): do not
+combine this with `helm install --create-namespace` if you also have
+`namespace.create: true` — Helm will race with the chart's render.
+Pick ONE: `namespace.create: true` (the chart creates the NS) OR
+`helm install --create-namespace` with `namespace.create: false`.
 */ -}}
-{{- if and .Values.namespace.create (not (lookup "v1" "Namespace" "" .Values.namespace.name)) -}}
+{{- if .Values.namespace.create -}}
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -16,4 +24,9 @@ metadata:
   labels:
     {{- include "stjorna.labels" . | nindent 4 }}
     app.kubernetes.io/component: namespace
+  annotations:
+    # T-06: never let Helm delete this namespace. Without this, a
+    # `helm uninstall` (or any operator who re-renders the chart with
+    # namespace.create: false) can silently wipe a whole environment.
+    "helm.sh/resource-policy": keep
 {{- end -}}

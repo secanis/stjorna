@@ -170,17 +170,30 @@ helm upgrade stjorna ./helm/stjorna \
 
 When upgrading PocketBase versions, the PB data PVC is preserved (reclaimPolicy: Retain). The PB data directory is `data.db` (sqlite) plus `storage/` (uploads).
 
+> **T-06 — upgrade is now data-safe by default.** Three resources are
+> annotated with `helm.sh/resource-policy: keep`, so `helm upgrade` and
+> `helm uninstall` leave them in place: the **Namespace**, the **PVC**,
+> and the **PB_SECRET Secret**. The Secret is re-rendered on every
+> upgrade via `lookup`, so PB_SECRET is never silently rotated — the
+> encrypted `data.db` can always be decrypted by the next pod start.
+> See `templates/namespace.yaml`, `templates/pocketbase-pvc.yaml`, and
+> `templates/secret.yaml` for the implementation; `scripts/test-helm.sh`
+> asserts this end-to-end.
+
 ## Uninstalling
 
 ```bash
 helm uninstall stjorna -n stjorna
 ```
 
-The PocketBase **PVC is preserved** (reclaimPolicy: Retain). To delete the data:
+`helm uninstall` does **not** delete the Namespace, the PVC, or the
+PB_SECRET Secret — all three carry `helm.sh/resource-policy: keep`
+(T-06). To reclaim storage manually:
 
 ```bash
+kubectl delete namespace -n stjorna stjorna
 kubectl delete pvc -n stjorna -l app.kubernetes.io/name=stjorna,app.kubernetes.io/component=pocketbase
-kubectl delete pv -n stjorna <pv-name-from-previous-output>
+kubectl delete pv <pv-name>   # only if the StorageClass reclaimPolicy is Retain
 ```
 
 ## Optional: Self-hosted S3 with Garage

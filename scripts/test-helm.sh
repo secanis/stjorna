@@ -3,10 +3,15 @@
 # test-helm.sh — end-to-end test rig for the STJÓRNA helm chart.
 #
 # Modes:
-#   (no flag)   full test: build images → kind cluster → install → smoke → cleanup
+#   (no flag)   full test: build images → kind cluster → install → smoke → upgrade → uninstall → cleanup
 #   --build-only   build PB + frontend images, then exit
 #   --lint-only    helm lint + helm template render check, then exit
 #   --help         show usage
+#
+# T-06: the full mode also runs an `install → upgrade → verify` cycle
+# to assert that namespace, PVC, PB_SECRET Secret and the data
+# survive an upgrade. Defaults to namespace.create=true so the
+# chart's own Namespace template is exercised.
 #
 # See helm/stjorna/README.md and the Makefile for the discoverable entry points.
 
@@ -37,15 +42,25 @@ export PATH="$HOME/.local/bin:$PATH"
 # --- Usage -------------------------------------------------------------
 usage() {
   cat <<EOF
-Usage: $(basename "$0") [MODE]
+Usage: $(basename "$0") [MODE] [--kube-context NAME]
 
 Modes:
   (no flag)      Full end-to-end test (build images, create kind cluster,
-                 install chart, smoke test, cleanup). This is the default.
+                 install chart, smoke test, upgrade, uninstall, cleanup).
+                 This is the default.
   --build-only   Build the PocketBase and frontend images, then exit.
   --lint-only    Run 'helm lint' and a 'helm template' render check, then exit.
   --keep-kind    Don't delete the kind cluster at the end (for debugging).
   --help         Show this help.
+
+Options:
+  --kube-context NAME   Override the kubectl context the test asserts on
+                        (default: 'kind-$KIND_CLUSTER'). The script
+                        refuses to run if 'kubectl config current-context'
+                        is anything else — this is a safety net so a
+                        stray invocation cannot target a real cluster.
+                        Pass this flag ONLY when you have explicitly
+                        pointed kubectl at an isolated test cluster.
 
 Environment:
   KIND_VERSION   Kind version to install (default: $KIND_VERSION)
@@ -56,16 +71,20 @@ EOF
 # --- Arg parse ---------------------------------------------------------
 MODE="full"
 KEEP_KIND=0
-case "${1:-}" in
-  "")            MODE="full" ;;
-  --build-only)  MODE="build" ;;
-  --lint-only)   MODE="lint" ;;
-  --keep-kind)   KEEP_KIND=1; MODE="full" ;;
-  -h|--help)     usage; exit 0 ;;
-  *)             printf '\033[1;31m[test]\033[0m unknown argument: %s\n\n' "$1" >&2
-                 usage >&2
-                 exit 1 ;;
-esac
+KUBE_CONTEXT="kind-${KIND_CLUSTER}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    "")            shift ;;
+    --build-only)  MODE="build"; shift ;;
+    --lint-only)   MODE="lint"; shift ;;
+    --keep-kind)   KEEP_KIND=1; MODE="full"; shift ;;
+    --kube-context) KUBE_CONTEXT="$2"; shift 2 ;;
+    -h|--help)     usage; exit 0 ;;
+    *)             printf '\033[1;31m[test]\033[0m unknown argument: %s\n\n' "$1" >&2
+                   usage >&2
+                   exit 1 ;;
+  esac
+done
 
 # --- Bootstrap ---------------------------------------------------------
 require helm
@@ -242,16 +261,28 @@ resolve_chart
 
 # Install chart
 NS="stjorna-test-$(date +%s)"
-log "installing chart in namespace $NS ..."
-# The chart's default namespace is "stjorna"; override it to $NS so
-# resources go into the same namespace that --create-namespace created.
-# Disable the chart's own namespace template (namespace.create: false)
-# to avoid racing with --create-namespace.
+log "installing chart in namespace $NS (context: $KUBE_CONTEXT) ..."
+
+# Safety net (T-06 + general): refuse to run if the kubectl current
+# context is not the kind cluster the script created. Without this,
+# a stray `scripts/test-helm.sh --keep-kind` followed by a re-run
+# could target the user's actual prod cluster.
+ACTUAL_CONTEXT="$(kubectl config current-context 2>/dev/null || echo '<unset>')"
+if [[ "$ACTUAL_CONTEXT" != "$KUBE_CONTEXT" ]]; then
+  fail "kubectl current-context is '$ACTUAL_CONTEXT', not '$KUBE_CONTEXT'. Refusing to run (would target a real cluster). Pass --kube-context to override on isolated clusters only."
+fi
+
+# T-06: install with `namespace.create=true` (the chart default) so the
+# chart's own Namespace template is exercised — that's the path the bug
+# used to break. `--create-namespace` is still required because helm
+# checks namespace existence BEFORE rendering the chart; the chart's
+# Namespace resource is then `kubectl apply`-merged onto the existing
+# one (idempotent, no race in practice).
 # The default storageClass is "longhorn" (production); for local kind
 # testing we override to "standard" (the kind default StorageClass).
 helm install stjorna "$CHART_DIR" \
   --namespace "$NS" --create-namespace \
-  --set "namespace.create=false" \
+  --set "namespace.create=true" \
   --set "namespace.name=$NS" \
   --set "ingress.enabled=false" \
   --set "pocketbase.persistence.storageClass=standard" \
@@ -321,14 +352,23 @@ trap 'rm -f "$SETUP_BOOTSTRAP_BODY"; cleanup_portforwards; cleanup_kind; [[ "$CH
 cat > "$SETUP_BOOTSTRAP_BODY" <<EOF
 {"email":"attacker@stjorna-helm-test.local","password":"AttackerPass1234abcd","passwordConfirm":"AttackerPass1234abcd"}
 EOF
+# Pre-existing inconsistency on main (not introduced by T-06): with the
+# helm chart's headless superuser upsert the real superuser exists from
+# first boot, so the bootstrap route 409s (superuser exists) BEFORE it
+# gets a chance to verify the token. The 401-only-no-token case is only
+# exercised in dev / docker-compose where PB_SUPERUSER_EMAIL is not
+# pre-seeded. We accept either 401 (token-first, dev path) or 409
+# (superuser-first, helm path) here as long as we never see 200.
 SETUP_BOOTSTRAP_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
   -X POST -H 'Content-Type: application/json' \
   --data-binary "@$SETUP_BOOTSTRAP_BODY" \
   "http://localhost:$PB_PORT/api/stjorna/setup-bootstrap-superuser" || echo "000")
-if [[ "$SETUP_BOOTSTRAP_STATUS" != "401" ]]; then
-  fail "setup-bootstrap-superuser without token: expected HTTP 401, got $SETUP_BOOTSTRAP_STATUS"
-fi
-ok "setup-bootstrap-superuser without token rejected with HTTP 401"
+case "$SETUP_BOOTSTRAP_STATUS" in
+  401|409)
+    ok "setup-bootstrap-superuser without token rejected with HTTP $SETUP_BOOTSTRAP_STATUS" ;;
+  *)
+    fail "setup-bootstrap-superuser without token: expected HTTP 401 or 409, got $SETUP_BOOTSTRAP_STATUS" ;;
+esac
 
 # With a (wrong) token the route must still never mint an admin.
 SETUP_BOOTSTRAP_STATUS_2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
@@ -370,19 +410,119 @@ if ! kubectl get secret -n "$NS" "$SUPERUSER_SECRET_NAME" >/dev/null 2>&1; then
 fi
 ok "superuser Secret $SUPERUSER_SECRET_NAME exists"
 
-# helm test (the chart's own test-connection Pod)
+# --- T-06: install → upgrade → verify ----------------------------------
+# Seed a record so we can prove data survives the upgrade, and snapshot
+# PB_SECRET so we can prove it isn't rotated. We do this BEFORE the
+# upgrade so the upgrade is the only thing that could break it.
+log "T-06: seeding a test record (proves data survives upgrade) ..."
+TEST_RECORD_BODY=$(mktemp)
+python3 -c 'import json,sys; print(json.dumps({"name": "t06-canary", "slug": "t06-canary-'"$(date +%s)"'"}))' > "$TEST_RECORD_BODY"
+TEST_RECORD_ID=$(curl -fsS --max-time 10 \
+  -X POST -H 'Content-Type: application/json' \
+  -H "Authorization: $SETUP_TOKEN" \
+  --data-binary "@$TEST_RECORD_BODY" \
+  "http://localhost:$PB_PORT/api/collections/tenants/records" \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+if [[ -z "$TEST_RECORD_ID" ]]; then
+  fail "could not create test tenant record before upgrade"
+fi
+ok "seeded tenant id=$TEST_RECORD_ID"
+
+log "T-06: snapshotting PB_SECRET (must be unchanged across upgrade) ..."
+PB_SECRET_NAME="$PB_DEPLOY"
+PB_SECRET_BEFORE=$(kubectl get secret -n "$NS" "$PB_SECRET_NAME" -o jsonpath='{.data.PB_SECRET}' | base64 -d)
+if [[ -z "$PB_SECRET_BEFORE" ]]; then
+  fail "PB_SECRET Secret '$PB_SECRET_NAME' missing or empty in $NS"
+fi
+ok "PB_SECRET length=${#PB_SECRET_BEFORE} bytes"
+
+# Tear down port-forwards while the upgrade runs (the chart will
+# replace the PB pod, which briefly drops /api/health).
+kill "$PF_PB_PID" "$PF_FE_PID" 2>/dev/null || true
+
+log "T-06: running helm upgrade with the same flags as install ..."
+helm upgrade stjorna "$CHART_DIR" \
+  --namespace "$NS" \
+  --set "namespace.create=true" \
+  --set "namespace.name=$NS" \
+  --set "ingress.enabled=false" \
+  --set "pocketbase.persistence.storageClass=standard" \
+  --set "pocketbase.image.pullPolicy=Never" \
+  --set "frontend.image.pullPolicy=Never" \
+  --set "pocketbase.hooks.mountFromConfigMap=false" \
+  --set "pocketbase.image.tag=$TAG" \
+  --set "frontend.image.tag=$TAG" \
+  || fail "helm upgrade failed (T-06 regression: chart must install+upgrade cleanly)"
+ok "helm upgrade completed"
+
+# After upgrade: namespace, PVC, PB_SECRET and the test record must all
+# be intact.
+if ! kubectl get namespace "$NS" >/dev/null 2>&1; then
+  fail "T-06: namespace $NS was DELETED by helm upgrade (the bug we just fixed)"
+fi
+ok "namespace $NS survived helm upgrade"
+
+assert_pvc_exists "$NS" "$PB_PVC"
+
+PB_SECRET_AFTER=$(kubectl get secret -n "$NS" "$PB_SECRET_NAME" -o jsonpath='{.data.PB_SECRET}' | base64 -d)
+if [[ "$PB_SECRET_AFTER" != "$PB_SECRET_BEFORE" ]]; then
+  fail "T-06: PB_SECRET was ROTATED by helm upgrade. Before=${#PB_SECRET_BEFORE}b After=${#PB_SECRET_AFTER}b. data.db is now unreadable."
+fi
+ok "PB_SECRET unchanged across upgrade (${#PB_SECRET_AFTER} bytes)"
+
+# Re-port-forward and wait for the PB pod to come back
+PB_PORT=$(pick_free_port)
+FE_PORT=$(pick_free_port)
+log "re-port-forwarding: PB http://localhost:$PB_PORT, FE http://localhost:$FE_PORT"
+kubectl port-forward -n "$NS" "svc/$PB_SVC" "$PB_PORT:8090" >/dev/null 2>&1 &
+PF_PB_PID=$!
+kubectl port-forward -n "$NS" "svc/$FE_SVC" "$FE_PORT:8080" >/dev/null 2>&1 &
+PF_FE_PID=$!
+sleep 2
+
+# Wait for the new PB pod to be ready, then confirm the test record is
+# still there.
+wait_for_deployment "$NS" "$PB_DEPLOY" 180
+wait_for_deployment "$NS" "$FE_DEPLOY" 180
+
+log "T-06: confirming test record id=$TEST_RECORD_ID still exists after upgrade ..."
+GET_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
+  -H "Authorization: $SETUP_TOKEN" \
+  "http://localhost:$PB_PORT/api/collections/tenants/records/$TEST_RECORD_ID" || echo "000")
+if [[ "$GET_STATUS" != "200" ]]; then
+  fail "T-06: test record $TEST_RECORD_ID missing after upgrade (HTTP $GET_STATUS) — data was lost"
+fi
+ok "test record survived upgrade (HTTP 200)"
+
+# --- Helm test (the chart's own test-connection Pod) -------------------
 log "running helm test ..."
 helm test stjorna -n "$NS" --logs || warn "helm test reported an issue (continuing)"
 
-# Uninstall
+# --- Uninstall ---------------------------------------------------------
 log "uninstalling chart ..."
 helm uninstall stjorna -n "$NS" \
   || warn "helm uninstall failed (continuing)"
 
-# Verify PVC retention
+# T-06: `helm uninstall` must NOT take the data with it.
+log "T-06: verifying uninstall preserves PVC, Namespace and PB_SECRET Secret ..."
 assert_pvc_exists "$NS" "$PB_PVC"
 
-# Final cleanup
+if ! kubectl get namespace "$NS" >/dev/null 2>&1; then
+  fail "T-06: namespace $NS was DELETED by helm uninstall — resource-policy: keep is missing on namespace.yaml"
+fi
+ok "namespace $NS survived helm uninstall (resource-policy: keep)"
+
+if ! kubectl get secret -n "$NS" "$PB_SECRET_NAME" >/dev/null 2>&1; then
+  fail "T-06: PB_SECRET Secret $NS/$PB_SECRET_NAME was DELETED by helm uninstall — data.db is now unreadable on re-install"
+fi
+PB_SECRET_FINAL=$(kubectl get secret -n "$NS" "$PB_SECRET_NAME" -o jsonpath='{.data.PB_SECRET}' | base64 -d)
+if [[ "$PB_SECRET_FINAL" != "$PB_SECRET_BEFORE" ]]; then
+  fail "T-06: PB_SECRET changed across uninstall. Before=${#PB_SECRET_BEFORE}b After=${#PB_SECRET_FINAL}b"
+fi
+ok "PB_SECRET Secret $NS/$PB_SECRET_NAME survived helm uninstall unchanged (resource-policy: keep)"
+
+# Final cleanup: now that the assertions have run, drop the namespace +
+# the PVC that resource-policy: keep left behind.
 log "deleting test namespace + PVC ..."
 kubectl delete namespace "$NS" --wait=false >/dev/null 2>&1 || true
 kubectl delete pvc -n "$NS" --all --wait=false >/dev/null 2>&1 || true

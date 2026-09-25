@@ -52,12 +52,23 @@ STJÓRNA has been installed in namespace {{ .Values.namespace.name | default .Re
    - Using existing Secret "{{ .Values.pocketbase.secret.existingSecret }}" (key: {{ .Values.pocketbase.secret.existingSecretKey }})
 {{- else }}
    - Auto-generated Secret "{{ include "stjorna.pocketbase.secretName" . }}" — retrieve with:
-     kubectl get secret -n {{ .Values.namespace.name | default .Release.Namespace }} {{ include "stjorna.pocketbase.secretName" . }} -o jsonpath='{.data.PB_SECRET}' | base64 -d
+      kubectl get secret -n {{ .Values.namespace.name | default .Release.Namespace }} {{ include "stjorna.pocketbase.secretName" . }} -o jsonpath='{.data.PB_SECRET}' | base64 -d
+   - Annotated with `helm.sh/resource-policy: keep`. The Secret is
+     re-rendered with the SAME value on every `helm upgrade` (via
+     `lookup`), and survives `helm uninstall`. Re-installs decrypt
+     the existing `data.db` correctly.
 {{- end }}
 
 5. Data persistence:
-   - PVC "{{ include "stjorna.pocketbase.fullname" . }}" is created with reclaimPolicy: Retain
-   - Data survives `helm uninstall`; delete manually when truly done with it.
+   - PVC "{{ include "stjorna.pocketbase.fullname" . }}" is annotated
+     with `helm.sh/resource-policy: keep`. `helm uninstall` does NOT
+     delete it. Storage retention across PVC deletion is controlled by
+     the StorageClass's `reclaimPolicy` (set it to `Retain` to keep
+     the underlying PV too).
+   - The Namespace itself is also annotated with
+     `helm.sh/resource-policy: keep` (T-06). Helm will never delete
+     it; remove it by hand with `kubectl delete namespace ...` when
+     you really want the cluster back.
 
 6. Reset bootstrap (start over):
    To wipe the PB data and re-run the wizard, drop the PVC (the Secret is
