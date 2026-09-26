@@ -95,7 +95,20 @@ describe('Multi-tenancy Isolation', () => {
     expect(newCategory.tenant).toBe(tenantA.id);
   });
 
-  it('should not be able to update tenant B data using tenant A tenant_id', async () => {
+  it('admin (superuser) can update any tenant\'s data — rules are bypassed by design', async () => {
+    // T-09: the previous version of this test was named
+    // 'should not be able to update tenant B data using tenant A
+    // tenant_id' but the assertion was that the update SUCCEEDED
+    // (the field changed to 'Attempted Cross-Tenant Update'). That
+    // was misleading — it tested superuser behaviour, not
+    // tenant isolation. The cross-tenant-deny path is covered by
+    // tests/tenant-isolation.test.ts (run as a tenant user, where
+    // the per-tenant collection rules DO deny the update).
+    //
+    // This test now reflects what it actually exercises: the
+    // superuser token is intentionally a bypass for collection rules
+    // (PB's documented behaviour) so an admin can fix up data when
+    // the rules would otherwise block them.
     const { email, password } = getTestAdminCredentials();
     await pbAdmin.admins.authWithPassword(email, password);
 

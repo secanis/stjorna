@@ -111,6 +111,51 @@ jobs:
         # in the local docker daemon.
 
   # -------------------------------------------------------------------------
+  # Frontend E2E: Playwright against the built frontend + a real PB
+  # T-09: this job used to be missing entirely. It depends on the PB
+  # image (built by `build-images` for pushes, or by the local
+  # test-pb step for PRs from forks) and the FE image is built via
+  # `npm run build` then served by Playwright's webServer config
+  # (`npm run preview`).
+  # -------------------------------------------------------------------------
+  test-e2e:
+    name: Frontend (Playwright e2e)
+    runs-on: ubuntu-latest
+    # The e2e suite spins up its own PB container via the e2e
+    # global-setup; the PB image built by `test-pb` is reused. We
+    # depend on test-pb so the image is in the local docker daemon
+    # before Playwright starts.
+    needs: test-pb
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Install Playwright browsers
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright
+        working-directory: frontend
+        # The e2e global-setup starts a fresh PB container from
+        # localhost/stjorna-pocketbase:test (built by test-pb) and
+        # waits for the migration-managed `tenants` collection to
+        # be reachable before the suite starts. No health-sleep
+        # races.
+        run: npm run test:e2e:fast
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report
+          retention-days: 7
+
+  # -------------------------------------------------------------------------
   # Helm chart: lint + template render
   # -------------------------------------------------------------------------
   lint-helm:
