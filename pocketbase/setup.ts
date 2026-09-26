@@ -3,7 +3,11 @@ import * as nodeFs from 'node:fs';
 import * as nodePath from 'node:path';
 
 const PB_PORT = 8090;
-const PB_URL = `http://localhost:${PB_PORT}`;
+// PB_URL can be overridden by env so a CI runner with a different
+// host (or a test rig using a port-forward) can point us at a
+// non-loopback endpoint. Default is the loopback we expose via
+// '-p 127.0.0.1:8090:8090' on the container.
+const PB_URL = process.env.PB_URL || `http://localhost:${PB_PORT}`;
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
@@ -99,6 +103,22 @@ export async function startPocketBase(): Promise<PocketBase> {
     // eslint-disable-next-line no-console
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
+    // Dump the container's IP right after start. On some CI runners
+    // (sandboxed Docker, GitHub Actions Docker-in-Docker) the host
+    // loopback is unreachable from the test process, so we have to
+    // hit the container's bridge IP directly. We try PB_URL first
+    // (the configured URL) and fall back to the bridge IP.
+    let containerIP = '';
+    try {
+      const { stdout: ipOut } = await execAsync(
+        `${CONTAINER_CLI} inspect --format '{{.NetworkSettings.IPAddress}}' ${containerId}`,
+        { encoding: 'utf8' },
+      );
+      containerIP = ipOut.trim();
+      console.log(`[pb-test] container IP: ${containerIP || '<none>'}`);
+    } catch {}
+    const candidateURLs = [PB_URL, containerIP ? `http://${containerIP}:8090` : ''].filter(Boolean);
+
     // First-boot PocketBase can take a while (especially on CI runners
     // with cold caches), so give it up to 300s. The wait has THREE
     // gates, each of which proves a different aspect of readiness:
@@ -119,12 +139,29 @@ export async function startPocketBase(): Promise<PocketBase> {
     // collections or fields.
     const deadline = Date.now() + 300_000;
     let lastError: unknown = null;
+    let workingURL = '';
     while (Date.now() < deadline) {
-      const pb = new PocketBase(PB_URL);
+      const pb = new PocketBase(workingURL || PB_URL);
       try {
-        await pb.health.check();
+        // Try every candidate URL until one responds. Most local
+        // runs succeed on PB_URL; CI may need the container IP.
+        if (!workingURL) {
+          for (const url of candidateURLs) {
+            try {
+              const r = await fetch(`${url}/api/health`);
+              if (r.ok) { workingURL = url; break; }
+            } catch {}
+          }
+          if (!workingURL) throw new Error('no candidate URL responded to /api/health');
+        }
 
-        const authRes = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
+        // Raw fetch (instead of pb.health.check()) so we get a real
+        // error message instead of the SDK's "Something went wrong."
+        // generic catch.
+        const healthRes = await fetch(`${workingURL}/api/health`);
+        if (!healthRes.ok) throw new Error(`health ${healthRes.status}`);
+
+        const authRes = await fetch(`${workingURL}/api/collections/_superusers/auth-with-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
@@ -148,6 +185,11 @@ export async function startPocketBase(): Promise<PocketBase> {
 
         writePbState(authData.token, authData.record);
         pbInstance = pb;
+        // Persist the working URL so forked workers (if any) hit the
+        // same endpoint.
+        if (workingURL !== PB_URL) {
+          process.env.PB_URL = workingURL;
+        }
         return pbInstance;
       } catch (e) {
         lastError = e;
@@ -159,12 +201,17 @@ export async function startPocketBase(): Promise<PocketBase> {
     let logs = '';
     if (containerId) {
       try {
-        const { stdout } = await execAsync(`${CONTAINER_CLI} logs --tail 50 ${containerId}`, { encoding: 'utf8' });
+        const { stdout } = await execAsync(`${CONTAINER_CLI} logs --tail 100 ${containerId}`, { encoding: 'utf8' });
         logs = stdout;
       } catch {}
     }
+    // Final dump: which URLs did we try?
+    const triedURLs = candidateURLs.join(', ');
     throw new Error(
-      `Failed to start PocketBase: ${PB_URL} not healthy after 300s. Last error: ${detail}\n` +
+      `Failed to start PocketBase: not healthy after 300s.\n` +
+      `  Tried URLs: ${triedURLs}\n` +
+      `  Container IP: ${containerIP || '<none>'}\n` +
+      `  Last error: ${detail}\n` +
       (logs ? `Container logs:\n${logs}` : '')
     );
   };
