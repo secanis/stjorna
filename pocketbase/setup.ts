@@ -110,6 +110,21 @@ export async function startPocketBase(): Promise<PocketBase> {
     // eslint-disable-next-line no-console
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
+    // First-pass log dump: catch any startup failure (e.g. crash on
+    // automigrate, missing file) before the readiness loop begins.
+    // On fast local runs PB is up before this fires; on slow CI
+    // boots this captures the error immediately.
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const { stdout: earlyLogs } = await execAsync(
+        `${CONTAINER_CLI} logs --tail 30 ${containerId}`,
+        { encoding: 'utf8' },
+      );
+      if (earlyLogs.trim()) {
+        console.log(`[pb-test] container early logs:\n${earlyLogs}`);
+      }
+    } catch {}
+
     // Dump the container's IP right after start. On some CI runners
     // (sandboxed Docker, GitHub Actions Docker-in-Docker) the host
     // loopback is unreachable from the test process, so we have to
