@@ -7,7 +7,14 @@ const PB_PORT = 8090;
 // host (or a test rig using a port-forward) can point us at a
 // non-loopback endpoint. Default is the loopback we expose via
 // '-p 127.0.0.1:8090:8090' on the container.
-const PB_URL = process.env.PB_URL || `http://localhost:${PB_PORT}`;
+//
+// Force IPv4 — some CI runners (notably GitHub Actions Docker on
+// ubuntu-latest with certain Docker daemon configs) resolve
+// 'localhost' to '::1' first, and the container's port is only
+// exposed on the IPv4 loopback via '-p 127.0.0.1:8090:8090'.
+// Without the forced family, fetch() fails silently with an
+// undici-level error that PB's SDK masks as 'Something went wrong.'
+const PB_URL = process.env.PB_URL || `http://127.0.0.1:${PB_PORT}`;
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
