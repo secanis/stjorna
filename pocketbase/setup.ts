@@ -3,7 +3,18 @@ import * as nodeFs from 'node:fs';
 import * as nodePath from 'node:path';
 
 const PB_PORT = 8090;
-const PB_URL = `http://localhost:${PB_PORT}`;
+// PB_URL can be overridden by env so a CI runner with a different
+// host (or a test rig using a port-forward) can point us at a
+// non-loopback endpoint. Default is the loopback we expose via
+// '-p 127.0.0.1:8090:8090' on the container.
+//
+// Force IPv4 — some CI runners (notably GitHub Actions Docker on
+// ubuntu-latest with certain Docker daemon configs) resolve
+// 'localhost' to '::1' first, and the container's port is only
+// exposed on the IPv4 loopback via '-p 127.0.0.1:8090:8090'.
+// Without the forced family, fetch() fails silently with an
+// undici-level error that PB's SDK masks as 'Something went wrong.'
+const PB_URL = process.env.PB_URL || `http://127.0.0.1:${PB_PORT}`;
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
@@ -75,9 +86,18 @@ export async function startPocketBase(): Promise<PocketBase> {
 
     let stdout: string;
     try {
+      // `-p 127.0.0.1:8090:8090` is more portable across CI runners
+      // than `--network=host` (some sandboxed Docker setups restrict
+      // the host network namespace but allow port-mapping). We also
+      // bind explicitly to the loopback so another PB instance on the
+      // host can't accidentally be probed instead.
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} -e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ${PB_IMAGE}`,
-        { encoding: 'utf8' }
+        `${CONTAINER_CLI} run -d --rm -p 127.0.0.1:8090:8090 ` +
+          `-e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} ` +
+          `-e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ` +
+          `-e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ` +
+          `${PB_IMAGE}`,
+        { encoding: 'utf8' },
       );
       stdout = result.stdout;
     } catch (e: any) {
@@ -90,18 +110,80 @@ export async function startPocketBase(): Promise<PocketBase> {
     // eslint-disable-next-line no-console
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
-    // First-boot PocketBase can take a while (especially on CI runners
-    // with cold caches), so give it up to 180s.
-    const deadline = Date.now() + 180_000;
-    let lastError: unknown = null;
-    while (Date.now() < deadline) {
-      const pb = new PocketBase(PB_URL);
-      try {
-        await pb.health.check();
+    // First-pass log dump: catch any startup failure (e.g. crash on
+    // automigrate, missing file) before the readiness loop begins.
+    // On fast local runs PB is up before this fires; on slow CI
+    // boots this captures the error immediately.
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const { stdout: earlyLogs } = await execAsync(
+        `${CONTAINER_CLI} logs --tail 30 ${containerId}`,
+        { encoding: 'utf8' },
+      );
+      if (earlyLogs.trim()) {
+        console.log(`[pb-test] container early logs:\n${earlyLogs}`);
+      }
+    } catch {}
 
-        // Use a raw fetch for admin auth. PocketBase v0.40 stores superusers in
-        // the _superusers auth collection, so the endpoint is the collection one.
-        const authRes = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
+    // Dump the container's IP right after start. On some CI runners
+    // (sandboxed Docker, GitHub Actions Docker-in-Docker) the host
+    // loopback is unreachable from the test process, so we have to
+    // hit the container's bridge IP directly. We try PB_URL first
+    // (the configured URL) and fall back to the bridge IP.
+    let containerIP = '';
+    try {
+      const { stdout: ipOut } = await execAsync(
+        `${CONTAINER_CLI} inspect --format '{{.NetworkSettings.IPAddress}}' ${containerId}`,
+        { encoding: 'utf8' },
+      );
+      containerIP = ipOut.trim();
+      console.log(`[pb-test] container IP: ${containerIP || '<none>'}`);
+    } catch {}
+    const candidateURLs = [PB_URL, containerIP ? `http://${containerIP}:8090` : ''].filter(Boolean);
+
+    // First-boot PocketBase can take a while (especially on CI runners
+    // with cold caches), so give it up to 300s. The wait has THREE
+    // gates, each of which proves a different aspect of readiness:
+    //
+    //   1. /api/health responds (PB HTTP server is up).
+    //   2. Superuser auth succeeds (PB has bootstrapped the
+    //      headless superuser from the env vars passed to
+    //      entrypoint.sh; entrypoint.sh runs `pocketbase superuser
+    //      upsert` on first boot, guarded by a marker file).
+    //   3. The `tenants` collection exists with at least one field
+    //      (production migrations have run end-to-end and the schema
+    //      is the real schema — not a stub).
+    //
+    // T-09 dropped the previous `setupCollections()` call that
+    // rebuilt the schema in a v0.22-style layout AFTER migrations
+    // had already created it. Production migrations are now the
+    // single source of truth for the schema. Tests seed DATA, not
+    // collections or fields.
+    const deadline = Date.now() + 300_000;
+    let lastError: unknown = null;
+    let workingURL = '';
+    while (Date.now() < deadline) {
+      const pb = new PocketBase(workingURL || PB_URL);
+      try {
+        // Try every candidate URL until one responds. Most local
+        // runs succeed on PB_URL; CI may need the container IP.
+        if (!workingURL) {
+          for (const url of candidateURLs) {
+            try {
+              const r = await fetch(`${url}/api/health`);
+              if (r.ok) { workingURL = url; break; }
+            } catch {}
+          }
+          if (!workingURL) throw new Error('no candidate URL responded to /api/health');
+        }
+
+        // Raw fetch (instead of pb.health.check()) so we get a real
+        // error message instead of the SDK's "Something went wrong."
+        // generic catch.
+        const healthRes = await fetch(`${workingURL}/api/health`);
+        if (!healthRes.ok) throw new Error(`health ${healthRes.status}`);
+
+        const authRes = await fetch(`${workingURL}/api/collections/_superusers/auth-with-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
@@ -112,10 +194,24 @@ export async function startPocketBase(): Promise<PocketBase> {
         }
         const authData = await authRes.json();
         pb.authStore.save(authData.token, authData.record);
-        writePbState(authData.token, authData.record);
 
+        // Gate 3: confirm at least one production-migration-managed
+        // collection is reachable. `tenants` is created by the
+        // very first collection-creation migration
+        // (`1740000000_create_core_collections.js`); if it isn't
+        // there yet, the migrations haven't finished.
+        const tenants = await pb.collections.getOne('tenants').catch(() => null);
+        if (!tenants) {
+          throw new Error('migrations incomplete: tenants collection missing');
+        }
+
+        writePbState(authData.token, authData.record);
         pbInstance = pb;
-        await setupCollections(pbInstance);
+        // Persist the working URL so forked workers (if any) hit the
+        // same endpoint.
+        if (workingURL !== PB_URL) {
+          process.env.PB_URL = workingURL;
+        }
         return pbInstance;
       } catch (e) {
         lastError = e;
@@ -127,12 +223,17 @@ export async function startPocketBase(): Promise<PocketBase> {
     let logs = '';
     if (containerId) {
       try {
-        const { stdout } = await execAsync(`${CONTAINER_CLI} logs --tail 50 ${containerId}`, { encoding: 'utf8' });
+        const { stdout } = await execAsync(`${CONTAINER_CLI} logs --tail 100 ${containerId}`, { encoding: 'utf8' });
         logs = stdout;
       } catch {}
     }
+    // Final dump: which URLs did we try?
+    const triedURLs = candidateURLs.join(', ');
     throw new Error(
-      `Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}\n` +
+      `Failed to start PocketBase: not healthy after 300s.\n` +
+      `  Tried URLs: ${triedURLs}\n` +
+      `  Container IP: ${containerIP || '<none>'}\n` +
+      `  Last error: ${detail}\n` +
       (logs ? `Container logs:\n${logs}` : '')
     );
   };
@@ -140,344 +241,19 @@ export async function startPocketBase(): Promise<PocketBase> {
   return await startContainer();
 }
 
-async function setupCollections(pb: PocketBase): Promise<void> {
-  const collections = [
-    {
-      name: 'tenants',
-      type: 'base',
-      schema: [
-        { name: 'name', type: 'text', required: true },
-        { name: 'slug', type: 'text', required: true },
-        { name: 'plan', type: 'select', options: { values: ['free', 'starter', 'professional', 'enterprise'], maxSelect: 1 } },
-        { name: 'custom_domain', type: 'text' },
-        { name: 'theme_config', type: 'json', options: { maxSize: 2000000 } },
-      ],
-      listRule: null,
-      viewRule: null,
-      createRule: null,
-      updateRule: null,
-      deleteRule: null,
-    },
-    {
-      name: 'categories',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'name', type: 'text', required: true },
-        { name: 'slug', type: 'text', required: true },
-        { name: 'description', type: 'text' },
-        { name: 'active', type: 'bool' },
-        { name: 'sort_order', type: 'number' },
-        // The `media` relation is added by resolveRelationPlaceholders() below,
-        // after the `media` collection exists. Declaring it here with a real
-        // collectionId would fail on first run because `media` is defined later.
-      ],
-      listRule: '@request.auth.tenant = tenant',
-      viewRule: '@request.auth.tenant = tenant',
-      createRule: '@request.auth.tenant = tenant',
-      updateRule: '@request.auth.tenant = tenant',
-      deleteRule: '@request.auth.tenant = tenant',
-    },
-    {
-      name: 'products',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'category', type: 'text' },
-        { name: 'name', type: 'text', required: true },
-        { name: 'slug', type: 'text', required: true },
-        { name: 'price', type: 'number' },
-        { name: 'description', type: 'editor' },
-        { name: 'media', type: 'text' },
-        { name: 'active', type: 'bool' },
-        { name: 'sort_order', type: 'number' },
-        { name: 'custom_fields', type: 'json', options: { maxSize: 2000000 } },
-      ],
-      listRule: '@request.auth.tenant = tenant',
-      viewRule: '@request.auth.tenant = tenant',
-      createRule: '@request.auth.tenant = tenant',
-      updateRule: '@request.auth.tenant = tenant',
-      deleteRule: '@request.auth.id != ""',
-    },
-    {
-      name: 'media',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'file', type: 'file', options: { maxSelect: 1, maxSize: 524288000, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
-        { name: 'filename', type: 'text' },
-        { name: 'original_name', type: 'text' },
-        { name: 'mime_type', type: 'text' },
-        { name: 'size', type: 'number' },
-        { name: 'width', type: 'number' },
-        { name: 'height', type: 'number' },
-        { name: 's3_key', type: 'text' },
-        { name: 's3_url', type: 'url' },
-        { name: 'thumbnail_url', type: 'url' },
-        { name: 'usage_count', type: 'number' },
-        { name: 'createdUser', type: 'text' },
-      ],
-      listRule: '@request.auth.tenant = tenant',
-      viewRule: '@request.auth.tenant = tenant',
-      createRule: '@request.auth.tenant = tenant',
-      updateRule: '@request.auth.tenant = tenant',
-      deleteRule: '@request.auth.id != ""',
-    },
-    {
-      name: 'product_media',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'product', type: 'text', required: true },
-        { name: 'media', type: 'text', required: true },
-        { name: 'sort_order', type: 'number' },
-      ],
-      listRule: '@request.auth.tenant = tenant',
-      viewRule: '@request.auth.tenant = tenant',
-      createRule: '@request.auth.tenant = tenant',
-      updateRule: '@request.auth.tenant = tenant',
-      deleteRule: '@request.auth.tenant = tenant',
-    },
-    {
-      name: 'embed_configs',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'name', type: 'text', required: true },
-        { name: 'embed_code', type: 'text' },
-        { name: 'allowed_domains', type: 'json', options: { maxSize: 2000000 } },
-        { name: 'active', type: 'bool' },
-      ],
-    },
-    {
-      name: 'analytics_events',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'media', type: 'text' },
-        { name: 'product', type: 'text' },
-        { name: 'embed_config', type: 'text' },
-        { name: 'domain', type: 'text' },
-        { name: 'referer', type: 'text' },
-        { name: 'client_ip', type: 'text' },
-        { name: 'user_agent', type: 'text' },
-        { name: 'timestamp', type: 'date' },
-      ],
-    },
-    {
-      name: 'webhooks',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'name', type: 'text', required: true },
-        { name: 'url', type: 'url', required: true },
-        { name: 'events', type: 'json', options: { maxSize: 2000000 } },
-        { name: 'secret', type: 'text' },
-        { name: 'active', type: 'bool' },
-      ],
-    },
-    {
-      name: 'api_keys',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true, options: { min: 1, maxLen: 100 } },
-        { name: 'name', type: 'text', required: true, options: { min: 1, maxLen: 200 } },
-        { name: 'prefix', type: 'text', required: true, options: { min: 1, maxLen: 32, pattern: '^[a-zA-Z0-9_]+$' } },
-        { name: 'key_hash', type: 'text', required: true, options: { min: 1, maxLen: 256 } },
-        { name: 'permissions', type: 'json', options: { maxSize: 4096 } },
-        { name: 'last_used', type: 'date' },
-        { name: 'expires', type: 'date' },
-        { name: 'revoked', type: 'bool' },
-        { name: 'created_by', type: 'text', options: { maxLen: 100 } },
-      ],
-      // All four rules locked to null: access is exclusively through
-      // the admin-only custom routes registered in pb_hooks/api_keys.pb.js.
-      listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
-    },
-    {
-      name: 'users',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'name', type: 'text', required: true },
-        { name: 'email', type: 'email', required: true },
-        { name: 'password', type: 'text', required: true },
-        { name: 'role', type: 'select', options: { values: ['viewer', 'editor', 'admin'], maxSelect: 1 } },
-      ],
-      listRule: '@request.auth.tenant = tenant',
-      viewRule: '@request.auth.tenant = tenant',
-      createRule: null,
-      updateRule: '@request.auth.id = id || @request.auth.tenant = tenant',
-      deleteRule: '@request.auth.tenant = tenant',
-    },
-    {
-      name: 'settings',
-      type: 'base',
-      schema: [
-        { name: 'tenant', type: 'text', required: true },
-        { name: 'config_json', type: 'json', options: { maxSize: 2000000 } },
-      ],
-    },
-    {
-      name: 'instance_settings',
-      type: 'base',
-      schema: [
-        { name: 'instance_name', type: 'text' },
-        { name: 'instance_url', type: 'text' },
-        { name: 'instance_logo_url', type: 'url' },
-        { name: 'instance_tagline', type: 'text' },
-        { name: 'setup_done', type: 'bool' },
-        { name: 'storage_type', type: 'text' },
-        { name: 's3_bucket', type: 'text' },
-        { name: 's3_region', type: 'text' },
-        { name: 's3_endpoint', type: 'text' },
-        { name: 's3_access_key', type: 'text' },
-        { name: 's3_secret_key', type: 'text' },
-        { name: 's3_force_path_style', type: 'bool' },
-        { name: 'storage_configured', type: 'bool' },
-      ],
-    },
-  ];
-
-  const existing = await pb.collections.getFullList({ perPage: 200 });
-  const existingNames = existing.map(c => c.name.toLowerCase());
-
-  for (const col of collections) {
-    if (!existingNames.includes(col.name.toLowerCase())) {
-      try {
-        const { schema, ...rest } = col;
-        await pb.collections.create({ ...rest, fields: toFields(schema) });
-      } catch (e: any) {
-        if (e.status !== 400) throw e;
-      }
-    } else {
-      // Collection exists — patch in any new fields it doesn't have yet.
-      // This keeps the test setup idempotent as the schema evolves.
-      try {
-        const existingCol = await pb.collections.getFirstListItem(`name="${col.name}"`);
-        const existingFieldNames = new Set(existingCol.schema.map((f: any) => f.name));
-        const newFields = col.schema.filter((f: any) => !existingFieldNames.has(f.name));
-        if (newFields.length > 0) {
-          await pb.collections.update(existingCol.id, {
-            schema: [...existingCol.schema, ...newFields],
-          });
-        }
-      } catch {
-        // best-effort: don't fail the test on patch errors
-      }
-    }
-  }
-
-  // Roles collection — STJÓRN A tracks role as a text slug on user_tenants,
-  // but the e2e harness uses a proper `roles` collection for FK integrity.
-  // Mirror the same shape here so the test infra matches production.
-  if (!existingNames.includes('roles')) {
-    try {
-      await pb.collections.create({
-        name: 'roles',
-        type: 'base',
-        schema: [{ name: 'name', type: 'text', required: true }],
-        listRule: null, viewRule: null, createRule: null, updateRule: null, deleteRule: null,
-      });
-      await pb.collection('roles').create({ name: 'viewer' });
-      await pb.collection('roles').create({ name: 'editor' });
-      await pb.collection('roles').create({ name: 'admin' });
-    } catch {
-    }
-  }
-
-  // user_tenants join table — same shape as frontend/src/pages/Setup.tsx.
-  // Tests (stats.test.ts, api-keys.test.ts) and the stats hook rely on
-  // it; without it tenant-user memberships are invisible to the backend
-  // and the stats hook returns 403 for every tenant user.
-  if (!existingNames.includes('user_tenants')) {
-    try {
-      const usersCol = await pb.collections.getOne('_pb_users_auth_');
-      const tenantsCol = await pb.collections.getOne('tenants');
-      const rolesCol = await pb.collections.getOne('roles');
-      await pb.collections.create({
-        name: 'user_tenants',
-        type: 'base',
-        schema: [
-          { name: 'user', type: 'relation', options: { collectionId: usersCol.id, maxSelect: 1, cascadeDelete: false } },
-          { name: 'tenant', type: 'relation', options: { collectionId: tenantsCol.id, maxSelect: 1, cascadeDelete: false } },
-          { name: 'role', type: 'relation', options: { collectionId: rolesCol.id, maxSelect: 1, cascadeDelete: false } },
-        ],
-        listRule: '@request.auth.admin = true || user.id = @request.auth.id',
-        viewRule: '@request.auth.id != ""',
-        createRule: '@request.auth.admin = true',
-        updateRule: '@request.auth.admin = true',
-        deleteRule: '@request.auth.admin = true',
-      });
-    } catch {
-      // best-effort — never fail the test on schema-patch errors
-    }
-  }
-
-  // Patch `last_tenant` onto the built-in auth collection — same as the
-  // e2e global-setup does. The auth record's last_tenant is STJÓRN A's
-  // tiebreaker for users in multiple tenants (see auth.ts:switchTenant).
-  // We also patch `tenant` here so STJÓRN A's test rules
-  // (`@request.auth.tenant = tenant`) can actually fire against auth
-  // users — without this, PB silently drops every non-auth field on
-  // create and the rules always evaluate to false.
-  try {
-    const authCol = await pb.collections.getOne('_pb_users_auth_');
-    const fields = (authCol.schema || []).map((f: any) => f.name);
-    const additions: any[] = [];
-    if (!fields.includes('last_tenant')) additions.push({ name: 'last_tenant', type: 'text' });
-    if (!fields.includes('tenant'))      additions.push({ name: 'tenant',      type: 'text' });
-    if (additions.length > 0) {
-      await pb.collections.update(authCol.id, {
-        schema: [...authCol.schema, ...additions],
-      });
-    }
-  } catch {
-    // best-effort
-  }
-
-  // Second pass: resolve `_COLLECTION_ID_` placeholders in relation fields.
-  // The first pass may have failed to create a relation because the target
-  // collection didn't exist yet (e.g. `categories.media` → `media`).
-  await resolveRelationPlaceholders(pb);
-}
-
-// PocketBase v0.23+ dropped the `schema` key (with nested `options`) in favour
-// of a flat `fields` array; the legacy shape is silently ignored, leaving the
-// collection with no user fields. Translate the declarations above on create.
-function toFields(schema: any[]): any[] {
-  return schema.map(({ options = {}, ...field }) => {
-    const { maxLen, ...opts } = options;
-    return { ...field, ...opts, ...(maxLen !== undefined ? { max: maxLen } : {}) };
-  });
-}
-
-// Add the `media` relation field to categories after both collections exist.
-// Categories couldn't declare it inline because the `media` collection is
-// declared later in the array and PB rejects relations to non-existent targets.
-async function resolveRelationPlaceholders(pb: PocketBase): Promise<void> {
-  const all = await pb.collections.getFullList({ perPage: 200 });
-  const byName = new Map<string, string>();
-  for (const c of all) byName.set(c.name, c.id);
-
-  // 1. Add `media` to categories if it isn't there yet
-  const categories = byName.get('categories');
-  const media = byName.get('media');
-  if (categories && media) {
-    try {
-      const cat = all.find((c) => c.name === 'categories')!;
-      if (!cat.schema.some((f: any) => f.name === 'media')) {
-        await pb.collections.update(cat.id, {
-          schema: [
-            ...cat.schema,
-            { name: 'media', type: 'relation', options: { collectionId: media, maxSelect: 1, cascadeDelete: false } },
-          ],
-        });
-      }
-    } catch {
-      // best-effort
-    }
-  }
+async function _legacySetupCollectionsRemovedInT09(_pb: PocketBase): Promise<void> {
+  // T-09: removed. Production migrations in pb_migrations/*.js are the
+  // single source of truth for the schema. The previous
+  // setupCollections rebuilt the schema in a v0.22-style layout
+  // AFTER migrations had already created it — every field was either
+  // a duplicate (last_tenant, roles, user_tenants, api_keys, …) or
+  // subtly different (text tenant field on categories/products/media
+  // instead of a relation, which never actually fired because PB
+  // v0.40 silently drops text fields on auth-collection users).
+  // Tests now seed DATA via the createTenantFixture / createCategoryFixture
+  // helpers, not schema. See `tests/helpers/fixtures.ts`.
+  // Kept as a named stub so any future caller that looks at git
+  // history finds a clear "this is where the v0.22 rebuild lived".
 }
 
 export async function cleanup(): Promise<void> {

@@ -13,6 +13,23 @@ const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const REGULAR_USER_EMAIL = 'user@test.stjorna.local';
 const REGULAR_USER_PASSWORD = 'user12345678test';
+const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
+// Mirrors backend tests/setup.ts — the shared container gets a fixed
+// setup token so the bootstrap route's token gate can be exercised.
+const SETUP_TOKEN = 'vitest-setup-token-0123456789';
+
+// Pick the container runtime. Prefer docker (works on GitHub Actions
+// and most Linux desktops), fall back to podman (the historical default).
+const CONTAINER_CLI = (() => {
+  try {
+    execSync('command -v docker', { stdio: 'ignore' });
+    return 'docker';
+  } catch {
+    return 'podman';
+  }
+})();
+// Hoist execSync into scope for the IIFE above.
+import { execSync } from 'node:child_process';
 
 let containerId: string | null = null;
 export let pb: PocketBase;
@@ -21,48 +38,72 @@ export async function startPBContainer(): Promise<PocketBase> {
   await cleanup();
 
   console.log('[Setup] Starting fresh PocketBase container...');
+
+  // Refuse to run against a leftover instance — would silently talk to
+  // a stale container with different hooks.
+  const alreadyUp = await fetch(`${PB_URL}/api/health`).then(() => true, () => false);
+  if (alreadyUp) {
+    throw new Error(
+      `${PB_URL} is already serving before the test container started — ` +
+      `stop the leftover instance (e.g. \`${CONTAINER_CLI} ps\`) and re-run.`,
+    );
+  }
+
+  // Bootstrap pattern: pass the headless superuser creds via env so
+  // entrypoint.sh runs `pocketbase superuser upsert` on first boot
+  // (guarded by a marker file). This is the production path — no
+  // more `pocketbase admin create` (removed in v0.22) and no more
+  // `/api/admins/auth-with-password` (removed in v0.22).
+  //
+  // `-p 127.0.0.1:8090:8090` is more portable across CI runners than
+  // `--network=host` (some sandboxed Docker setups restrict the host
+  // network namespace but allow port-mapping). The loopback binding
+  // also avoids accidentally probing a stray PB instance on a
+  // non-loopback interface.
   const { stdout } = await execAsync(
-    `podman run -d --rm --network=host localhost/stjorna-pocketbase:test`,
-    { encoding: 'utf8' }
+    `${CONTAINER_CLI} run -d --rm -p 127.0.0.1:8090:8090 ` +
+      `-e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} ` +
+      `-e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ` +
+      `-e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ` +
+      `${PB_IMAGE}`,
+    { encoding: 'utf8' },
   );
   containerId = stdout.trim();
   console.log('[Setup] Container started:', containerId);
 
-  await new Promise(resolve => setTimeout(resolve, 8000));
-
-  try {
-    const { stdout: execOut } = await execAsync(
-      `podman exec ${containerId} ./pocketbase admin create ${ADMIN_EMAIL} ${ADMIN_PASSWORD}`,
-      { encoding: 'utf8' }
-    );
-    console.log('[Setup] Admin create:', execOut.trim());
-  } catch (e: any) {
-    console.warn('[Setup] admin create warning:', e.stderr?.trim() || e.message);
-  }
-
-  let retries = 20;
-  while (retries > 0) {
-    const testPb = new PocketBase(PB_URL);
+  // Wait for PB: health endpoint AND a real schema managed by the
+  // production migrations. Mirrors backend setup.ts (T-09).
+  const deadline = Date.now() + 300_000;
+  let lastError: unknown = null;
+  let testPb: PocketBase | null = null;
+  while (Date.now() < deadline) {
+    testPb = new PocketBase(PB_URL);
     try {
       await testPb.health.check();
-      console.log('[Setup] PocketBase health check passed');
 
-      const authResponse = await fetch(`${PB_URL}/api/admins/auth-with-password`, {
+      // PB v0.40 superuser auth lives under /api/collections/_superusers.
+      const authRes = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
       });
+      if (!authRes.ok) {
+        const errBody = await authRes.text();
+        throw new Error(`Admin auth failed ${authRes.status}: ${errBody}`);
+      }
+      const authData = await authRes.json();
+      testPb.authStore.save(authData.token, authData.record);
 
-      if (!authResponse.ok) {
-        const errBody = await authResponse.text();
-        throw new Error(`Admin auth failed ${authResponse.status}: ${errBody}`);
+      // Confirm migrations finished: a production-managed collection
+      // must be reachable. `tenants` is created by
+      // 1740000000_create_core_collections.js.
+      const tenants = await testPb.collections.getOne('tenants').catch(() => null);
+      if (!tenants) {
+        throw new Error('migrations incomplete: tenants collection missing');
       }
 
-      const authData = await authResponse.json();
-      testPb.authStore.save(authData.token, authData.admin);
-      console.log('[Setup] Admin authenticated via fetch');
+      console.log('[Setup] PocketBase health + migrations verified');
 
-      await setupCollections(testPb);
       await setupInstanceSettings(testPb);
       await setupTestTenantAndUser(testPb);
 
@@ -70,271 +111,27 @@ export async function startPBContainer(): Promise<PocketBase> {
       console.log('[Setup] PocketBase setup complete');
       return pb;
     } catch (e: any) {
-      console.warn('[Setup] retry:', retries, e.message);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      retries--;
+      lastError = e;
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
-  throw new Error('Failed to start PocketBase');
-}
-
-async function setupCollections(pb: PocketBase): Promise<void> {
-  const existing = await pb.collections.getFullList({ perPage: 200 });
-  const existingNames = new Set(existing.map(c => c.name.toLowerCase()));
-
-  const collections = [
-    {
-      name: 'roles',
-      type: 'base' as const,
-      schema: [
-        { name: 'name', type: 'text' as const, required: true },
-      ],
-      listRule: '@request.auth.admin = true',
-      viewRule: '@request.auth.id != ""',
-      createRule: '@request.auth.admin = true',
-      updateRule: '@request.auth.admin = true',
-      deleteRule: '@request.auth.admin = true',
-    },
-    {
-      name: 'tenants',
-      type: 'base' as const,
-      schema: [
-        { name: 'name', type: 'text' as const, required: true },
-        { name: 'slug', type: 'text' as const, required: true },
-        { name: 'plan', type: 'select' as const, options: { values: ['free', 'starter', 'professional', 'enterprise'], maxSelect: 1 } },
-        { name: 'custom_domain', type: 'text' as const },
-        { name: 'theme_config', type: 'json' as const, options: { maxSize: 2000000 } },
-        { name: 'users', type: 'relation' as const, options: { collectionId: '_pb_users_auth_', maxSelect: 99, cascadeDelete: false } },
-      ],
-      listRule: '',
-      viewRule: '@request.auth.id != ""',
-      createRule: '',
-      updateRule: '',
-      deleteRule: '',
-    },
-    {
-      name: 'categories',
-      type: 'base' as const,
-      schema: [
-        { name: 'tenant', type: 'relation' as const, options: { collectionId: '_TENANTS_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'name', type: 'text' as const, required: true },
-        { name: 'slug', type: 'text' as const, required: true },
-        { name: 'description', type: 'text' as const },
-        { name: 'active', type: 'bool' as const },
-        { name: 'sort_order', type: 'number' as const },
-        { name: 'media', type: 'relation' as const, options: { collectionId: '_MEDIA_ID_', maxSelect: 1, cascadeDelete: false } },
-      ],
-      listRule: '@request.auth.id != ""',
-      viewRule: '@request.auth.id != ""',
-      createRule: '@request.auth.id != ""',
-      updateRule: '@request.auth.id != "" || @request.auth.admin = true',
-      deleteRule: '@request.auth.id != "" || @request.auth.admin = true',
-    },
-    {
-      name: 'products',
-      type: 'base' as const,
-      schema: [
-        { name: 'tenant', type: 'relation' as const, options: { collectionId: '_TENANTS_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'category', type: 'relation' as const, options: { collectionId: '_CATEGORIES_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'name', type: 'text' as const, required: true },
-        { name: 'slug', type: 'text' as const, required: true },
-        { name: 'price', type: 'number' as const },
-        { name: 'description', type: 'editor' as const },
-        { name: 'media', type: 'relation' as const, options: { collectionId: '_MEDIA_ID_', maxSelect: 99, cascadeDelete: false } },
-        { name: 'active', type: 'bool' as const },
-        { name: 'sort_order', type: 'number' as const },
-        { name: 'custom_fields', type: 'json' as const, options: { maxSize: 2000000 } },
-      ],
-      listRule: '@request.auth.id != ""',
-      viewRule: '@request.auth.id != ""',
-      createRule: '@request.auth.id != ""',
-      updateRule: '@request.auth.admin = true',
-      deleteRule: '@request.auth.admin = true',
-    },
-    {
-      name: 'media',
-      type: 'base' as const,
-      schema: [
-        { name: 'tenant', type: 'relation' as const, options: { collectionId: '_TENANTS_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'file', type: 'file' as const, options: { maxSelect: 1, maxSize: 524288000, mimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'video/webm'] } },
-        { name: 'filename', type: 'text' as const },
-        { name: 'original_name', type: 'text' as const },
-        { name: 'mime_type', type: 'text' as const },
-        { name: 'size', type: 'number' as const },
-        { name: 'width', type: 'number' as const },
-        { name: 'height', type: 'number' as const },
-        { name: 's3_key', type: 'text' as const },
-        { name: 's3_url', type: 'url' as const },
-        { name: 'thumbnail_url', type: 'url' as const },
-        { name: 'usage_count', type: 'number' as const },
-        { name: 'createdUser', type: 'relation' as const, options: { collectionId: '_pb_users_auth_', maxSelect: 1, cascadeDelete: false } },
-      ],
-      listRule: '@request.auth.id != ""',
-      viewRule: '@request.auth.id != ""',
-      createRule: '@request.auth.id != ""',
-      updateRule: '@request.auth.id != "" || @request.auth.admin = true',
-      deleteRule: '@request.auth.id != "" || @request.auth.admin = true',
-    },
-    {
-      name: 'user_tenants',
-      type: 'base' as const,
-      schema: [
-        { name: 'user', type: 'relation' as const, options: { collectionId: '_pb_users_auth_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'tenant', type: 'relation' as const, options: { collectionId: '_TENANTS_ID_', maxSelect: 1, cascadeDelete: false } },
-        { name: 'role', type: 'relation' as const, options: { collectionId: '_ROLES_ID_', maxSelect: 1, cascadeDelete: false } },
-      ],
-      listRule: '@request.auth.admin = true || user.id = @request.auth.id',
-      viewRule: '@request.auth.id != ""',
-      createRule: '@request.auth.admin = true',
-      updateRule: '@request.auth.admin = true',
-      deleteRule: '@request.auth.admin = true',
-    },
-    {
-      name: 'instance_settings',
-      type: 'base' as const,
-      schema: [
-        { name: 'instance_name', type: 'text' as const },
-        { name: 'instance_url', type: 'text' as const },
-        { name: 'instance_logo_url', type: 'url' as const },
-        { name: 'instance_tagline', type: 'text' as const },
-        { name: 'setup_done', type: 'bool' as const },
-        { name: 'storage_type', type: 'text' as const },
-        { name: 's3_bucket', type: 'text' as const },
-        { name: 's3_region', type: 'text' as const },
-        { name: 's3_endpoint', type: 'text' as const },
-        { name: 's3_access_key', type: 'text' as const },
-        { name: 's3_secret_key', type: 'text' as const },
-        { name: 's3_force_path_style', type: 'bool' as const },
-        { name: 'storage_configured', type: 'bool' as const },
-      ],
-      listRule: null,
-      viewRule: null,
-      createRule: null,
-      updateRule: '@request.auth.admin = true',
-      deleteRule: null,
-    },
-  ];
-
-  const phase1 = ['roles', 'tenants', 'media'];
-  const phase2 = ['categories', 'products', 'user_tenants'];
-  const phase3 = ['instance_settings'];
-
-  let tenantsId: string | null = null;
-  let rolesId: string | null = null;
-  let mediaId: string | null = null;
-
-  const usersId = (await pb.collections.getOne('_pb_users_auth_')).id;
-  let categoriesId: string | null = null;
-
-  const replaceIds = (col: any): any => ({
-    ...col,
-    schema: col.schema.map((field: any) => {
-      if (field.type === 'relation' && field.options?.collectionId) {
-        let targetId = field.options.collectionId;
-        if (targetId === '_TENANTS_ID_') targetId = tenantsId;
-        else if (targetId === '_CATEGORIES_ID_') targetId = categoriesId;
-        else if (targetId === '_MEDIA_ID_') targetId = mediaId;
-        else if (targetId === '_pb_users_auth_') targetId = usersId;
-        else if (targetId === '_ROLES_ID_') targetId = rolesId;
-        return { ...field, options: { ...field.options, collectionId: targetId } };
-      }
-      return field;
-    }),
-  });
-
-  for (const name of phase1) {
-    const colTemplate = collections.find(c => c.name === name)!;
-    if (existingNames.has(name)) {
-      console.log(`[Setup] Collection ${name} already exists`);
-      const col = await pb.collections.getFirstListItem(`name="${name}"`);
-      if (name === 'tenants') tenantsId = col.id;
-      if (name === 'roles') rolesId = col.id;
-      if (name === 'media') mediaId = col.id;
-      continue;
-    }
-    console.log(`[Setup] Creating collection: ${name}`);
-    const colToCreate = replaceIds(colTemplate);
-    const created = await pb.collections.create(colToCreate);
-    if (name === 'tenants') tenantsId = created.id;
-    if (name === 'roles') rolesId = created.id;
-    if (name === 'media') mediaId = created.id;
-    console.log(`[Setup] Created collection: ${name}`);
+  // Dump the container log on failure so CI shows WHY PB never came up.
+  let logs = '';
+  if (containerId) {
+    try {
+      const { stdout: logOut } = await execAsync(
+        `${CONTAINER_CLI} logs --tail 100 ${containerId}`,
+        { encoding: 'utf8' },
+      );
+      logs = logOut;
+    } catch {}
   }
-
-  if (!existingNames.has('roles')) {
-    console.log('[Setup] Creating default roles');
-    await pb.collection('roles').create({ name: 'viewer' });
-    await pb.collection('roles').create({ name: 'editor' });
-    await pb.collection('roles').create({ name: 'admin' });
-    console.log('[Setup] Created default roles');
-  }
-
-  if (!tenantsId) throw new Error('Could not get tenants collection ID');
-  if (!rolesId) throw new Error('Could not get roles collection ID');
-  if (!mediaId) throw new Error('Could not get media collection ID');
-
-  for (const name of phase2) {
-    if (existingNames.has(name)) {
-      console.log(`[Setup] Collection ${name} already exists`);
-      if (name === 'categories') {
-        const catCol = await pb.collections.getFirstListItem('name="categories"');
-        categoriesId = catCol.id;
-      }
-      continue;
-    }
-    if (name === 'categories') categoriesId = tenantsId;
-    console.log(`[Setup] Creating collection: ${name}`);
-    const colTemplate = collections.find(c => c.name === name)!;
-    const colToCreate = replaceIds(colTemplate);
-    await pb.collections.create(colToCreate);
-    console.log(`[Setup] Created collection: ${name}`);
-    if (name === 'categories' && !categoriesId) {
-      const catCol = await pb.collections.getFirstListItem('name="categories"');
-      categoriesId = catCol.id;
-    }
-  }
-
-  for (const name of phase3) {
-    if (existingNames.has(name)) {
-      console.log(`[Setup] Collection ${name} already exists`);
-      continue;
-    }
-    console.log(`[Setup] Creating collection: ${name}`);
-    const col = collections.find(c => c.name === name)!;
-    await pb.collections.create(col);
-    console.log(`[Setup] Created collection: ${name}`);
-  }
-
-  const usersCol = await pb.collections.getOne('_pb_users_auth_');
-  const hasLastTenant = usersCol.schema.some((f: any) => f.name === 'last_tenant');
-  if (!hasLastTenant) {
-    await pb.collections.update(usersCol.id, {
-      schema: [...usersCol.schema, { name: 'last_tenant', type: 'text' }],
-    });
-    console.log('[Setup] Added last_tenant field to users');
-  }
-
-  const collectionsWithRules = ['categories', 'products', 'media', 'user_tenants', 'roles', 'tenants'];
-  for (const name of collectionsWithRules) {
-    const col = collections.find(c => c.name === name);
-    if (col) {
-      try {
-        const existingCol = await pb.collections.getFirstListItem(`name="${name}"`);
-        console.log(`[Setup] Updating rules for ${name} - current:`, existingCol.listRule, '-> new:', col.listRule);
-        await pb.collections.update(existingCol.id, {
-          listRule: col.listRule || null,
-          viewRule: col.viewRule || null,
-          createRule: col.createRule || null,
-          updateRule: col.updateRule || null,
-          deleteRule: col.deleteRule || null,
-        });
-        console.log(`[Setup] Updated rules for ${name}`);
-      } catch (e: any) {
-        console.warn(`[Setup] Failed to update rules for ${name}:`, e.status, e.message);
-      }
-    }
-  }
+  const detail = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(
+    `Failed to start PocketBase: ${PB_URL} not healthy after 300s. Last error: ${detail}\n` +
+      (logs ? `Container logs:\n${logs}` : ''),
+  );
 }
 
 async function setupInstanceSettings(pb: PocketBase): Promise<void> {
@@ -355,9 +152,14 @@ let testTenantId: string | null = null;
 let testUserId: string | null = null;
 
 async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
+  // Production schema (1740000000_create_core_collections.js +
+  // 1750000000_add_oidc_support.js + later migrations) — no custom
+  // rebuild. The previous setupCollections overrode the production
+  // rules with test-only rules; that was hiding real auth/rule
+  // behavior from the e2e suite.
   const tenant = await pb.collection('tenants').create({
     name: 'Test Company',
-    slug: 'test-company',
+    slug: 'test-company-' + Date.now(),
     plan: 'starter',
   });
   testTenantId = tenant.id;
@@ -382,6 +184,7 @@ async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
   }
   testUserId = testUser.id;
 
+  // admin role for the user_tenants row — production FK integrity.
   const adminRole = await pb.collection('roles').getFirstListItem('name="admin"');
 
   await pb.collection('user_tenants').create({
@@ -393,13 +196,16 @@ async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
   await pb.collection('categories').create({
     tenant: testTenantId,
     name: 'Test Category',
-    slug: 'test-category',
+    slug: 'test-category-' + Date.now(),
     description: 'A test category',
     active: true,
     sort_order: 1,
   });
 
-  const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+  // 1x1 transparent PNG. PB sanitises the filename; the returned
+  // record.file is what the URL builder needs.
+  const pngBase64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   const pngBuffer = Buffer.from(pngBase64, 'base64');
   const testFile = new File([pngBuffer], 'test-image.png', { type: 'image/png' });
   const form = new FormData();
@@ -421,7 +227,7 @@ async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
 export async function cleanup(): Promise<void> {
   if (containerId) {
     try {
-      await execAsync(`podman stop ${containerId} 2>/dev/null || true`);
+      await execAsync(`${CONTAINER_CLI} stop ${containerId} 2>/dev/null || true`);
       console.log('[Teardown] Container stopped');
     } catch {}
     containerId = null;
@@ -438,7 +244,7 @@ export function getTestCredentials() {
     userPassword: REGULAR_USER_PASSWORD,
     pbUrl: PB_URL,
     frontendUrl: FRONTEND_URL,
-    tenantId: null as string | null,
+    tenantId: testTenantId,
     userId: testUserId,
   };
 }
