@@ -6,15 +6,30 @@ const PB_PORT = 8090;
 // PB_URL can be overridden by env so a CI runner with a different
 // host (or a test rig using a port-forward) can point us at a
 // non-loopback endpoint. Default is the loopback we expose via
-// '-p 127.0.0.1:8090:8090' on the container.
+// '--network=host' on the container.
 //
-// Force IPv4 — some CI runners (notably GitHub Actions Docker on
-// ubuntu-latest with certain Docker daemon configs) resolve
-// 'localhost' to '::1' first, and the container's port is only
-// exposed on the IPv4 loopback via '-p 127.0.0.1:8090:8090'.
-// Without the forced family, fetch() fails silently with an
-// undici-level error that PB's SDK masks as 'Something went wrong.'
-const PB_URL = process.env.PB_URL || `http://127.0.0.1:${PB_PORT}`;
+// T-09 follow-up: the CI workflow sets PB_URL=http://localhost:8090
+// by default, but on GitHub Actions ubuntu-latest runners
+// 'localhost' resolves to '::1' first (IPv6). PB's
+// '--http 0.0.0.0:8090' only binds IPv4, so the IPv6 connection
+// times out. To force IPv4 we IGNORE the env var when it points
+// at 'localhost' (with or without port) and substitute 127.0.0.1.
+// If a real non-loopback host is supplied via env, we honour it.
+function resolvePbUrl(envUrl: string | undefined, fallback: string): string {
+  if (!envUrl) return fallback;
+  // 'localhost' or 'localhost:port' → force IPv4
+  try {
+    const u = new URL(envUrl);
+    if (u.hostname === 'localhost') {
+      u.hostname = '127.0.0.1';
+      return u.toString();
+    }
+  } catch {
+    // not a parseable URL — leave alone
+  }
+  return envUrl;
+}
+const PB_URL = resolvePbUrl(process.env.PB_URL, `http://127.0.0.1:${PB_PORT}`);
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';
 const PB_IMAGE = 'localhost/stjorna-pocketbase:test';
