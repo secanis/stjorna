@@ -53,6 +53,8 @@ const CONTAINER_CLI = (() => {
 let pbInstance: PocketBase | null = null;
 let containerId: string | null = null;
 
+class ContainerExitedError extends Error {}
+
 // Vitest globalSetup runs in the main process, but tests run in forked
 // workers. Module-level state is not shared, so persist the auth token to
 // a temp file that workers can read.
@@ -101,24 +103,14 @@ export async function startPocketBase(): Promise<PocketBase> {
 
     let stdout: string;
     try {
-      // T-09 follow-up: CI's Docker-in-Docker setup gave the
-      // container NO bridge IP (the diagnostic dump showed
-      // 'Container IP: <none>'), so '-p 127.0.0.1:8090:8090' was
-      // mapping a port that nothing on the runner could reach.
+      // '--network=host' puts PB on the runner's loopback (works on
+      // GitHub-hosted runners and on Linux docker/podman).
       //
-      // '--network=host' is the only mode that shares the host's
-      // loopback interface with the container, which is what the
-      // runner process needs to reach the container. Local runs
-      // still work because Docker Desktop / Linux daemon both
-      // support it (and on Linux, a port-mapping fallback works for
-      // most cases too).
-      //
-      // Trade-off: '--network=host' is restricted on Docker
-      // Desktop and on some hardened CI runners. If it turns out
-      // the runner forbids it, fall back to a service-container
-      // declaration in .github/workflows/ci.yml instead.
+      // No '--rm': if PB exits during boot we still want its logs and
+      // exit code. cleanup() removes the container (and its anonymous
+      // pb_data volume) explicitly.
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host ` +
+        `${CONTAINER_CLI} run -d --network=host ` +
           `-e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} ` +
           `-e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ` +
           `-e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ` +
@@ -136,36 +128,39 @@ export async function startPocketBase(): Promise<PocketBase> {
     // eslint-disable-next-line no-console
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
-    // First-pass log dump: catch any startup failure (e.g. crash on
-    // automigrate, missing file) before the readiness loop begins.
-    // On fast local runs PB is up before this fires; on slow CI
-    // boots this captures the error immediately.
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    try {
-      const { stdout: earlyLogs } = await execAsync(
-        `${CONTAINER_CLI} logs --tail 30 ${containerId}`,
-        { encoding: 'utf8' },
-      );
-      if (earlyLogs.trim()) {
-        console.log(`[pb-test] container early logs:\n${earlyLogs}`);
+    const containerLogs = async (): Promise<string> => {
+      try {
+        const { stdout: out, stderr: err } = await execAsync(
+          `${CONTAINER_CLI} logs --tail 100 ${containerId}`,
+          { encoding: 'utf8' },
+        );
+        return `${out}${err}`;
+      } catch {
+        return '';
       }
-    } catch {}
+    };
 
-    // Dump the container's IP right after start. On some CI runners
-    // (sandboxed Docker, GitHub Actions Docker-in-Docker) the host
-    // loopback is unreachable from the test process, so we have to
-    // hit the container's bridge IP directly. We try PB_URL first
-    // (the configured URL) and fall back to the bridge IP.
-    let containerIP = '';
-    try {
-      const { stdout: ipOut } = await execAsync(
-        `${CONTAINER_CLI} inspect --format '{{.NetworkSettings.IPAddress}}' ${containerId}`,
-        { encoding: 'utf8' },
+    // Fail fast when PB dies during boot (bad pb_data permissions,
+    // migration crash, PB_SECRET check, …) instead of polling a dead
+    // port for the full deadline.
+    const assertContainerRunning = async (): Promise<void> => {
+      let state = '';
+      try {
+        const { stdout: out } = await execAsync(
+          `${CONTAINER_CLI} inspect --format '{{.State.Running}} {{.State.ExitCode}}' ${containerId}`,
+          { encoding: 'utf8' },
+        );
+        state = out.trim();
+      } catch (e: any) {
+        state = `inspect failed: ${e?.stderr?.toString?.().trim() || e?.message}`;
+      }
+      if (state.startsWith('true')) return;
+      const logs = await containerLogs();
+      throw new ContainerExitedError(
+        `PocketBase container exited during startup (${state}).\n` +
+        (logs ? `Container logs:\n${logs}` : '(no container logs)')
       );
-      containerIP = ipOut.trim();
-      console.log(`[pb-test] container IP: ${containerIP || '<none>'}`);
-    } catch {}
-    const candidateURLs = [PB_URL, containerIP ? `http://${containerIP}:8090` : ''].filter(Boolean);
+    };
 
     // First-boot PocketBase can take a while (especially on CI runners
     // with cold caches), so give it up to 300s. The wait has THREE
@@ -187,29 +182,18 @@ export async function startPocketBase(): Promise<PocketBase> {
     // collections or fields.
     const deadline = Date.now() + 300_000;
     let lastError: unknown = null;
-    let workingURL = '';
     while (Date.now() < deadline) {
-      const pb = new PocketBase(workingURL || PB_URL);
+      const pb = new PocketBase(PB_URL);
       try {
-        // Try every candidate URL until one responds. Most local
-        // runs succeed on PB_URL; CI may need the container IP.
-        if (!workingURL) {
-          for (const url of candidateURLs) {
-            try {
-              const r = await fetch(`${url}/api/health`);
-              if (r.ok) { workingURL = url; break; }
-            } catch {}
-          }
-          if (!workingURL) throw new Error('no candidate URL responded to /api/health');
-        }
+        await assertContainerRunning();
 
         // Raw fetch (instead of pb.health.check()) so we get a real
         // error message instead of the SDK's "Something went wrong."
         // generic catch.
-        const healthRes = await fetch(`${workingURL}/api/health`);
+        const healthRes = await fetch(`${PB_URL}/api/health`);
         if (!healthRes.ok) throw new Error(`health ${healthRes.status}`);
 
-        const authRes = await fetch(`${workingURL}/api/collections/_superusers/auth-with-password`, {
+        const authRes = await fetch(`${PB_URL}/api/collections/_superusers/auth-with-password`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identity: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
@@ -233,32 +217,18 @@ export async function startPocketBase(): Promise<PocketBase> {
 
         writePbState(authData.token, authData.record);
         pbInstance = pb;
-        // Persist the working URL so forked workers (if any) hit the
-        // same endpoint.
-        if (workingURL !== PB_URL) {
-          process.env.PB_URL = workingURL;
-        }
         return pbInstance;
       } catch (e) {
+        if (e instanceof ContainerExitedError) throw e;
         lastError = e;
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
     const detail = lastError instanceof Error ? lastError.message : String(lastError);
-    let logs = '';
-    if (containerId) {
-      try {
-        const { stdout } = await execAsync(`${CONTAINER_CLI} logs --tail 100 ${containerId}`, { encoding: 'utf8' });
-        logs = stdout;
-      } catch {}
-    }
-    // Final dump: which URLs did we try?
-    const triedURLs = candidateURLs.join(', ');
+    const logs = await containerLogs();
     throw new Error(
-      `Failed to start PocketBase: not healthy after 300s.\n` +
-      `  Tried URLs: ${triedURLs}\n` +
-      `  Container IP: ${containerIP || '<none>'}\n` +
+      `Failed to start PocketBase: ${PB_URL} not healthy after 300s.\n` +
       `  Last error: ${detail}\n` +
       (logs ? `Container logs:\n${logs}` : '')
     );
@@ -289,7 +259,8 @@ export async function cleanup(): Promise<void> {
 
   if (containerId) {
     try {
-      await execAsync(`${CONTAINER_CLI} stop ${containerId} 2>/dev/null || true`);
+      // -v also drops the anonymous pb_data volume (no --rm on run).
+      await execAsync(`${CONTAINER_CLI} rm -f -v ${containerId} 2>/dev/null || true`);
     } catch {}
     containerId = null;
   }

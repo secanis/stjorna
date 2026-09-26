@@ -34,6 +34,8 @@ import { execSync } from 'node:child_process';
 let containerId: string | null = null;
 export let pb: PocketBase;
 
+class ContainerExitedError extends Error {}
+
 export async function startPBContainer(): Promise<PocketBase> {
   await cleanup();
 
@@ -55,14 +57,11 @@ export async function startPBContainer(): Promise<PocketBase> {
   // more `pocketbase admin create` (removed in v0.22) and no more
   // `/api/admins/auth-with-password` (removed in v0.22).
   //
-  // '--network=host' is the only mode that puts the container's
-  // port on the host's loopback interface in a Docker-in-Docker CI
-  // environment (GitHub Actions gave the container no bridge IP at
-  // all with '-p', which is why earlier attempts to map a port
-  // timed out). Local runs still work — Linux and Docker Desktop
-  // both support it.
+  // '--network=host' puts PB on the runner's loopback. No '--rm': if
+  // PB exits during boot we still want its logs and exit code;
+  // cleanup() removes the container and its anonymous pb_data volume.
   const { stdout } = await execAsync(
-    `${CONTAINER_CLI} run -d --rm --network=host ` +
+    `${CONTAINER_CLI} run -d --network=host ` +
       `-e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} ` +
       `-e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ` +
       `-e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ` +
@@ -72,6 +71,39 @@ export async function startPBContainer(): Promise<PocketBase> {
   containerId = stdout.trim();
   console.log('[Setup] Container started:', containerId);
 
+  const containerLogs = async (): Promise<string> => {
+    try {
+      const { stdout: out, stderr: err } = await execAsync(
+        `${CONTAINER_CLI} logs --tail 100 ${containerId}`,
+        { encoding: 'utf8' },
+      );
+      return `${out}${err}`;
+    } catch {
+      return '';
+    }
+  };
+
+  // Fail fast when PB dies during boot instead of polling a dead port
+  // for the full deadline.
+  const assertContainerRunning = async (): Promise<void> => {
+    let state = '';
+    try {
+      const { stdout: out } = await execAsync(
+        `${CONTAINER_CLI} inspect --format '{{.State.Running}} {{.State.ExitCode}}' ${containerId}`,
+        { encoding: 'utf8' },
+      );
+      state = out.trim();
+    } catch (e: any) {
+      state = `inspect failed: ${e?.stderr?.toString?.().trim() || e?.message}`;
+    }
+    if (state.startsWith('true')) return;
+    const logs = await containerLogs();
+    throw new ContainerExitedError(
+      `PocketBase container exited during startup (${state}).\n` +
+        (logs ? `Container logs:\n${logs}` : '(no container logs)'),
+    );
+  };
+
   // Wait for PB: health endpoint AND a real schema managed by the
   // production migrations. Mirrors backend setup.ts (T-09).
   const deadline = Date.now() + 300_000;
@@ -80,6 +112,7 @@ export async function startPBContainer(): Promise<PocketBase> {
   while (Date.now() < deadline) {
     testPb = new PocketBase(PB_URL);
     try {
+      await assertContainerRunning();
       await testPb.health.check();
 
       // PB v0.40 superuser auth lives under /api/collections/_superusers.
@@ -112,22 +145,14 @@ export async function startPBContainer(): Promise<PocketBase> {
       console.log('[Setup] PocketBase setup complete');
       return pb;
     } catch (e: any) {
+      if (e instanceof ContainerExitedError) throw e;
       lastError = e;
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 
   // Dump the container log on failure so CI shows WHY PB never came up.
-  let logs = '';
-  if (containerId) {
-    try {
-      const { stdout: logOut } = await execAsync(
-        `${CONTAINER_CLI} logs --tail 100 ${containerId}`,
-        { encoding: 'utf8' },
-      );
-      logs = logOut;
-    } catch {}
-  }
+  const logs = await containerLogs();
   const detail = lastError instanceof Error ? lastError.message : String(lastError);
   throw new Error(
     `Failed to start PocketBase: ${PB_URL} not healthy after 300s. Last error: ${detail}\n` +
@@ -228,8 +253,8 @@ async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
 export async function cleanup(): Promise<void> {
   if (containerId) {
     try {
-      await execAsync(`${CONTAINER_CLI} stop ${containerId} 2>/dev/null || true`);
-      console.log('[Teardown] Container stopped');
+      await execAsync(`${CONTAINER_CLI} rm -f -v ${containerId} 2>/dev/null || true`);
+      console.log('[Teardown] Container removed');
     } catch {}
     containerId = null;
   }

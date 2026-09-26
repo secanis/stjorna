@@ -98,15 +98,11 @@ jobs:
           ADMIN_PASSWORD: admin12345678
         # NOTE: setup.ts auto-detects docker (preferred) or podman, and
         # starts a PB container from `localhost/stjorna-pocketbase:test`
-        # with --network=host (the GitHub Actions runner's bridge
-        # network sometimes gives the container no IP, so the only
-        # reliable path is host networking). The
-        # `Build PocketBase image` step above ensures that image is
-        # in the local docker daemon.
-        # The PB container uses its own ephemeral /app/pb_data
-        # (Dockerfile VOLUME), not a host bind-mount — the pre-runs
-        # of this job used to pre-create and chown a named volume,
-        # but it was dead code (no consumer).
+        # with --network=host. The `Build PocketBase image` step above
+        # ensures that image is in the local docker daemon.
+        # pb_data is the container's anonymous VOLUME; the Dockerfile
+        # pre-creates /app/pb_data owned by uid 1000 so Docker seeds the
+        # volume writable (podman did this implicitly, Docker does not).
 
   # -------------------------------------------------------------------------
   # Frontend E2E: Playwright against the built frontend + a real PB
