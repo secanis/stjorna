@@ -86,29 +86,27 @@ jobs:
             --load \
             --file pocketbase/Dockerfile \
             pocketbase
-      - name: Pre-create PB data volume
-        # Docker creates the named volume lazily, but on a fresh runner
-        # it gets root-owned; PB runs as uid 1000 (pocketbase) and can't
-        # write. Pre-creating + chowning avoids the permission trap.
-        run: |
-          docker volume create stjorna-test-data
-          # Run a throwaway container to chown the volume to uid 1000
-          # (the pocketbase user in the PB image).
-          docker run --rm \
-            -v stjorna-test-data:/pb_data \
-            docker.io/alpine:3.19 \
-            chown -R 1000:1000 /pb_data
       - name: Run tests
         working-directory: pocketbase
         run: npx vitest run
         env:
+          # 'localhost' here is fine — setup.ts resolves it to
+          # 127.0.0.1 internally because PB's IPv4-only bind doesn't
+          # accept an IPv6 connection (T-09 follow-up).
           PB_URL: http://localhost:8090
           ADMIN_EMAIL: admin@test.stjorna.local
           ADMIN_PASSWORD: admin12345678
         # NOTE: setup.ts auto-detects docker (preferred) or podman, and
-        # starts a PB container from `localhost/stjorna-pocketbase:test`.
-        # The `Build PocketBase image` step above ensures that image is
+        # starts a PB container from `localhost/stjorna-pocketbase:test`
+        # with --network=host (the GitHub Actions runner's bridge
+        # network sometimes gives the container no IP, so the only
+        # reliable path is host networking). The
+        # `Build PocketBase image` step above ensures that image is
         # in the local docker daemon.
+        # The PB container uses its own ephemeral /app/pb_data
+        # (Dockerfile VOLUME), not a host bind-mount — the pre-runs
+        # of this job used to pre-create and chown a named volume,
+        # but it was dead code (no consumer).
 
   # -------------------------------------------------------------------------
   # Frontend E2E: Playwright against the built frontend + a real PB
