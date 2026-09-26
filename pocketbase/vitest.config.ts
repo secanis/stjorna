@@ -7,6 +7,15 @@ import { resolve } from 'path';
 // laptop and silently be skipped on a PR. The container-based
 // integration tests run the SAME PB image CI builds, so there is no
 // reason to skip them. The full suite must run on every PR.
+//
+// T-09 (follow-up): the previous config used `pool: 'forks'` with
+// `singleFork: true`. On GitHub Actions Linux runners, the forked
+// worker sometimes loses access to the host's loopback network
+// interface (where the PB container is reachable via --network=host),
+// so PB startup timeouts out and vitest reports 'No test files
+// found' as it tries to recover. The default pool (threads in node
+// mode) is sufficient: vitest runs the suite serially in the main
+// process, which is what we want for the single-PB-container model.
 
 export default defineConfig({
   test: {
@@ -15,15 +24,8 @@ export default defineConfig({
     testTimeout: 60000,
     hookTimeout: 60000,
     include: ['**/*.test.ts', '**/*.unit.test.ts'],
-    // globalSetup.ts returns the teardown (vitest has no globalTeardown option)
+    // global-setup.ts returns the teardown (vitest has no globalTeardown option)
     globalSetup: ['./tests/global-setup.ts'],
-    // Single process (no forks) — globalSetup/Teardown run once per run
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
   },
   resolve: {
     alias: {

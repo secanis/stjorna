@@ -75,9 +75,18 @@ export async function startPocketBase(): Promise<PocketBase> {
 
     let stdout: string;
     try {
+      // `-p 127.0.0.1:8090:8090` is more portable across CI runners
+      // than `--network=host` (some sandboxed Docker setups restrict
+      // the host network namespace but allow port-mapping). We also
+      // bind explicitly to the loopback so another PB instance on the
+      // host can't accidentally be probed instead.
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm --network=host -e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} -e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} -e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ${PB_IMAGE}`,
-        { encoding: 'utf8' }
+        `${CONTAINER_CLI} run -d --rm -p 127.0.0.1:8090:8090 ` +
+          `-e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} ` +
+          `-e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ` +
+          `-e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ` +
+          `${PB_IMAGE}`,
+        { encoding: 'utf8' },
       );
       stdout = result.stdout;
     } catch (e: any) {
@@ -91,7 +100,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     console.log(`[pb-test] started ${CONTAINER_CLI} container ${containerId.slice(0, 12)}`);
 
     // First-boot PocketBase can take a while (especially on CI runners
-    // with cold caches), so give it up to 180s. The wait has THREE
+    // with cold caches), so give it up to 300s. The wait has THREE
     // gates, each of which proves a different aspect of readiness:
     //
     //   1. /api/health responds (PB HTTP server is up).
@@ -108,7 +117,7 @@ export async function startPocketBase(): Promise<PocketBase> {
     // had already created it. Production migrations are now the
     // single source of truth for the schema. Tests seed DATA, not
     // collections or fields.
-    const deadline = Date.now() + 180_000;
+    const deadline = Date.now() + 300_000;
     let lastError: unknown = null;
     while (Date.now() < deadline) {
       const pb = new PocketBase(PB_URL);
@@ -155,7 +164,7 @@ export async function startPocketBase(): Promise<PocketBase> {
       } catch {}
     }
     throw new Error(
-      `Failed to start PocketBase: ${PB_URL} not healthy after 180s. Last error: ${detail}\n` +
+      `Failed to start PocketBase: ${PB_URL} not healthy after 300s. Last error: ${detail}\n` +
       (logs ? `Container logs:\n${logs}` : '')
     );
   };
