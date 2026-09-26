@@ -86,13 +86,24 @@ export async function startPocketBase(): Promise<PocketBase> {
 
     let stdout: string;
     try {
-      // `-p 127.0.0.1:8090:8090` is more portable across CI runners
-      // than `--network=host` (some sandboxed Docker setups restrict
-      // the host network namespace but allow port-mapping). We also
-      // bind explicitly to the loopback so another PB instance on the
-      // host can't accidentally be probed instead.
+      // T-09 follow-up: CI's Docker-in-Docker setup gave the
+      // container NO bridge IP (the diagnostic dump showed
+      // 'Container IP: <none>'), so '-p 127.0.0.1:8090:8090' was
+      // mapping a port that nothing on the runner could reach.
+      //
+      // '--network=host' is the only mode that shares the host's
+      // loopback interface with the container, which is what the
+      // runner process needs to reach the container. Local runs
+      // still work because Docker Desktop / Linux daemon both
+      // support it (and on Linux, a port-mapping fallback works for
+      // most cases too).
+      //
+      // Trade-off: '--network=host' is restricted on Docker
+      // Desktop and on some hardened CI runners. If it turns out
+      // the runner forbids it, fall back to a service-container
+      // declaration in .github/workflows/ci.yml instead.
       const result = await execAsync(
-        `${CONTAINER_CLI} run -d --rm -p 127.0.0.1:8090:8090 ` +
+        `${CONTAINER_CLI} run -d --rm --network=host ` +
           `-e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} ` +
           `-e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ` +
           `-e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ` +

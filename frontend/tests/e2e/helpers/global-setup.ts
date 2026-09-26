@@ -55,13 +55,14 @@ export async function startPBContainer(): Promise<PocketBase> {
   // more `pocketbase admin create` (removed in v0.22) and no more
   // `/api/admins/auth-with-password` (removed in v0.22).
   //
-  // `-p 127.0.0.1:8090:8090` is more portable across CI runners than
-  // `--network=host` (some sandboxed Docker setups restrict the host
-  // network namespace but allow port-mapping). The loopback binding
-  // also avoids accidentally probing a stray PB instance on a
-  // non-loopback interface.
+  // '--network=host' is the only mode that puts the container's
+  // port on the host's loopback interface in a Docker-in-Docker CI
+  // environment (GitHub Actions gave the container no bridge IP at
+  // all with '-p', which is why earlier attempts to map a port
+  // timed out). Local runs still work — Linux and Docker Desktop
+  // both support it.
   const { stdout } = await execAsync(
-    `${CONTAINER_CLI} run -d --rm -p 127.0.0.1:8090:8090 ` +
+    `${CONTAINER_CLI} run -d --rm --network=host ` +
       `-e PB_SUPERUSER_EMAIL=${ADMIN_EMAIL} ` +
       `-e PB_SUPERUSER_PASSWORD=${ADMIN_PASSWORD} ` +
       `-e STJORNA_SETUP_TOKEN=${SETUP_TOKEN} ` +
