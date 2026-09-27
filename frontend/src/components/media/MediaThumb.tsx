@@ -1,6 +1,6 @@
 import { Show } from 'solid-js';
 import { Video, FileText } from 'lucide-solid';
-import { getMediaFileUrl } from '~/utils/mediaUrl';
+import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
 import type { Media } from '~/types';
 
 interface MediaThumbProps {
@@ -29,7 +29,7 @@ export default function MediaThumb(props: MediaThumbProps) {
           src={getMediaFileUrl(props.media.id, props.media.file!, props.thumb ? { thumb: props.thumb } : undefined)}
           alt={props.media.filename || ''}
           class={props.class ?? 'w-full h-16 object-cover'}
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
         />
       </Show>
       <Show when={!isImage() && isVideo()}>
@@ -40,7 +40,7 @@ export default function MediaThumb(props: MediaThumbProps) {
             muted
             playsinline
             preload="metadata"
-            onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
+            onError={(e) => { const el = e.currentTarget as HTMLVideoElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
           />
           <Video size={18} class="absolute inset-0 m-auto text-gray-900 dark:text-white drop-shadow pointer-events-none" />
         </div>

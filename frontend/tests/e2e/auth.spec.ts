@@ -45,10 +45,9 @@ test.describe('Auth flows', () => {
     const context = getContext(page);
     await page.goto(context.frontendUrl + '/login');
 
-    await page.getByRole('button', { name: 'User Login' }).click();
     await page.getByLabel('Email').fill(context.credentials.adminEmail);
     await page.getByLabel('Password').fill(context.credentials.adminPassword);
-    await page.getByRole('button', { name: 'Sign In' }).click();
+    await page.getByRole('button', { name: 'Sign In', exact: true }).click();
 
     await expect(page.locator('.text-red-700, .dark\\:text-red-400')).toBeVisible({ timeout: 10000 });
   });

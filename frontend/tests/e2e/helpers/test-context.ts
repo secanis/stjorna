@@ -19,22 +19,24 @@ export class TestContext {
     this.tenantId = getTenantId();
   }
 
+  // /login is the tenant-user form; superusers sign in on /superlogin.
+  // Both render LoginCard, whose submit button is "Sign In". Match it
+  // exactly: Playwright's name match is a case-insensitive substring, and
+  // the "Superuser login" link on /login would otherwise also match.
   async loginAsAdmin() {
-    await this.page.goto(this.frontendUrl + '/login');
-    await this.page.getByRole('button', { name: 'Admin Login' }).click();
-    await this.page.getByLabel('Email').fill(this.credentials.adminEmail);
-    await this.page.getByLabel('Password').fill(this.credentials.adminPassword);
-    await this.page.getByRole('button', { name: 'Sign In' }).click();
-    await this.page.waitForURL('**/');
+    await this.login('/superlogin', this.credentials.adminEmail, this.credentials.adminPassword);
   }
 
   async loginAsUser() {
-    await this.page.goto(this.frontendUrl + '/login');
-    await this.page.getByRole('button', { name: 'User Login' }).click();
-    await this.page.getByLabel('Email').fill(this.credentials.userEmail);
-    await this.page.getByLabel('Password').fill(this.credentials.userPassword);
-    await this.page.getByRole('button', { name: 'Sign In' }).click();
-    await this.page.waitForURL('**/');
+    await this.login('/login', this.credentials.userEmail, this.credentials.userPassword);
+  }
+
+  private async login(path: string, email: string, password: string) {
+    await this.page.goto(this.frontendUrl + path);
+    await this.page.getByLabel('Email').fill(email);
+    await this.page.getByLabel('Password').fill(password);
+    await this.page.getByRole('button', { name: 'Sign In', exact: true }).click();
+    await this.page.waitForURL((url) => url.pathname === '/');
   }
 
   async waitForDashboard() {

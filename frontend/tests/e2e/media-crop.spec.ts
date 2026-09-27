@@ -18,7 +18,7 @@ test.describe('Media Image Cropping', () => {
     await page.locator('#media-filename').waitFor({ state: 'visible', timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
 
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
     await expect(page.locator('h1:has-text("Edit Media")')).toBeVisible({ timeout: 10000 });
 
     const editButton = page.locator('button[title="Edit image"]');
@@ -37,7 +37,7 @@ test.describe('Media Image Cropping', () => {
 
     await expect(dialog).toHaveCount(0, { timeout: 10000 });
     await expect(page.locator('h1:has-text("Edit Media")')).toBeVisible({ timeout: 10000 });
-    await expect(page).toHaveURL(/\/media\/[a-z0-9]+$/);
+    await expect(page).toHaveURL(/\/media\/(?!new$)[a-z0-9]+$/);
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(page.locator('text=Media saved successfully!')).toBeVisible({ timeout: 15000 });
@@ -52,7 +52,7 @@ test.describe('Media Image Cropping', () => {
     await page.locator('#media-filename').waitFor({ state: 'visible', timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
 
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
 
     await page.locator('button[title="Edit image"]').click();
 

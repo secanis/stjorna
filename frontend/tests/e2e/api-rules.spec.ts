@@ -1,9 +1,14 @@
-import { test, expect, getContext, pb } from './helpers/test-context';
+import PocketBase from 'pocketbase';
+import { test, expect, getContext } from './helpers/test-context';
+
+// Each test gets its own client: the `pb` exported by global-setup only
+// exists in Playwright's main process, not in the test workers.
 
 test.describe('API Rules Verification', () => {
 
   test('tenants collection: viewRule should allow authenticated users', async () => {
     const ctx = getContext(undefined as any);
+    const pb = new PocketBase(ctx.pbUrl);
     const authData = await pb.collection('users').authWithPassword(
       ctx.credentials.userEmail,
       ctx.credentials.userPassword
@@ -20,6 +25,7 @@ test.describe('API Rules Verification', () => {
 
   test('roles collection: viewRule should allow authenticated users', async () => {
     const ctx = getContext(undefined as any);
+    const pb = new PocketBase(ctx.pbUrl);
     const authData = await pb.collection('users').authWithPassword(
       ctx.credentials.userEmail,
       ctx.credentials.userPassword
@@ -35,6 +41,7 @@ test.describe('API Rules Verification', () => {
 
   test('user_tenants expand should include tenant and role data', async () => {
     const ctx = getContext(undefined as any);
+    const pb = new PocketBase(ctx.pbUrl);
     const authData = await pb.collection('users').authWithPassword(
       ctx.credentials.userEmail,
       ctx.credentials.userPassword
@@ -63,6 +70,7 @@ test.describe('API Rules Verification', () => {
 
   test('categories should be accessible with tenant filter', async () => {
     const ctx = getContext(undefined as any);
+    const pb = new PocketBase(ctx.pbUrl);
     const authData = await pb.collection('users').authWithPassword(
       ctx.credentials.userEmail,
       ctx.credentials.userPassword

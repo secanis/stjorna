@@ -81,6 +81,26 @@ function aggregateUserTenants(rows: RawUserTenant[]): AggregatedUser[] {
   }));
 }
 
+// `users` records are superuser-only since T-02, so for tenant users the
+// `user` expand above comes back empty. Fill name/email from the tenant
+// members route (admins of this tenant only; others keep the bare rows).
+async function withMemberDetails(rows: RawUserTenant[], tenantId: string): Promise<RawUserTenant[]> {
+  let members: SearchResult[] = [];
+  try {
+    const r = await pb.send(`/api/stjorna/tenants/${encodeURIComponent(tenantId)}/members`, { method: 'GET' });
+    members = r?.members || [];
+  } catch (e: any) {
+    console.warn('[fetchUsers] member details unavailable:', e?.message);
+    return rows;
+  }
+  const byId = new Map(members.map((m) => [m.id, m]));
+  return rows.map((ut) => {
+    const m = byId.get(ut.user);
+    if (!m || ut.expand?.user?.email) return ut;
+    return { ...ut, expand: { ...ut.expand, user: { id: m.id, name: m.name, email: m.email } } };
+  });
+}
+
 async function fetchUsers(): Promise<AggregatedUser[]> {
   const tenant = getCurrentTenant();
   try {
@@ -99,6 +119,7 @@ async function fetchUsers(): Promise<AggregatedUser[]> {
         sort: 'tenant',
       });
       raw = r.items as unknown as RawUserTenant[];
+      if (tenant) raw = await withMemberDetails(raw, tenant);
     }
     return aggregateUserTenants(raw);
   } catch (e: any) {

@@ -87,7 +87,7 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
     // Authenticate as admin against the PB API so we can verify
     // collection counts before/after without depending on the worker
     // process having access to a shared PocketBase client.
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     const { token } = await authRes.json();

@@ -6,7 +6,7 @@ import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
-import { getMediaFileUrl } from '~/utils/mediaUrl';
+import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Media } from '~/types';
 
@@ -80,7 +80,7 @@ export default function MediaList() {
               src={getMediaFileUrl(row.id, v, { thumb: '100x100' })}
               alt={row.filename || ''}
               class="w-full h-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
             />
           </Show>
           <Show when={row.mime_type?.startsWith('video/') && v && !row.mime_type?.startsWith('image/')}>
@@ -91,7 +91,7 @@ export default function MediaList() {
                 muted
                 playsinline
                 preload="metadata"
-                onError={(e) => { (e.target as HTMLVideoElement).style.display = 'none'; }}
+                onError={(e) => { const el = e.currentTarget as HTMLVideoElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
               />
               <Video size={20} class="absolute text-gray-900 dark:text-white drop-shadow pointer-events-none" />
             </div>

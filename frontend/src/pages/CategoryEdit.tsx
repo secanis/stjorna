@@ -4,7 +4,7 @@ import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
-import { getMediaFileUrl } from '~/utils/mediaUrl';
+import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
 import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import type { Media } from '~/types';
@@ -305,6 +305,7 @@ export default function CategoryEdit() {
                         }}
                         onError={(e) => {
                           const v = e.currentTarget as HTMLVideoElement;
+                          if (isAwaitingFileToken(v.src)) return;
                           const parent = v.parentElement as HTMLElement;
                           if (!parent) return;
                           parent.dataset.loaded = 'error';
@@ -327,6 +328,7 @@ export default function CategoryEdit() {
                     }}
                     onError={(e) => {
                       const img = e.currentTarget as HTMLImageElement;
+                      if (isAwaitingFileToken(img.src)) return;
                       const parent = img.parentElement as HTMLElement;
                       if (!parent) return;
                       parent.dataset.loaded = 'error';

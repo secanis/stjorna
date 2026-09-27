@@ -19,7 +19,13 @@ COPY pb_migrations /app/pb_migrations
 COPY pb_hooks /app/pb_hooks
 COPY entrypoint.sh /app/entrypoint.sh
 
-RUN chmod +x /app/entrypoint.sh && \
+# Create pb_data in the image so Docker seeds the VOLUME with the
+# pocketbase owner. Without it, Docker Engine creates the anonymous or
+# named volume root-owned and PB (uid 1000) exits on first write.
+# Podman chowns volumes to USER itself, which is why this only showed
+# up on real Docker (e.g. GitHub Actions).
+RUN mkdir -p /app/pb_data && \
+    chmod +x /app/entrypoint.sh && \
     chown -R pocketbase:pocketbase /app
 
 USER pocketbase

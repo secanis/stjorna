@@ -26,11 +26,10 @@ test.describe('Activities', () => {
   test('type filter narrows results', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/activities');
     await expect(page.locator('h1:has-text("Activities")')).toBeVisible({ timeout: 10000 });
-    // Wait for at least one event to render
-    await page.waitForSelector('tbody tr', { timeout: 10000 });
-
-    const before = await page.locator('tbody tr').count();
-    expect(before).toBeGreaterThan(0);
+    // Wait for at least one event to render. Poll instead of a one-shot
+    // count: the table can re-render (resource refetch) right after the
+    // first row appears, briefly reporting 0 rows.
+    await expect.poll(() => page.locator('tbody tr').count(), { timeout: 10000 }).toBeGreaterThan(0);
 
     // Filter to Category — the e2e setup seeds one category record.
     await page.locator('button:has-text("Category")').first().click();

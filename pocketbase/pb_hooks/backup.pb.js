@@ -191,7 +191,6 @@ var COLLECTION_NAMES = [
     "products",
     "media",
     "product_media",
-    "webhooks",
     "embed_configs",
     "instance_settings",
     "settings",

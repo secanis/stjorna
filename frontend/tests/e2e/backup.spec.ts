@@ -16,9 +16,9 @@ test.describe('Backup & Restore', () => {
     await ctx.waitForDashboard();
   });
 
-  test('Instance Settings shows JSON and ZIP download buttons', async ({ page }) => {
-    await page.goto(ctx.frontendUrl + '/settings/instance');
-    await page.waitForSelector('h1:has-text("Instance Settings")', { timeout: 15000 });
+  test('General Settings shows JSON and ZIP download buttons', async ({ page }) => {
+    await page.goto(ctx.frontendUrl + '/settings/general');
+    await page.waitForSelector('h1:has-text("General Settings")', { timeout: 15000 });
 
     await expect(page.getByRole('button', { name: /Download JSON/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /Download ZIP/ })).toBeVisible();
@@ -27,7 +27,7 @@ test.describe('Backup & Restore', () => {
   });
 
   test('Download JSON yields a valid manifest file', async ({ page }) => {
-    await page.goto(ctx.frontendUrl + '/settings/instance');
+    await page.goto(ctx.frontendUrl + '/settings/general');
     await page.waitForSelector('button:has-text("Download JSON")', { timeout: 15000 });
 
     const downloadPromise = page.waitForEvent('download');
@@ -44,7 +44,7 @@ test.describe('Backup & Restore', () => {
   });
 
   test('Download ZIP yields a valid zip with manifest.json inside', async ({ page }) => {
-    await page.goto(ctx.frontendUrl + '/settings/instance');
+    await page.goto(ctx.frontendUrl + '/settings/general');
     await page.waitForSelector('button:has-text("Download ZIP")', { timeout: 15000 });
 
     const downloadPromise = page.waitForEvent('download');
@@ -89,6 +89,6 @@ test.describe('Backup & Restore', () => {
 
     // Success message
     await expect(page.getByText(/Imported 3 categories, 4 products/)).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText(/v1 category images were dropped/)).toBeVisible();
+    await expect(page.getByText(/v1 category image references ignored/)).toBeVisible();
   });
 });

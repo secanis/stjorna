@@ -67,3 +67,60 @@ var USERS_SEARCH_BODY = "" +
 
 routerAdd("GET", "/api/stjorna/users/search", new Function("e", USERS_SEARCH_BODY), $apis.requireAuth());
 console.log("[stjorna-users-search] registered GET /api/stjorna/users/search");
+
+// Tenant member directory for the Users page.
+//
+// Endpoint: GET /api/stjorna/tenants/{id}/members
+//
+// T-02 locked `users` list/view to superusers, so a tenant admin's
+// user_tenants expand of `user` comes back empty and the Users table
+// showed blank names/emails. This route returns ONLY id/name/email for
+// members of ONE tenant, and only to:
+//   - superusers, or
+//   - callers holding the `admin` role in THAT tenant (admin elsewhere
+//     is not enough).
+// Everyone else gets 403 — the response never reveals whether the
+// tenant exists.
+var TENANT_MEMBERS_BODY = "" +
+  "function _reply(status,obj){" +
+      "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
+      "e.response.header().set('Cache-Control','no-store');" +
+      "e.string(status,JSON.stringify(obj));" +
+  "}" +
+  "if(!e.auth){_reply(401,{ok:false,error:{code:401,message:'unauthorized'}});return;}" +
+  "var _tid=String(e.request.pathValue('id')||'');" +
+  "if(!_tid){_reply(400,{ok:false,error:{code:400,message:'tenant id required'}});return;}" +
+  "var _deny=function(){_reply(403,{ok:false,error:{code:403,message:'only admins of this tenant can list its members'}});};" +
+  "if(!e.hasSuperuserAuth()){" +
+      "var _uid=String(e.auth.id||'');" +
+      "if(!_uid){_deny();return;}" +
+      "var _isAdmin=false;" +
+      "try{" +
+          "var _mine=$app.findRecordsByFilter('user_tenants','user={:u} && tenant={:t}','',0,0,{u:_uid,t:_tid});" +
+          "for(var _i=0;_i<_mine.length;_i++){" +
+              "var _rid=String(_mine[_i].get('role')||'');if(!_rid)continue;" +
+              "try{var _role=$app.findRecordById('roles',_rid);if(_role&&String(_role.get('name')||'')==='admin'){_isAdmin=true;break;}}catch(_){}" +
+          "}" +
+      "}catch(_){}" +
+      "if(!_isAdmin){_deny();return;}" +
+  "}" +
+  "var _members=[];" +
+  "try{" +
+      "var _rows=$app.findRecordsByFilter('user_tenants','tenant={:t}','',0,0,{t:_tid});" +
+      "var _seen={};" +
+      "for(var _j=0;_j<_rows.length;_j++){" +
+          "var _mu=String(_rows[_j].get('user')||'');" +
+          "if(!_mu||_seen[_mu])continue;_seen[_mu]=true;" +
+          "try{" +
+              "var _u=$app.findRecordById('users',_mu);" +
+              "_members.push({id:_u.id,name:String(_u.get('name')||''),email:String(_u.get('email')||'')});" +
+          "}catch(_){}" +
+      "}" +
+  "}catch(_e){" +
+      "console.log('[stjorna-users-search] members lookup failed: '+(_e&&(_e.message||_e)));" +
+      "_reply(500,{ok:false,error:{code:500,message:'members lookup failed'}});return;" +
+  "}" +
+  "_reply(200,{ok:true,members:_members});";
+
+routerAdd("GET", "/api/stjorna/tenants/{id}/members", new Function("e", TENANT_MEMBERS_BODY), $apis.requireAuth());
+console.log("[stjorna-users-search] registered GET /api/stjorna/tenants/{id}/members");

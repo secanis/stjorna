@@ -11,7 +11,7 @@ test.describe('Media list filter', () => {
 
   test('Images filter shows only image rows; Videos only video rows; All shows both', async ({ page, request }) => {
     // Seed one image and one video record via admin API.
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: 'admin@test.stjorna.local', password: 'admin12345678test' },
     });
     const { token } = await authRes.json();
