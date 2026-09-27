@@ -277,7 +277,7 @@ test.describe('Media Upload', () => {
 
   test('upload video larger than 10MB succeeds (schema allows 500MB)', async ({ request }) => {
     // Authenticate as admin so we can attach the media record to a tenant.
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: 'admin@test.stjorna.local', password: 'admin12345678test' },
     });
     expect(authRes.ok()).toBeTruthy();

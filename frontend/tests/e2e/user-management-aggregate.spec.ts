@@ -26,7 +26,7 @@ test.describe('User Management table — aggregate by user', () => {
     await ctx.loginAsAdmin();
     await page.emulateMedia({ colorScheme: 'light' });
 
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     const { token } = await authRes.json();
@@ -198,7 +198,7 @@ test.describe('User Management table — aggregate by user', () => {
     await page.waitForTimeout(1500);
 
     // API auth.
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     const { token } = await authRes.json();

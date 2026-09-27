@@ -10,7 +10,7 @@ test.describe('Media Edit Page', () => {
   });
 
   async function getAdminToken(request: any) {
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     expect(authRes.ok()).toBeTruthy();

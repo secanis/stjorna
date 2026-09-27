@@ -72,7 +72,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
 
     // Admin-authenticated API helper to seed a SECOND tenant plus a
     // media record in it (seed only carries media in testTenant).
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     const { token } = await authRes.json();
@@ -156,7 +156,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     await ctx.loginAsAdmin();
     await page.emulateMedia({ colorScheme: 'light' });
 
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     const { token } = await authRes.json();
@@ -210,7 +210,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     await ctx.loginAsAdmin();
     await page.emulateMedia({ colorScheme: 'light' });
 
-    const authRes = await request.post(`${ctx.pbUrl}/api/admins/auth-with-password`, {
+    const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     const { token } = await authRes.json();

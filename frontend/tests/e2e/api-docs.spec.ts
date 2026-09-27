@@ -98,7 +98,7 @@ test.describe('API documentation', () => {
     test('GET /api/openapi.json with an admin token returns the full 3-tier spec', async ({ page, request }) => {
         const ctx = getContext(page);
 
-        const authRes = await request.post(ctx.pbUrl + '/api/admins/auth-with-password', {
+        const authRes = await request.post(ctx.pbUrl + '/api/collections/_superusers/auth-with-password', {
             data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
         });
         expect(authRes.status()).toBe(200);

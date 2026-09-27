@@ -300,17 +300,30 @@ var SPEC = {
 };
 
 function filterSpecByTag(spec, allowed) {
+    var isAllowed = function (t) { return allowed.indexOf(t) !== -1; };
     var paths = {};
     for (var p in spec.paths) {
         var ops = {};
+        var hasOp = false;
         for (var m in spec.paths[p]) {
-            if (m === "parameters") { ops.parameters = spec.paths[p].parameters; continue; }
+            if (m === "parameters") continue;
             var op = spec.paths[p][m];
-            if (op && op.tags && op.tags.some(function (t) { return allowed.indexOf(t) !== -1; })) {
-                ops[m] = op;
+            if (op && op.tags && op.tags.some(isAllowed)) {
+                // Drop tags above the caller's tier (e.g. a ["Private","Admin"]
+                // op shown to a user) so Swagger UI doesn't render an Admin
+                // section for them.
+                var copy = {};
+                for (var k in op) copy[k] = op[k];
+                copy.tags = op.tags.filter(isAllowed);
+                ops[m] = copy;
+                hasOp = true;
             }
         }
-        if (Object.keys(ops).length > 0) paths[p] = ops;
+        // Path-level `parameters` alone is not an operation: a path whose
+        // ops were all filtered out must disappear entirely.
+        if (!hasOp) continue;
+        if (spec.paths[p].parameters) ops.parameters = spec.paths[p].parameters;
+        paths[p] = ops;
     }
     return {
         openapi: spec.openapi,

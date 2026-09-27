@@ -1,13 +1,18 @@
-import { test, expect, getContext, pb, getTenantId } from './helpers/test-context';
+import { test, expect, getContext, getTenantId } from './helpers/test-context';
 import PocketBase from 'pocketbase';
 
 // Each test creates its own PB client. The `pb` export from global-setup
 // is defined in the main process only; worker processes can't see it.
 async function getAdminPb(): Promise<PocketBase> {
   const client = new PocketBase('http://127.0.0.1:8090');
-  await client.admins.authWithPassword('admin@test.stjorna.local', 'admin12345678test');
+  await client.collection('_superusers').authWithPassword('admin@test.stjorna.local', 'admin12345678test');
   return client;
 }
+
+let pb: PocketBase;
+test.beforeAll(async () => {
+  pb = await getAdminPb();
+});
 
 test.describe('Products', () => {
   let ctx: ReturnType<typeof getContext>;
@@ -162,7 +167,7 @@ test.describe('Products', () => {
   test('create product by selecting media from library', async ({ page, request }) => {
     // Use the admin PB client to create a fresh media record (test fixture
     // is shared across tests, so we add our own to keep this test isolated).
-    const adminAuth = await request.post(ctx.pbUrl + '/api/admins/auth-with-password', {
+    const adminAuth = await request.post(ctx.pbUrl + '/api/collections/_superusers/auth-with-password', {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     expect(adminAuth.ok()).toBeTruthy();
@@ -215,7 +220,7 @@ test.describe('Products', () => {
   });
 
   test('drag-and-drop reorders selected media', async ({ page, request }) => {
-    const adminAuth = await request.post(ctx.pbUrl + '/api/admins/auth-with-password', {
+    const adminAuth = await request.post(ctx.pbUrl + '/api/collections/_superusers/auth-with-password', {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     const adminToken = (await adminAuth.json()).token;
