@@ -81,10 +81,14 @@ jobs:
             context: pocketbase
             dockerfile: pocketbase/Dockerfile
             registry: docker.io/secanis/stjorna-pocketbase
+            readme: docker/pocketbase.md
+            short_description: STJÓRNA backend — PocketBase v0.40 with STJÓRNA hooks, migrations and OpenAPI pre-installed.
           - name: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
             registry: docker.io/secanis/stjorna-frontend
+            readme: docker/frontend.md
+            short_description: STJÓRNA frontend — SolidJS SPA served by nginx-unprivileged, pairs with stjorna-pocketbase.
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-buildx-action@v4
@@ -135,6 +139,23 @@ jobs:
           # matrix entries (matrix is built before steps run).
           build-args: |
             ${{ matrix.name == 'frontend' && format('STJORNA_VERSION={0}\nSTJORNA_COMMIT={1}', steps.version.outputs.tag, github.sha) || '' }}
+      # Sync the Docker Hub repo description + full README from
+      # docker/<name>.md so the published image page documents itself.
+      # Runs after the image push so the page only updates when the
+      # push actually succeeded. Failures here do not roll back the
+      # image — log them and continue.
+      - name: Sync Docker Hub description
+        if: success()
+        continue-on-error: true
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          # matrix.registry is the full push target (docker.io/secanis/...);
+          # dockerhub-description wants the bare namespace/name form.
+          repository: ${{ matrix.registry | replace('docker.io/', '') }}
+          readme-filepath: ${{ matrix.readme }}
+          short-description: ${{ matrix.short_description }}
 
   # -------------------------------------------------------------------------
   # 2. Bootstrap the gh-pages branch (orphan + empty commit) so that
@@ -284,6 +305,12 @@ jobs:
           mark_as_latest: true
           # Push the chart + index.yaml to the gh-pages branch
           pages_branch: gh-pages
+          # Skip the GitHub Release for the chart. The tag push itself
+          # already creates `v3.0.0-rc8`; chart-releaser would otherwise
+          # create a second release named `stjorna-3.0.0-rc8` which
+          # looks like a duplicate. The .tgz is still served from the
+          # gh-pages branch via `helm install` from the Helm repo.
+          create_release: false
 
   # -------------------------------------------------------------------------
   # 4. Publish the static site (landing + Swagger UI) to gh-pages.
