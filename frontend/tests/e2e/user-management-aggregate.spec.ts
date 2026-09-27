@@ -86,13 +86,13 @@ test.describe('User Management table — aggregate by user', () => {
     await page.goto(ctx.frontendUrl + '/users');
     await page.waitForSelector('tbody tr');
 
-    // Order is locked: Name, Email, Tenants. Role column was removed
-    // (roles now live inline per membership). Actions column was
+    // Order is locked: Name, Email, Auth, Tenants. Role column was
+    // removed (roles now live inline per membership). Actions column was
     // removed (Remove X is per-membership inline).
-    expect.poll(
+    await expect.poll(
       async () => page.locator('thead th').allTextContents(),
       { timeout: 10000, intervals: [100] }
-    ).toEqual(['Name', 'Email', 'Tenants']);
+    ).toEqual(['Name', 'Email', 'Auth', 'Tenants']);
   });
 
   test('admin: inline role select changes role of just that one membership, leaves others untouched', async ({ page }) => {
@@ -250,13 +250,18 @@ test.describe('User Management table — aggregate by user', () => {
     await ctx.loginAsUser();
     await page.emulateMedia({ colorScheme: 'light' });
     await ctx.waitForDashboard();
+    // Earlier tests link this user to extra tenants as editor, and the
+    // server-side last_tenant can point at one of them. Pin the seeded
+    // tenant, where the user is admin, so the member details (name/email,
+    // admin-only since T-02) are available.
+    await page.evaluate((id) => localStorage.setItem('stjorna_current_tenant', id!), ctx.tenantId);
     await page.goto(ctx.frontendUrl + '/users');
     await page.waitForTimeout(2000);
 
-    expect.poll(
+    await expect.poll(
       async () => page.locator('thead th').allTextContents(),
       { timeout: 10000, intervals: [100] }
-    ).toEqual(['Name', 'Email', 'Tenants']);
+    ).toEqual(['Name', 'Email', 'Auth', 'Tenants']);
 
     await page.waitForSelector('tbody tr', { timeout: 10000 });
     await page.waitForSelector('tbody tr [data-membership-tenant-id]', { timeout: 5000 });
