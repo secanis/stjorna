@@ -4,6 +4,7 @@ import {
     getMediaFileUrl,
     getMediaFileUrlAbsolute,
     buildAbsolutePath,
+    isAwaitingFileToken,
     _setCachedFileTokenForTest,
     _clearCachedFileTokenForTest,
 } from './mediaUrl';
@@ -134,5 +135,21 @@ describe('T-08: file-token cache never holds the auth JWT', () => {
         const url = getMediaFileUrl('rec1', 'file.png');
         expect(url).toContain('token=FILE-TOKEN-FROM-GETTOKEN');
         expect(url).not.toContain('AUTH-JWT-DO-NOT-LEAK');
+    });
+});
+
+describe('isAwaitingFileToken', () => {
+    it('is true for a protected media URL rendered before the file token arrived', () => {
+        expect(isAwaitingFileToken('/api/files/media/rec1/file.png?thumb=100x100')).toBe(true);
+        expect(isAwaitingFileToken('http://localhost:4173/api/files/media/rec1/file.png')).toBe(true);
+    });
+
+    it('is false once the URL carries a token, so real failures still hide the element', () => {
+        expect(isAwaitingFileToken('/api/files/media/rec1/file.png?token=abc&thumb=100x100')).toBe(false);
+    });
+
+    it('is false for non-media URLs and empty src', () => {
+        expect(isAwaitingFileToken('')).toBe(false);
+        expect(isAwaitingFileToken('blob:http://localhost:4173/uuid')).toBe(false);
     });
 });

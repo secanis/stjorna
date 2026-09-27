@@ -163,10 +163,13 @@ test.describe('API documentation', () => {
         await expect(swaggerRoot).toBeVisible();
         await expect(swaggerRoot.locator('.swagger-ui')).toBeVisible({ timeout: 15000 });
 
-        // A user login sees Public + Private, but NOT the Admin section
-        await expect(page.locator('.swagger-ui section:has-text("Public")').first()).toBeVisible({ timeout: 10000 });
-        await expect(page.locator('.swagger-ui section:has-text("Private")').first()).toBeVisible();
-        await expect(page.locator('.swagger-ui section:has-text("Admin")')).toHaveCount(0);
+        // A user login sees Public + Private, but NOT the Admin section.
+        // Match Swagger UI's tag headers by id: `:has-text("Admin")` is a
+        // case-insensitive substring match and also hits operation
+        // summaries like "Get user (self or admin)".
+        await expect(page.locator('.swagger-ui #operations-tag-Public')).toBeVisible({ timeout: 10000 });
+        await expect(page.locator('.swagger-ui #operations-tag-Private')).toBeVisible();
+        await expect(page.locator('.swagger-ui #operations-tag-Admin')).toHaveCount(0);
     });
 
     test('API Docs sidebar link is visible to editor+', async ({ page }) => {

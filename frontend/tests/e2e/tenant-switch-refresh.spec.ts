@@ -54,6 +54,13 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     return page.locator(`a[href="${path}"] span`).last().textContent();
   }
 
+  /** Helper: a tenant's media total from PB, as the badge renders it. */
+  async function mediaCount(request: any, pbUrl: string, headers: Record<string, string>, tenantId: string): Promise<string> {
+    const filter = encodeURIComponent(`tenant="${tenantId}"`);
+    const res = await request.get(`${pbUrl}/api/collections/media/records?perPage=1&filter=${filter}`, { headers });
+    return String((await res.json()).totalItems);
+  }
+
   /** Switch tenant via the header dropdown UI. */
   async function switchViaDropdown(page: any, tenantLabel: string) {
     const trigger = page.locator('div.relative.group').filter({ hasText: 'Test Company' }).first();
@@ -135,7 +142,11 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
 
     const beforeCells = await tbodyCellsText(page);
     expect(beforeCells).toContain('test-image.png');
-    expect(await sidebarBadge(page, '/media')).toBe('1');
+    // Other specs upload into the shared seed tenant, so its count is
+    // whatever PB says — not a hardcoded 1.
+    expect(await sidebarBadge(page, '/media')).toBe(
+      await mediaCount(request, ctx.pbUrl, authHeader, seedTenant.id),
+    );
 
     // Click the dropdown, choose the new tenant.
     await switchViaDropdown(page, `Switch T ${stamp}`);
@@ -244,7 +255,11 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     await page.goto(ctx.frontendUrl + '/media');
     await page.waitForTimeout(1500);
 
-    expect(await sidebarBadge(page, '/media')).toBe('1');
+    // Other specs upload into the shared seed tenant, so its count is
+    // whatever PB says — not a hardcoded 1.
+    expect(await sidebarBadge(page, '/media')).toBe(
+      await mediaCount(request, ctx.pbUrl, authHeader, seedTenant.id),
+    );
 
     await switchViaDropdown(page, `Empty T ${stamp}`);
 

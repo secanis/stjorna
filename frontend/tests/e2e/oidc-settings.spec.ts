@@ -1,13 +1,11 @@
 import { test, expect, getContext } from './helpers/test-context';
 
 test.describe('OIDC settings section', () => {
-  test('admin sees OIDC settings inside the main Settings page', async ({ page }) => {
+  test('admin sees OIDC settings on /settings/oidc', async ({ page }) => {
     const ctx = getContext(page);
     await ctx.loginAsAdmin();
 
-    await page.goto(ctx.frontendUrl + '/settings');
-    await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Instance Settings' })).toBeVisible();
+    await page.goto(ctx.frontendUrl + '/settings/oidc');
     await expect(page.getByRole('heading', { name: 'OIDC Settings' })).toBeVisible();
 
     // Form should load with sensible defaults.

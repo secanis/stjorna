@@ -89,6 +89,6 @@ test.describe('Backup & Restore', () => {
 
     // Success message
     await expect(page.getByText(/Imported 3 categories, 4 products/)).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText(/v1 category images were dropped/)).toBeVisible();
+    await expect(page.getByText(/v1 category image references ignored/)).toBeVisible();
   });
 });

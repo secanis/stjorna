@@ -36,7 +36,7 @@ test.describe('Media Upload', () => {
 
   test('selecting file shows preview and form fields', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
     await page.locator('#media-file').setInputFiles({
@@ -59,7 +59,7 @@ test.describe('Media Upload', () => {
 
   test('upload image creates media record and redirects to edit page', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
     await page.locator('#media-file').setInputFiles({
@@ -71,14 +71,14 @@ test.describe('Media Upload', () => {
     await page.waitForSelector('#media-filename', { timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
 
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
     await expect(page.locator('h1:has-text("Edit Media")')).toBeVisible({ timeout: 10000 });
     await expect(page.locator('#media-filename')).toHaveValue('e2e-upload.png');
   });
 
   test('uploaded media appears in media list', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const uniqueName = `e2e-list-${Date.now()}.png`;
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
@@ -90,7 +90,7 @@ test.describe('Media Upload', () => {
 
     await page.waitForSelector('#media-filename', { timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
 
     await page.goto(ctx.frontendUrl + '/media');
     await page.waitForLoadState('networkidle');
@@ -99,7 +99,7 @@ test.describe('Media Upload', () => {
 
   test('uploaded media preview image is visible in list', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const uniqueName = `e2e-preview-${Date.now()}.png`;
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
@@ -111,7 +111,7 @@ test.describe('Media Upload', () => {
 
     await page.waitForSelector('#media-filename', { timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
 
     await page.goto(ctx.frontendUrl + '/media');
     await page.waitForLoadState('networkidle');
@@ -123,7 +123,7 @@ test.describe('Media Upload', () => {
 
   test('rename uploaded file in form before save', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
     await page.locator('#media-file').setInputFiles({
@@ -137,7 +137,7 @@ test.describe('Media Upload', () => {
     await expect(page.locator('#media-filename')).toHaveValue('renamed.png');
 
     await page.getByRole('button', { name: 'Upload' }).click();
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
 
     await page.goto(ctx.frontendUrl + '/media');
     await page.waitForLoadState('networkidle');
@@ -146,7 +146,7 @@ test.describe('Media Upload', () => {
 
   test('upload button is disabled without file', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const uploadButton = page.getByRole('button', { name: 'Upload' });
     await expect(uploadButton).toBeDisabled();
@@ -154,7 +154,7 @@ test.describe('Media Upload', () => {
 
   test('clear pending file button removes preview', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
     await page.locator('#media-file').setInputFiles({
@@ -188,7 +188,7 @@ test.describe('Media Upload', () => {
   test('regular user (admin role) can delete media they did not create', async ({ page }) => {
     const uniqueName = `delete-perm-test-${Date.now()}.png`;
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
     await page.locator('#media-file').setInputFiles({
@@ -199,7 +199,7 @@ test.describe('Media Upload', () => {
 
     await page.waitForSelector('#media-filename', { timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
 
     await page.goto(ctx.frontendUrl + '/media');
     await page.waitForLoadState('networkidle');
@@ -228,7 +228,7 @@ test.describe('Media Upload', () => {
 
   test('list image src includes auth token for protected file URLs', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
     await page.locator('#media-file').setInputFiles({
@@ -239,7 +239,7 @@ test.describe('Media Upload', () => {
 
     await page.waitForSelector('#media-filename', { timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
 
     await page.goto(ctx.frontendUrl + '/media');
     await page.waitForLoadState('networkidle');
@@ -254,7 +254,7 @@ test.describe('Media Upload', () => {
 
   test('edit image src includes auth token for protected file URLs', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
-    await page.waitForSelector('#media-file', { timeout: 15000 });
+    await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
     const pngBuffer = Buffer.from(PNG_BASE64, 'base64');
     const filename = `edit-token-test-${Date.now()}.png`;
@@ -266,13 +266,15 @@ test.describe('Media Upload', () => {
 
     await page.waitForSelector('#media-filename', { timeout: 10000 });
     await page.getByRole('button', { name: 'Upload' }).click();
-    await page.waitForURL(/\/media\/[a-z0-9]+$/, { timeout: 15000 });
+    await page.waitForURL(/\/media\/(?!new$)[a-z0-9]+$/, { timeout: 15000 });
+    const recordId = new URL(page.url()).pathname.split('/').pop()!;
 
-    const editImgSrc = await page.locator('img').first().getAttribute('src');
-    expect(editImgSrc).toBeTruthy();
-    expect(editImgSrc).toContain('/api/files/media/');
-    expect(editImgSrc).toContain('token=');
-    expect(editImgSrc).toContain(filename);
+    // Right after upload the page still shows the local blob: preview;
+    // reload so the edit page renders the stored (protected) file. PB
+    // renames uploads, so match on the record id, not the filename.
+    await page.reload();
+    const editImg = page.locator(`img[src*="/api/files/media/${recordId}/"]`).first();
+    await expect(editImg).toHaveAttribute('src', /[?&]token=/, { timeout: 10000 });
   });
 
   test('upload video larger than 10MB succeeds (schema allows 500MB)', async ({ request }) => {

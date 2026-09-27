@@ -12,8 +12,9 @@ test.describe('Sidebar', () => {
     await expect(sidebar.locator('text=Categories')).toBeHidden();
     await expect(sidebar.locator('text=Products')).toBeHidden();
     await expect(sidebar.locator('text=Settings')).toBeVisible();
-    await expect(sidebar.locator('text=Users')).toBeVisible();
-    await expect(sidebar.locator('text=Tenants')).toBeVisible();
+    // By href: `text=Users` also matches "Superusers".
+    await expect(sidebar.locator('a[href="/users"]')).toBeVisible();
+    await expect(sidebar.locator('a[href="/tenants"]')).toBeVisible();
     await expect(sidebar.locator('a[href="/activities"]')).toBeVisible();
 
     const tenantsCount = sidebar.locator('a[href="/tenants"] span').first();
@@ -33,8 +34,13 @@ test.describe('Sidebar', () => {
     await expect(sidebar.locator('a[href="/products"]')).toBeVisible();
     await expect(sidebar.locator('a[href="/activities"]')).toBeVisible();
     await expect(sidebar.locator('text=Settings')).toBeVisible();
-    await expect(sidebar.locator('a[href="/users"]')).toBeHidden();
+    // The seeded user holds the tenant `admin` role, which the sidebar
+    // grants Users (roles: ['admin', 'pb_admin']). Superuser-only
+    // entries must stay hidden.
+    await expect(sidebar.locator('a[href="/users"]')).toBeVisible();
     await expect(sidebar.locator('a[href="/tenants"]')).toBeHidden();
+    await expect(sidebar.locator('a[href="/api-keys"]')).toBeHidden();
+    await expect(sidebar.locator('a[href="/superusers"]')).toBeHidden();
   });
 
   test('active nav item is highlighted', async ({ page }) => {

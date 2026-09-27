@@ -122,6 +122,20 @@ function buildFileUrl(recordId: string, filename: string, options: MediaUrlOptio
     return buildAbsolutePath(pbOrigin(), path, pageProtocol());
 }
 
+// True when `src` is a protected media URL built before the file token
+// arrived. That request fails by design and the element re-renders with
+// the token URL a moment later, so onError handlers must not hide or
+// replace the element for it — otherwise the thumbnail stays hidden after
+// the valid URL loads.
+export function isAwaitingFileToken(src: string): boolean {
+    if (!src || !src.includes('/api/files/media/')) return false;
+    try {
+        return !new URL(src, 'http://localhost').searchParams.has('token');
+    } catch {
+        return false;
+    }
+}
+
 // Reactive: re-runs when the cached file-token signal updates.
 // Call sites in JSX (`src={getMediaFileUrl(...)}`) re-render when
 // the token arrives.

@@ -39,11 +39,20 @@ async function seedTenant(pb: PocketBase, opts: { name: string; plan?: string })
   return t;
 }
 
+// The `pb` from global-setup only exists in Playwright's main process, so
+// each test that seeds data builds its own superuser client.
+async function adminPb(pbUrl: string, email: string, password: string): Promise<PocketBase> {
+  const client = new PocketBase(pbUrl);
+  await client.collection('_superusers').authWithPassword(email, password);
+  return client;
+}
+
 test.describe('Tenant statistics', () => {
   test('admin sees Stats link in Tenants table and reaches the page', async ({ page }) => {
     const ctx = getContext(page);
     await ctx.loginAsAdmin();
-    const t = await seedTenant(ctx.pb, { name: 'Stats Admin Tenant' });
+    const pb = await adminPb(ctx.pbUrl, ctx.credentials.adminEmail, ctx.credentials.adminPassword);
+    const t = await seedTenant(pb, { name: 'Stats Admin Tenant' });
 
     await page.goto(ctx.frontendUrl + '/tenants');
     await expect(page.getByRole('heading', { name: 'Tenants' })).toBeVisible();
@@ -60,7 +69,7 @@ test.describe('Tenant statistics', () => {
     // Our seeded tenant: 1 category, 1 product, 1 media.
     await expect(page.getByText('Products', { exact: true }).first()).toBeVisible();
     // Cleanup
-    await ctx.pb.collection('tenants').delete(t.id);
+    await pb.collection('tenants').delete(t.id);
   });
 
   test('tenant user lands on /stats from sidebar and sees own tenant data', async ({ page }) => {
