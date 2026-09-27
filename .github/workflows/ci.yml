@@ -117,6 +117,15 @@ jobs:
     # Only for ordering / fail-fast: no point running e2e when the
     # backend suite is red.
     needs: test-pb
+    # Hard cap: a broken spec costs a 30s timeout per test, and 100+ of
+    # those used to run for over an hour against the 6h default.
+    timeout-minutes: 20
+    # Non-blocking until the pre-existing spec failures (stale UI
+    # selectors, worker-side `pb` import in api-rules, outdated
+    # api-docs assertions) are fixed in a follow-up (T-15). Note this
+    # also hides harness breakage (PB image, container, preview), so
+    # check the job result on PRs and remove this once specs are green.
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

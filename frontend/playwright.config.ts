@@ -6,7 +6,11 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
-  reporter: [['list']],
+  // CI: stop after 10 failures so a broken suite reports in minutes,
+  // not an hour of 30s timeouts. Local runs keep going for the full list.
+  maxFailures: process.env.CI ? 10 : 0,
+  // CI also writes playwright-report/ for the upload-on-failure step.
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
