@@ -7,7 +7,9 @@ import PocketBase from 'pocketbase';
 const execAsync = promisify(exec);
 
 const PB_PORT = 8090;
-const PB_URL = `http://localhost:${PB_PORT}`;
+// 127.0.0.1, not 'localhost': PB binds IPv4 only and 'localhost' may
+// resolve to ::1 first on CI runners (mirrors pocketbase/setup.ts).
+const PB_URL = `http://127.0.0.1:${PB_PORT}`;
 const FRONTEND_URL = 'http://localhost:4173';
 const ADMIN_EMAIL = 'admin@test.stjorna.local';
 const ADMIN_PASSWORD = 'admin12345678test';

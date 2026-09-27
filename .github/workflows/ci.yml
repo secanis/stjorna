@@ -106,19 +106,16 @@ jobs:
 
   # -------------------------------------------------------------------------
   # Frontend E2E: Playwright against the built frontend + a real PB
-  # T-09: this job used to be missing entirely. It depends on the PB
-  # image (built by `build-images` for pushes, or by the local
-  # test-pb step for PRs from forks) and the FE image is built via
-  # `npm run build` then served by Playwright's webServer config
-  # (`npm run preview`).
+  # T-09: this job used to be missing entirely. Jobs run on separate
+  # runners, so the PB image from `test-pb` is NOT available here —
+  # this job builds its own. The frontend is built with `npm run build`
+  # and served by Playwright's webServer config (`npm run preview`).
   # -------------------------------------------------------------------------
   test-e2e:
     name: Frontend (Playwright e2e)
     runs-on: ubuntu-latest
-    # The e2e suite spins up its own PB container via the e2e
-    # global-setup; the PB image built by `test-pb` is reused. We
-    # depend on test-pb so the image is in the local docker daemon
-    # before Playwright starts.
+    # Only for ordering / fail-fast: no point running e2e when the
+    # backend suite is red.
     needs: test-pb
     steps:
       - uses: actions/checkout@v5
@@ -133,13 +130,29 @@ jobs:
       - name: Install Playwright browsers
         working-directory: frontend
         run: npx playwright install --with-deps chromium
+      - name: Build PocketBase image
+        # The e2e global-setup starts a PB container from this tag.
+        run: |
+          docker buildx build \
+            --tag localhost/stjorna-pocketbase:test \
+            --load \
+            --file pocketbase/Dockerfile \
+            pocketbase
+      - name: Build frontend
+        # `vite preview` serves dist/; without it every request 404s and
+        # Playwright's webServer readiness check times out.
+        working-directory: frontend
+        run: npm run build
       - name: Run Playwright
         working-directory: frontend
-        # The e2e global-setup starts a fresh PB container from
-        # localhost/stjorna-pocketbase:test (built by test-pb) and
-        # waits for the migration-managed `tenants` collection to
-        # be reachable before the suite starts. No health-sleep
-        # races.
+        # The e2e global-setup starts a fresh PB container and waits for
+        # the migration-managed `tenants` collection before the suite
+        # starts.
+        env:
+          # Preview proxy target for /api/. PB binds IPv4 only, so avoid
+          # 'localhost' resolving to ::1. Set here (runtime), not on the
+          # build step, so the bundle keeps same-origin API calls.
+          VITE_PB_URL: http://127.0.0.1:8090
         run: npm run test:e2e:fast
       - name: Upload Playwright report on failure
         if: failure()

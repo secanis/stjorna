@@ -4,7 +4,7 @@ import PocketBase from 'pocketbase';
 // Each test creates its own PB client. The `pb` export from global-setup
 // is defined in the main process only; worker processes can't see it.
 async function getAdminPb(): Promise<PocketBase> {
-  const client = new PocketBase('http://localhost:8090');
+  const client = new PocketBase('http://127.0.0.1:8090');
   await client.admins.authWithPassword('admin@test.stjorna.local', 'admin12345678test');
   return client;
 }
