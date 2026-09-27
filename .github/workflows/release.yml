@@ -81,12 +81,14 @@ jobs:
             context: pocketbase
             dockerfile: pocketbase/Dockerfile
             registry: docker.io/secanis/stjorna-pocketbase
+            repo: secanis/stjorna-pocketbase
             readme: docker/pocketbase.md
             short_description: STJÓRNA backend — PocketBase v0.40 with STJÓRNA hooks, migrations and OpenAPI pre-installed.
           - name: frontend
             context: frontend
             dockerfile: frontend/Dockerfile
             registry: docker.io/secanis/stjorna-frontend
+            repo: secanis/stjorna-frontend
             readme: docker/frontend.md
             short_description: STJÓRNA frontend — SolidJS SPA served by nginx-unprivileged, pairs with stjorna-pocketbase.
     steps:
@@ -151,9 +153,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          # matrix.registry is the full push target (docker.io/secanis/...);
-          # dockerhub-description wants the bare namespace/name form.
-          repository: ${{ matrix.registry | replace('docker.io/', '') }}
+          repository: ${{ matrix.repo }}
           readme-filepath: ${{ matrix.readme }}
           short-description: ${{ matrix.short_description }}
 
