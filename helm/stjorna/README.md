@@ -292,6 +292,27 @@ helm install stjorna ./helm/stjorna \
   --set ingress.hosts[0].host=stjorna.yourdomain.com
 ```
 
+### Secret layout
+
+The chart reads from **two separate Secrets**:
+
+| Secret (default name) | Keys | Source template |
+|---|---|---|
+| `<release>-stjorna-pb-secret` | `PB_SECRET` | `templates/secret.yaml` |
+| `<release>-stjorna-superuser` | `PB_SUPERUSER_EMAIL`, `PB_SUPERUSER_PASSWORD` | `templates/superuser-secret.yaml` |
+
+Each Secret is referenced independently via `pocketbase.secret.existingSecret` and `pocketbase.superuser.existingSecret`. **Keep them separate** — bundling `PB_SUPERUSER_*` keys into the `PB_SECRET` Secret is a common mistake when an ExternalSecret / ESO template fetches both from the same upstream object. The deployment ignores the extra keys (it only reads `PB_SUPERUSER_*` from the dedicated Secret), but they create confusion about which Secret is authoritative.
+
+If you want one Secret for everything (single rotation point), point both values at the same name and accept that rotating the password requires touching the same Secret as the encryption key:
+
+```yaml
+pocketbase:
+  secret:
+    existingSecret: stjorna-pb-secret
+  superuser:
+    existingSecret: stjorna-pb-secret   # same Secret, different keys
+```
+
 ### Custom image registry / private registry
 
 ```yaml

@@ -100,6 +100,14 @@ pocketbase:
     mountFromConfigMap: true
   # -- PB_SECRET source. EITHER supply an existing Secret (name + key),
   # OR leave both empty and the chart will auto-generate a Secret on install.
+  #
+  # Secret layout: this Secret holds PB_SECRET ONLY. Do NOT also put
+  # PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD here — the deployment
+  # reads those from `pocketbase.superuser.existingSecret` (separate
+  # Secret), so any extra keys in this one are dead weight and create
+  # confusion about which Secret is authoritative. Common source of the
+  # mistake: an ExternalSecret / ESO template that bundles both into
+  # one upstream key.
   secret:
     # -- Name of an existing Kubernetes Secret containing PB_SECRET. If empty,
     # the chart auto-generates one (pre-install hook).
