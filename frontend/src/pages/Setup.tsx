@@ -171,12 +171,18 @@ export default function Setup() {
         throw new Error(`Upload to S3 failed: ${categorizeS3Error(e)}`);
       }
 
-      const fileUrl = `${pbUrl()}/api/files/media/${testRecord.id}/${testRecord.file}`;
+      // T-08: media.file is protected, so file requests need a short-lived
+      // file token (not the auth JWT). Fetch one and append it to the URL.
+      let fileToken: string;
+      try {
+        fileToken = await setupPb.files.getToken();
+      } catch (e: any) {
+        throw new Error(`Could not get file token: ${e?.message || e}`);
+      }
+      const fileUrl = setupPb.files.getURL(testRecord, testRecord.file, { token: fileToken });
       let fileRes: Response;
       try {
-        fileRes = await fetch(fileUrl, {
-          headers: { Authorization: setupPb.authStore.token },
-        });
+        fileRes = await fetch(fileUrl);
       } catch (e: any) {
         throw new Error(`Could not reach S3 file URL: ${e?.message || e}`);
       }
