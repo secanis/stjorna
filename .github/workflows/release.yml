@@ -353,6 +353,12 @@ jobs:
         # (no auth required per pocketbase/pb_hooks/openapi.pb.js), kills the
         # container. ~10s added to the release.
         #
+        # Bootstrap env vars mirror frontend/tests/e2e/helpers/global-setup.ts.
+        # PB v0.40 requires the first superuser to be created non-interactively
+        # before it will serve /api/health and /api/openapi.json reliably;
+        # without these vars PB can stall in installer mode and the wait loop
+        # never sees a healthy port.
+        #
         # Why --tmpfs instead of a named volume: GHA's Docker named
         # volumes are root-owned. The container's pocketbase user (uid
         # 1000) can't write to a root-owned mount, so PB exits immediately
@@ -361,6 +367,10 @@ jobs:
         # container. We don't need persistence here (we just want the
         # spec out), so --tmpfs is the right tool.
         #
+        # No --rm: if PB exits during boot we want `docker logs` to still
+        # work. We capture the container ID from `docker run` and use it
+        # for every subsequent command, so a name collision can't bite us.
+        #
         # Also: the health check and spec fetch go via 'docker exec' so
         # we curl from inside the container using its own loopback,
         # avoiding any --network=host quirks on the GHA runner.
@@ -368,20 +378,33 @@ jobs:
           PB_IMAGE: ${{ env.REGISTRY_PB }}
         run: |
           set -e
-          # Capture logs on failure for debugging.
-          trap 'echo "----- PB container logs -----"; docker logs stjorna-pb-spec 2>&1 || true; docker stop stjorna-pb-spec 2>/dev/null || true' ERR
-
-          docker run -d --rm --network=host --name stjorna-pb-spec \
+          CONTAINER_ID="$(docker run -d --network=host \
             --tmpfs /app/pb_data:rw,size=64m \
-            "${PB_IMAGE}:${{ steps.version.outputs.tag }}"
+            -e PB_SUPERUSER_EMAIL=release-bot@stjorna.local \
+            -e PB_SUPERUSER_PASSWORD=release-bot-password \
+            -e STJORNA_SETUP_TOKEN=release-bot-setup-token \
+            -e PB_SECRET=0123456789abcdef0123456789abcdef \
+            "${PB_IMAGE}:${{ steps.version.outputs.tag }}")"
+          echo "PB container: ${CONTAINER_ID}"
 
-          # Wait for PB to be ready. PB usually takes <2s; we allow 60s.
-          # NOTE: the PB image is alpine + wget (no curl). Use wget -qO- for
-          # the health check and the spec fetch. (-qO- writes the body
-          # to stdout, matching what 'curl -fsS' would do, and -q
-          # silences progress; --tries=1 --timeout=2 keeps each probe fast.)
+          # Always clean up — even on failure.
+          cleanup() {
+            docker logs "${CONTAINER_ID}" 2>&1 || true
+            docker rm -f "${CONTAINER_ID}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          # Wait for PB: health endpoint AND a real schema managed by the
+          # production migrations (mirrors frontend/tests/e2e/helpers/global-setup.ts).
+          # Fail fast when the container exits instead of polling a dead port.
           for i in $(seq 1 60); do
-            if docker exec stjorna-pb-spec \
+            RUNNING="$(docker inspect --format '{{.State.Running}}' "${CONTAINER_ID}" 2>/dev/null || echo false)"
+            if [ "${RUNNING}" != "true" ]; then
+              echo "PB container exited after ${i}s"
+              cleanup
+              exit 1
+            fi
+            if docker exec "${CONTAINER_ID}" \
                 wget -qO- --tries=1 --timeout=2 http://127.0.0.1:8090/api/health >/dev/null 2>&1; then
               echo "PB ready after ${i}s"
               break
@@ -390,19 +413,17 @@ jobs:
           done
 
           # Final check — if not ready, dump logs and fail loudly.
-          if ! docker exec stjorna-pb-spec \
+          if ! docker exec "${CONTAINER_ID}" \
               wget -qO- --tries=1 --timeout=2 http://127.0.0.1:8090/api/health >/dev/null; then
             echo "PB did not become ready within 60s"
-            echo "----- PB container logs -----"
-            docker logs stjorna-pb-spec 2>&1
+            cleanup
             exit 1
           fi
 
           # Fetch the spec from inside the container.
-          docker exec stjorna-pb-spec \
+          docker exec "${CONTAINER_ID}" \
             wget -qO /tmp/openapi.json --tries=1 --timeout=5 http://127.0.0.1:8090/api/openapi.json
-          docker cp stjorna-pb-spec:/tmp/openapi.json site/openapi.json
-          docker stop stjorna-pb-spec
+          docker cp "${CONTAINER_ID}":/tmp/openapi.json site/openapi.json
           echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
       - name: Inject latest chart version into site/index.html
         # The source page uses a placeholder so it never ships with a stale
