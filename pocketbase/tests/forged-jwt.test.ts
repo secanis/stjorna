@@ -134,12 +134,10 @@ describe('T-01: forged-JWT bypass is closed', () => {
       });
 
       it('POST /api/stjorna/import/:tenant — ' + name, async () => {
-        const form = new FormData();
-        form.append('file', new Blob(['{}'], { type: 'application/json' }), 'empty.json');
         const res = await fetch(getPbUrl() + '/api/stjorna/import/' + tenantId + '?source=v3', {
           method: 'POST',
-          headers: { Authorization: 'Bearer ' + token },
-          body: form,
+          headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: new TextEncoder().encode('{}'),
         });
         // requireAuth() runs first — forged tokens get 401 before the
         // tenant-admin check is even reached.
@@ -150,23 +148,19 @@ describe('T-01: forged-JWT bypass is closed', () => {
     it('POST /api/stjorna/import/:tenant rejects a viewer of a different tenant', async () => {
       const otherTenant = await pb.collection('tenants').create(createTenantFixture());
       const { pb: viewerPb } = await createTenantUser(tenantId, 'viewer');
-      const form = new FormData();
-      form.append('file', new Blob(['{}'], { type: 'application/json' }), 'empty.json');
       const res = await fetch(getPbUrl() + '/api/stjorna/import/' + otherTenant.id + '?source=v3', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + viewerPb.authStore.token },
-        body: form,
+        headers: { Authorization: 'Bearer ' + viewerPb.authStore.token, 'Content-Type': 'application/json' },
+        body: new TextEncoder().encode('{}'),
       });
       expect(res.status).toBe(403);
     });
 
     it('POST /api/stjorna/import/:tenant accepts a real superuser token (sanity)', async () => {
-      const form = new FormData();
-      form.append('file', new Blob(['{}'], { type: 'application/json' }), 'empty.json');
       const res = await fetch(getPbUrl() + '/api/stjorna/import/' + tenantId + '?source=v3', {
         method: 'POST',
-        headers: { Authorization: 'Bearer ' + pb.authStore.token },
-        body: form,
+        headers: { Authorization: 'Bearer ' + pb.authStore.token, 'Content-Type': 'application/json' },
+        body: new TextEncoder().encode('{}'),
       });
       // 200 even on empty manifest (nothing to import).
       expect(res.status).toBe(200);

@@ -10,7 +10,7 @@
 //
 // Routes:
 //   GET  /api/stjorna/export/:tenant   — tenant member, returns ZIP
-//   POST /api/stjorna/import/:tenant   — tenant admin, multipart ZIP
+//   POST /api/stjorna/import/:tenant   — tenant admin, raw ZIP or JSON body
 //
 // Implementation lives in pb_hooks/lib/backup.js and is require()d inside
 // each handler to satisfy the loader/executor VM split.

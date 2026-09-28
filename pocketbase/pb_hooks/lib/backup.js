@@ -736,36 +736,24 @@ function importHandler(e) {
 
         var contentType = "";
         try { contentType = String(e.request.header.get("Content-Type") || ""); } catch (ex) {}
-        var contentLength = "";
-        try { contentLength = String(e.request.header.get("Content-Length") || ""); } catch (ex) {}
-        console.log("[stjorna-backup] import content-type=" + contentType + " content-length=" + contentLength);
-
-        var uploaded = e.findUploadedFiles("file");
-        console.log("[stjorna-backup] uploaded count=" + (uploaded ? uploaded.length : "null"));
-        if (!uploaded || uploaded.length === 0) {
-            replyError(e, 400, "multipart file field 'file' required");
-            return;
-        }
-
-        var fileObj = uploaded[0];
-        var fileSize = 0;
-        try { fileSize = Number(fileObj.size || 0); } catch (ex) {}
-        if (fileSize > MAX_FILE_BYTES) {
-            replyError(e, 413, "backup file exceeds 500 MB limit");
-            return;
-        }
-        var fileReader = fileObj.reader.open();
-        var fileBytes;
-        try {
-            // toBytes(reader) is the PB JSVM helper (v0.29+).
-            fileBytes = toBytes(fileReader);
-        } finally {
-            try { fileReader.close(); } catch (ex) {}
-        }
 
         var source = String(e.request.url.query().get("source") || "").trim() || "v3";
         if (source !== "v1" && source !== "v3") {
             replyError(e, 400, "source must be v1 or v3");
+            return;
+        }
+
+        // Read the raw request body. The endpoint accepts either
+        // application/zip or application/json directly. We avoid multipart
+        // because Node's native fetch + PB's multipart parser are flaky
+        // together in some CI environments (multipart: NextPart: EOF).
+        var fileBytes = toBytes(e.request.body);
+        if (!fileBytes || !fileBytes.length) {
+            replyError(e, 400, "empty request body");
+            return;
+        }
+        if (fileBytes.length > MAX_FILE_BYTES) {
+            replyError(e, 413, "backup file exceeds 500 MB limit");
             return;
         }
 

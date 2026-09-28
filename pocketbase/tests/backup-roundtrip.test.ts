@@ -27,11 +27,11 @@ async function exportTenant(tenantId: string, token: string): Promise<Uint8Array
 }
 
 async function importTenant(tenantId: string, token: string, bytes: Uint8Array, source = 'v3'): Promise<any> {
-  const form = new FormData();
-  form.append('file', new Blob([bytes], { type: source === 'v1' ? 'application/json' : 'application/zip' }), 'backup.' + (source === 'v1' ? 'json' : 'zip'));
+  const contentType = source === 'v1' ? 'application/json' : 'application/zip';
   const res = await fetchWithAuth(`${getPbUrl()}/api/stjorna/import/${tenantId}?source=${source}`, token, {
     method: 'POST',
-    body: form,
+    headers: { 'Content-Type': contentType },
+    body: bytes,
   });
   const text = await res.text();
   let body: any;

@@ -49,15 +49,16 @@ export async function importBackup(args: {
   tenantId: string;
 }): Promise<ImportResult> {
   const { source, file, tenantId } = args;
-  const form = new FormData();
-  form.append('file', file);
+  const contentType = source === 'v1' ? 'application/json' : 'application/zip';
+  const arrayBuffer = await file.arrayBuffer();
 
   const res = await fetch(pb.buildUrl(`/api/stjorna/import/${tenantId}?source=${source}`), {
     method: 'POST',
     headers: {
       Authorization: pb.authStore.token,
+      'Content-Type': contentType,
     },
-    body: form,
+    body: arrayBuffer,
   });
   const text = await res.text();
   let body: any;
