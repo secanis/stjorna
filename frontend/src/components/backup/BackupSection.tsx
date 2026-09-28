@@ -123,18 +123,22 @@ export default function BackupSection(props: Props) {
           <div class="flex items-center gap-2 font-medium">
             <CheckCircle2 size={16} />
             <span>
-              Imported {result()!.stats.imported.categories} categories,{' '}
-              {result()!.stats.imported.products} products
-              <Show when={result()!.stats.imported.media > 0}>
-                , {result()!.stats.imported.media} media
+              Imported {result()!.stats.created.categories} categories,{' '}
+              {result()!.stats.created.products} products
+              <Show when={result()!.stats.created.media > 0}>
+                , {result()!.stats.created.media} media
               </Show>
               .
             </span>
           </div>
-          <Show when={result()!.stats.skipped.categories + result()!.stats.skipped.products > 0}>
+          <Show when={result()!.stats.updated.categories + result()!.stats.updated.products + result()!.stats.updated.media > 0}>
             <div class="text-gray-500 dark:text-gray-400 text-xs pl-6">
-              Skipped {result()!.stats.skipped.categories} categories,{' '}
-              {result()!.stats.skipped.products} products (already exist).
+              Updated {result()!.stats.updated.categories} categories,{' '}
+              {result()!.stats.updated.products} products
+              <Show when={result()!.stats.updated.media > 0}>
+                , {result()!.stats.updated.media} media
+              </Show>{' '}
+              (already exist).
             </div>
           </Show>
           <Show when={result()!.stats.warnings.length > 0}>

@@ -21,9 +21,8 @@ import { createTenantFixture } from './helpers/fixtures.ts';
  *   - POST   /api/stjorna/api-keys
  *   - GET    /api/stjorna/api-keys
  *   - DELETE /api/stjorna/api-keys/{id}
- *   - GET    /api/backup/json
- *   - GET    /api/backup/zip
- *   - POST   /api/backup/import
+ *   - GET    /api/stjorna/export/:tenant
+ *   - POST   /api/stjorna/import/:tenant
  *   - GET    /api/stjorna/stats
  *   - GET    /api/stjorna/users/search
  */
@@ -123,29 +122,24 @@ describe('T-01: forged-JWT bypass is closed', () => {
     });
   });
 
-  // ---- backup GET /json /zip /import ---------------------------------
+  // ---- tenant export / import ----------------------------------------
 
-  describe('backup routes reject every forged token', () => {
+  describe('tenant backup routes reject every forged token', () => {
     for (const { name, token } of forgedTokens) {
-      it('GET /api/backup/json — ' + name, async () => {
-        const res = await fetch(getPbUrl() + '/api/backup/json', {
+      it('GET /api/stjorna/export/:tenant — ' + name, async () => {
+        const res = await fetch(getPbUrl() + '/api/stjorna/export/' + tenantId, {
           headers: { Authorization: 'Bearer ' + token },
         });
         expect(res.status).toBe(401);
       });
 
-      it('GET /api/backup/zip — ' + name, async () => {
-        const res = await fetch(getPbUrl() + '/api/backup/zip', {
-          headers: { Authorization: 'Bearer ' + token },
-        });
-        expect(res.status).toBe(401);
-      });
-
-      it('POST /api/backup/import — ' + name, async () => {
-        const res = await fetch(getPbUrl() + '/api/backup/import', {
+      it('POST /api/stjorna/import/:tenant — ' + name, async () => {
+        const form = new FormData();
+        form.append('file', new Blob(['{}'], { type: 'application/json' }), 'empty.json');
+        const res = await fetch(getPbUrl() + '/api/stjorna/import/' + tenantId + '?source=v3', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-          body: JSON.stringify({ tenant: tenantId, source: 'v3', data_base64: 'e30=' }),
+          headers: { Authorization: 'Bearer ' + token },
+          body: form,
         });
         // requireAuth() runs first — forged tokens get 401 before the
         // tenant-admin check is even reached.
@@ -153,22 +147,26 @@ describe('T-01: forged-JWT bypass is closed', () => {
       });
     }
 
-    it('POST /api/backup/import rejects a tenant user who is NOT an admin of the target tenant', async () => {
+    it('POST /api/stjorna/import/:tenant rejects a viewer of a different tenant', async () => {
       const otherTenant = await pb.collection('tenants').create(createTenantFixture());
       const { pb: viewerPb } = await createTenantUser(tenantId, 'viewer');
-      const res = await fetch(getPbUrl() + '/api/backup/import', {
+      const form = new FormData();
+      form.append('file', new Blob(['{}'], { type: 'application/json' }), 'empty.json');
+      const res = await fetch(getPbUrl() + '/api/stjorna/import/' + otherTenant.id + '?source=v3', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + viewerPb.authStore.token },
-        body: JSON.stringify({ tenant: otherTenant.id, source: 'v3', data_base64: 'e30=' }),
+        headers: { Authorization: 'Bearer ' + viewerPb.authStore.token },
+        body: form,
       });
       expect(res.status).toBe(403);
     });
 
-    it('POST /api/backup/import accepts a real superuser token (sanity)', async () => {
-      const res = await fetch(getPbUrl() + '/api/backup/import', {
+    it('POST /api/stjorna/import/:tenant accepts a real superuser token (sanity)', async () => {
+      const form = new FormData();
+      form.append('file', new Blob(['{}'], { type: 'application/json' }), 'empty.json');
+      const res = await fetch(getPbUrl() + '/api/stjorna/import/' + tenantId + '?source=v3', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pb.authStore.token },
-        body: JSON.stringify({ tenant: tenantId, source: 'v3', data_base64: 'e30=' }),
+        headers: { Authorization: 'Bearer ' + pb.authStore.token },
+        body: form,
       });
       // 200 even on empty manifest (nothing to import).
       expect(res.status).toBe(200);
