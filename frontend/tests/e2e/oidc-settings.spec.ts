@@ -26,7 +26,7 @@ test.describe('OIDC settings section', () => {
     await ctx.loginAsUser();
 
     await page.goto(ctx.frontendUrl + '/settings');
-    await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Tenant Settings' })).toBeVisible();
 
     // Admin-only sections should not be rendered for regular users.
