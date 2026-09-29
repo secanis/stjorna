@@ -27,3 +27,11 @@ engines:
       - id: category/ecmascript/codestyle/UnnecessaryBlock
         paths:
           - pocketbase/pb_migrations/
+      # False positive: PMD's InaccurateNumericLiteral flags any hex
+      # literal >= 0x80000000 as lossy, but these are exact CRC32/ZIP
+      # magic-number constants — all well under Number.MAX_SAFE_INTEGER,
+      # so no precision is actually lost. See pmd/pmd#861.
+      - id: category/ecmascript/errorprone/InaccurateNumericLiteral
+        paths:
+          - pocketbase/pb_hooks/lib/backup.js
+          - helm/stjorna/files/hooks/lib/backup.js

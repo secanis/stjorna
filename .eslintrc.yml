@@ -17,6 +17,16 @@
 
 root: true
 
+# frontend/ has "type": "module" (Vite/Solid), so every .ts/.tsx/.js/.mjs
+# file uses ESM import/export syntax. Without this, Codacy's ESLint
+# falls back to espree in default (script) mode, which rejects the
+# `import`/`export` keywords outright — that's the
+# "Parsing error: The keyword 'import' is reserved" seen on effectively
+# every frontend file.
+parserOptions:
+  ecmaVersion: latest
+  sourceType: module
+
 # STJÓRN A is a monorepo. ESLint shouldn't poke at everything — only the
 # SolidJS frontend in frontend/. PocketBase hooks have their own goja
 # runtime; the helm chart and the demo app have different conventions.
@@ -37,11 +47,37 @@ ignorePatterns:
   - "playwright-report/**"
 
 overrides:
+  # .ts/.tsx (including .d.ts) need the TypeScript parser — plain espree
+  # can't parse `interface`, `declare module`, generics, etc. This is
+  # what was producing "Unexpected token module" / "Unexpected token
+  # ImportMetaEnv" on the .d.ts files.
   - files:
       - "frontend/**/*.ts"
       - "frontend/**/*.tsx"
+    parser: "@typescript-eslint/parser"
+    parserOptions:
+      ecmaVersion: latest
+      sourceType: module
+      ecmaFeatures:
+        jsx: true
+    rules:
+      # React rules are false positives for SolidJS:
+      #   - SolidJS JSX doesn't require `import React from 'react'`
+      #   - SolidJS uses `class`, not `className`
+      react/react-in-jsx-scope: off
+      react/no-unknown-property: off
+
+      # i18next: STJÓRN A has no i18n wired up yet — tracked in #183.
+      # When i18n lands, this rule comes back as a real check.
+      i18next/no-literal-string: off
+
+      # compat: STJÓRN A targets modern evergreen browsers only.
+      compat/compat: off
+
+  - files:
       - "frontend/**/*.js"
       - "frontend/**/*.jsx"
+      - "frontend/**/*.mjs"
     rules:
       # React rules are false positives for SolidJS:
       #   - SolidJS JSX doesn't require `import React from 'react'`

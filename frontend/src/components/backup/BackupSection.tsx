@@ -1,7 +1,7 @@
 import { createSignal, Show } from 'solid-js';
 import type { BackupSource, ImportResult } from '~/services/backup';
-import { importBackup } from '~/services/backup';
-import { Upload, FileWarning, CheckCircle2 } from 'lucide-solid';
+import { downloadTenantBackup, importBackup } from '~/services/backup';
+import { Download, Upload, FileWarning, CheckCircle2 } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 interface Props {
@@ -14,6 +14,20 @@ export default function BackupSection(props: Props) {
   const [importing, setImporting] = createSignal(false);
   const [result, setResult] = createSignal<ImportResult | null>(null);
   const [error, setError] = createSignal('');
+  const [downloading, setDownloading] = createSignal(false);
+  const [downloadError, setDownloadError] = createSignal('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadError('');
+    try {
+      await downloadTenantBackup(props.tenantId);
+    } catch (err: any) {
+      setDownloadError(err.message || 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const onFileChange = (e: Event) => {
     const input = e.currentTarget as HTMLInputElement;
@@ -46,7 +60,32 @@ export default function BackupSection(props: Props) {
 
   return (
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
-      <div>
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Download a ZIP of this tenant's categories, products and media.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={downloading()}
+          class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2 shrink-0`}
+        >
+          <Download size={14} />
+          {downloading() ? 'Downloading…' : 'Download ZIP'}
+        </button>
+      </div>
+
+      <Show when={downloadError()}>
+        <div class="bg-red-500/10 border border-red-500 rounded p-3 text-red-600 dark:text-red-400 text-sm flex items-start gap-2">
+          <FileWarning size={16} class="mt-0.5 flex-shrink-0" />
+          <span>{downloadError()}</span>
+        </div>
+      </Show>
+
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Restore Backup</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Import content from a backup file into this tenant. Records that already exist
@@ -123,18 +162,22 @@ export default function BackupSection(props: Props) {
           <div class="flex items-center gap-2 font-medium">
             <CheckCircle2 size={16} />
             <span>
-              Imported {result()!.stats.imported.categories} categories,{' '}
-              {result()!.stats.imported.products} products
-              <Show when={result()!.stats.imported.media > 0}>
-                , {result()!.stats.imported.media} media
+              Imported {result()!.stats.created.categories} categories,{' '}
+              {result()!.stats.created.products} products
+              <Show when={result()!.stats.created.media > 0}>
+                , {result()!.stats.created.media} media
               </Show>
               .
             </span>
           </div>
-          <Show when={result()!.stats.skipped.categories + result()!.stats.skipped.products > 0}>
+          <Show when={result()!.stats.updated.categories + result()!.stats.updated.products + result()!.stats.updated.media > 0}>
             <div class="text-gray-500 dark:text-gray-400 text-xs pl-6">
-              Skipped {result()!.stats.skipped.categories} categories,{' '}
-              {result()!.stats.skipped.products} products (already exist).
+              Updated {result()!.stats.updated.categories} categories,{' '}
+              {result()!.stats.updated.products} products
+              <Show when={result()!.stats.updated.media > 0}>
+                , {result()!.stats.updated.media} media
+              </Show>{' '}
+              (already exist).
             </div>
           </Show>
           <Show when={result()!.stats.warnings.length > 0}>
