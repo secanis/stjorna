@@ -145,6 +145,14 @@ export default function Setup() {
     setS3TestMessage('');
     setS3TestPassed(false);
     let testRecordId: string | null = null;
+    // Snapshot the current S3 settings so a failed check does not leave
+    // the instance pointing at unreachable storage (every later upload
+    // would fail). PB does not return the secret, so it is left as is.
+    let previousS3: Record<string, unknown> | null = null;
+    try {
+      const { secret: _secret, ...rest } = ((await setupPb.settings.getAll()) as any)?.s3 || {};
+      previousS3 = rest;
+    } catch {}
     try {
       await saveS3Settings(setupPb);
 
@@ -215,6 +223,9 @@ export default function Setup() {
           await setupPb.collection('media').delete(testRecordId);
         } catch {}
       }
+      try {
+        await setupPb.settings.update({ s3: previousS3 ?? { enabled: false } });
+      } catch {}
     }
   };
 

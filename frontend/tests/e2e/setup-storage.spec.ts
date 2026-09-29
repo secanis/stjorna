@@ -136,7 +136,7 @@ test.describe('Setup wizard storage step', () => {
     await page.locator('#s3-secret-key').fill('fakesecretkey');
   }
 
-  test('Test S3 does not return "not enabled" error and Continue is disabled after failure', async ({ page }) => {
+  test('Test S3 does not return "not enabled" error and Continue is disabled after failure', async ({ page, request }) => {
     await openStorageStep(page, ctx);
 
     await page.locator('text=S3 (or S3-compatible)').click();
@@ -157,6 +157,16 @@ test.describe('Setup wizard storage step', () => {
     expect(errorText).not.toContain('S3 storage filesystem is not enabled');
 
     await expect(continueBtn).toBeDisabled();
+
+    // A failed check must not leave the instance on the unreachable S3
+    // storage, otherwise every later upload fails.
+    const token = await superuserToken(ctx, request);
+    await expect
+      .poll(async () => {
+        const res = await request.get(ctx.pbUrl + '/api/settings', { headers: { Authorization: token } });
+        return (await res.json()).s3?.enabled;
+      }, { timeout: 5000 })
+      .toBe(false);
   });
 
   test('Continue stays disabled until test passes; re-test uses new values', async ({ page }) => {
