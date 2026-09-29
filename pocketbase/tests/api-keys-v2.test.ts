@@ -132,6 +132,99 @@ describe('T-05: API keys — token-mint, no plaintext, scoped, revocable', () =>
       expect(otherNames).not.toContain('B-cat-t05');
     });
 
+    it('the JWT sees its own tenant rows', async () => {
+      const { plaintext } = await issueKey(tenantA, 'scope-A-pos-' + Date.now());
+      const { status, body } = await exchange(plaintext);
+      expect(status).toBe(200);
+      const own = await fetch(
+        getPbUrl() + '/api/collections/categories/records?filter=' + encodeURIComponent('tenant="' + tenantA + '"') + '&perPage=200',
+        { headers: { Authorization: 'Bearer ' + body.token } },
+      );
+      expect(own.status).toBe(200);
+      const names = ((await own.json()).items || []).map((c: any) => c.name);
+      expect(names).toContain('A-cat-t05');
+    });
+
+    // T-05.2: read-only keys must not be able to write, even inside their
+    // own tenant. Service users get the `viewer` role; the T-02 rules
+    // only let editor/admin write.
+    it('a service-user JWT cannot create, update or delete in its own tenant', async () => {
+      const { plaintext } = await issueKey(tenantA, 'readonly-write-' + Date.now());
+      const { status, body } = await exchange(plaintext);
+      expect(status).toBe(200);
+      const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + body.token };
+
+      // Target rows owned by tenant A (created by the superuser).
+      const existing = await adminPb.collection('categories').create(
+        createCategoryFixture(tenantA, { name: 'A-cat-t05-target', slug: 'a-cat-t05-target-' + Date.now() }),
+      );
+
+      const created = await fetch(getPbUrl() + '/api/collections/categories/records', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(createCategoryFixture(tenantA, { name: 'svc-write', slug: 'svc-write-' + Date.now() })),
+      });
+      expect([400, 403]).toContain(created.status);
+
+      const patched = await fetch(getPbUrl() + '/api/collections/categories/records/' + existing.id, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ name: 'svc-renamed' }),
+      });
+      expect([400, 403, 404]).toContain(patched.status);
+
+      const deleted = await fetch(getPbUrl() + '/api/collections/categories/records/' + existing.id, {
+        method: 'DELETE',
+        headers,
+      });
+      expect([400, 403, 404]).toContain(deleted.status);
+
+      const prod = await fetch(getPbUrl() + '/api/collections/products/records', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tenant: tenantA, name: 'svc-prod', slug: 'svc-prod-' + Date.now(), active: true }),
+      });
+      expect([400, 403]).toContain(prod.status);
+
+      const media = await fetch(getPbUrl() + '/api/collections/media/records', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ tenant: tenantA, filename: 'svc.png' }),
+      });
+      expect([400, 403]).toContain(media.status);
+
+      // The superuser-created row is untouched.
+      const still = await adminPb.collection('categories').getOne(existing.id);
+      expect(still.name).toBe('A-cat-t05-target');
+    });
+
+    it('the minted JWT is short-lived (exp within ~1h) and not refreshable', async () => {
+      const { plaintext } = await issueKey(tenantA, 'ttl-' + Date.now());
+      const { status, body } = await exchange(plaintext);
+      expect(status).toBe(200);
+      const payload = JSON.parse(Buffer.from(body.token.split('.')[1], 'base64url').toString('utf8'));
+      const ttl = payload.exp - Math.floor(Date.now() / 1000);
+      expect(ttl).toBeGreaterThan(0);
+      expect(ttl).toBeLessThanOrEqual(3600 + 60);
+      expect(body.expiresIn).toBe(3600);
+
+      expect(payload.refreshable).toBe(false);
+
+      // PB answers auth-refresh for a non-refreshable token with the SAME
+      // token instead of minting a new one, so the lifetime cannot be
+      // extended.
+      const refresh = await fetch(getPbUrl() + '/api/collections/users/auth-refresh', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + body.token },
+      });
+      if (refresh.status === 200) {
+        const refreshed = await refresh.json();
+        expect(refreshed.token).toBe(body.token);
+      } else {
+        expect([401, 403]).toContain(refresh.status);
+      }
+    });
+
     it('a viewer-role JWT cannot reach superuser-only endpoints', async () => {
       const { plaintext } = await issueKey(tenantA, 'no-admin-' + Date.now());
       const { body } = await exchange(plaintext);
@@ -181,6 +274,28 @@ describe('T-05: API keys — token-mint, no plaintext, scoped, revocable', () =>
       });
       // 403 confirms the JWT no longer authenticates as a real user.
       expect(usersAfter.status).toBe(403);
+    });
+
+    it('revoke removes the service user AND its user_tenants membership row', async () => {
+      const { id, plaintext } = await issueKey(tenantA, 'revoke-membership-' + Date.now());
+      const { status } = await exchange(plaintext);
+      expect(status).toBe(200);
+      const row = await adminPb.collection('api_keys').getOne(id);
+      const svcId = String(row.service_user_id);
+      expect(svcId).toBeTruthy();
+
+      const before = await adminPb.collection('user_tenants').getFullList({
+        filter: adminPb.filter('user = {:u}', { u: svcId }),
+      });
+      expect(before.length).toBeGreaterThan(0);
+
+      await revoke(id);
+
+      const after = await adminPb.collection('user_tenants').getFullList({
+        filter: adminPb.filter('user = {:u}', { u: svcId }),
+      });
+      expect(after.length).toBe(0);
+      await expect(adminPb.collection('users').getOne(svcId)).rejects.toMatchObject({ status: 404 });
     });
 
     it('idempotent: revoking twice does not error', async () => {

@@ -72,6 +72,10 @@
 
 console.log("[stjorna-apikeys] loading");
 
+// Lifetime of the JWT minted by /exchange. Keep it short: the key
+// itself is the long-lived credential, the JWT is a session.
+var EXCHANGE_TOKEN_TTL_SECONDS = 3600;
+
 // ---------------------------------------------------------------------------
 // Helpers (inlined into each handler body via string concatenation)
 // ---------------------------------------------------------------------------
@@ -97,7 +101,7 @@ var CMP_FN =
 var ADMIN_AUTH_FN =
     "if(!e.hasSuperuserAuth()){" +
         "e.response.header().set('Content-Type','application/json; charset=utf-8');" +
-        "e.string(401,'{\"ok\":false,\"error\":{\"code\":401,\"message\":\"admin auth required\"}}');" +
+        "e.string(403,'{\"ok\":false,\"error\":{\"code\":403,\"message\":\"admin auth required\"}}');" +
         "return;" +
     "}";
 
@@ -351,6 +355,13 @@ var REVOKE_BODY = "" +
     // 2. tear down the service user: refreshTokenKey first (in case any
     // JWTs already exist for this record id), then delete the record.
     "if(_svcId){" +
+        // Membership rows are not cascade-deleted with the user (the
+        // relation has no cascadeDelete), so drop them explicitly or
+        // they dangle forever.
+        "try{" +
+            "var _uts=$app.findRecordsByFilter('user_tenants','user={:u}','',0,0,{u:_svcId});" +
+            "for(var _ui=0;_ui<_uts.length;_ui++){try{$app.delete(_uts[_ui]);}catch(_eUt){}}" +
+        "}catch(_eUts){}" +
         "try{" +
             "var _sr=$app.findRecordById('users',_svcId);" +
             "if(_sr){" +
@@ -467,7 +478,15 @@ var EXCHANGE_BODY = "" +
     "try{_svcRec=$app.findRecordById('users',_svcId);}catch(_eSvc){}" +
     "if(!_svcRec){_reply(500,{ok:false,error:{code:500,message:'service user missing — re-issue the key'}});return;}" +
     "var _token='';" +
-    "try{_token=String(_svcRec.newAuthToken()||'');}catch(_eTok){_reply(500,{ok:false,error:{code:500,message:'token mint failed: '+(_eTok&&_eTok.message||_eTok)}});return;}" +
+    // Short-lived, non-refreshable token: `newStaticAuthToken(duration)`
+    // (PB >= 0.23) takes a Go time.Duration in nanoseconds. The
+    // fallback keeps the old behaviour (collection default duration)
+    // if the runtime lacks the method.
+    "var _ttlSeconds=" + String(EXCHANGE_TOKEN_TTL_SECONDS) + ";" +
+    "try{" +
+        "if(typeof _svcRec.newStaticAuthToken==='function'){_token=String(_svcRec.newStaticAuthToken(_ttlSeconds*1000000000)||'');}" +
+        "else{_token=String(_svcRec.newAuthToken()||'');}" +
+    "}catch(_eTok){_reply(500,{ok:false,error:{code:500,message:'token mint failed: '+(_eTok&&_eTok.message||_eTok)}});return;}" +
     "if(!_token){_reply(500,{ok:false,error:{code:500,message:'token mint returned empty'}});return;}" +
     // Best-effort last_used update.
     "try{_rec.set('last_used',new Date().toISOString().replace('T',' ').replace(/\\..*$/,'Z'));$app.save(_rec);}catch(_eu){}" +
@@ -485,7 +504,8 @@ var EXCHANGE_BODY = "" +
             "email:_svcEmail" +
         "}," +
         "permissions:_permsOut," +
-        "instructions:'Send the token as `Authorization: Bearer …` for /api/collections/* requests. The token is short-lived (PB default ~14 days); re-exchange when it expires.'" +
+        "expiresIn:_ttlSeconds," +
+        "instructions:'Send the token as `Authorization: Bearer …` for /api/collections/* requests. The token is short-lived (expiresIn seconds) and not refreshable; re-exchange the API key when it expires.'" +
     "});";
 
 routerAdd("POST", "/api/stjorna/api-keys/exchange", new Function("e", EXCHANGE_BODY));

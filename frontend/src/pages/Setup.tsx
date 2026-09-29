@@ -264,6 +264,11 @@ export default function Setup() {
     return raw;
   };
 
+  // T-07.1: the S3 access key / secret are written ONLY to PocketBase's
+  // own (PB_SECRET-encrypted) settings via saveS3Settings(). The
+  // instance_settings row keeps the non-secret description of the
+  // storage config; its s3_access_key / s3_secret_key columns were
+  // dropped (migration 1770001600).
   const buildStorageConfig = () => {
     if (storageType() !== 's3') {
       return {
@@ -271,8 +276,6 @@ export default function Setup() {
         s3_bucket: '',
         s3_region: '',
         s3_endpoint: '',
-        s3_access_key: '',
-        s3_secret_key: '',
         s3_force_path_style: false,
       };
     }
@@ -281,8 +284,6 @@ export default function Setup() {
       s3_bucket: s3Bucket(),
       s3_region: s3Region(),
       s3_endpoint: resolvedS3Endpoint(),
-      s3_access_key: s3AccessKey(),
-      s3_secret_key: s3SecretKey(),
       s3_force_path_style: s3ForcePathStyle(),
     };
   };

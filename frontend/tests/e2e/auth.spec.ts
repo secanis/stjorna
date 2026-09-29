@@ -52,13 +52,23 @@ test.describe('Auth flows', () => {
     await expect(page.locator('.text-red-700, .dark\\:text-red-400')).toBeVisible({ timeout: 10000 });
   });
 
-  test.skip('setup page redirects to login when setup_done=true', async ({ page }) => {
+  // T-04 acceptance: "a wizard reload after completion redirects to /login".
+  // The e2e global setup marks the instance as set up
+  // (instance_settings.setup_done = true), which the wizard reads through
+  // the unauthenticated GET /api/stjorna/setup-status route on mount. No
+  // localStorage flag is involved (T-04.2).
+  test('setup page redirects to login when setup-status reports setupDone', async ({ page, request }) => {
     const ctx = getContext(page);
-    await page.goto(ctx.frontendUrl);
-    await page.evaluate(() => {
-      localStorage.setItem('pb_setup_done', 'true');
-    });
+
+    const status = await request.get(ctx.pbUrl + '/api/stjorna/setup-status');
+    expect(status.status()).toBe(200);
+    const body = await status.json();
+    expect(body.setupDone).toBe(true);
+    expect(body.superuserExists).toBe(true);
+
     await page.goto(ctx.frontendUrl + '/setup');
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
+    // The wizard must not have rendered its first step before redirecting.
+    await expect(page.getByText('Create superuser & continue')).toHaveCount(0);
   });
 });
