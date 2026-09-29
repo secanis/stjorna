@@ -11,12 +11,14 @@ docker run -d --rm --name stjorna-pb \
   -p 8090:8090 \
   -e PB_SECRET=$(openssl rand -hex 16) \
   -e PB_SUPERUSER_EMAIL=admin@example.com \
-  -e PB_SUPERUSER_PASSWORD=changeme \
+  -e PB_SUPERUSER_PASSWORD="$(openssl rand -base64 18)" \
   -v stjorna-pb-data:/app/pb_data \
   secanis/stjorna-pocketbase:latest
 ```
 
-Open <http://localhost:8090/_/> and log in with the superuser credentials above.
+Open <http://localhost:8090/_/> and log in with the superuser credentials above
+(print the generated password first, or pick your own — the entrypoint refuses to
+start with an empty or placeholder password such as `changeme`).
 
 ## Image details
 

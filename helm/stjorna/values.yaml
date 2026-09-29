@@ -110,7 +110,8 @@ pocketbase:
   # one upstream key.
   secret:
     # -- Name of an existing Kubernetes Secret containing PB_SECRET. If empty,
-    # the chart auto-generates one (pre-install hook).
+    # the chart auto-generates one as a regular release resource that is
+    # re-used on upgrade (lookup) and kept on uninstall (resource-policy).
     existingSecret: ""
     # -- Key inside `existingSecret` that holds PB_SECRET value.
     existingSecretKey: PB_SECRET
@@ -127,7 +128,10 @@ pocketbase:
   superuser:
     # -- Name of an existing Kubernetes Secret holding PB_SUPERUSER_EMAIL
     # and PB_SUPERUSER_PASSWORD. If empty, the chart creates one on
-    # install (pre-install hook) with a random 24-char password.
+    # install with a random 24-char password. It is a regular release
+    # resource: re-used on upgrade / re-install (lookup) and kept on
+    # uninstall (resource-policy), so it never drifts from the password
+    # entrypoint.sh applied on the first boot (T-06.1).
     existingSecret: ""
     # -- Key inside `existingSecret` that holds the email value.
     existingSecretEmailKey: PB_SUPERUSER_EMAIL

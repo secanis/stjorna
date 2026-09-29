@@ -35,6 +35,25 @@ if [ -n "$PB_SECRET" ]; then
     ENCRYPTION_FLAG="--encryptionEnv PB_SECRET"
 fi
 
+# T-04.1: a superuser email without a real password is a misconfigured
+# deployment (typically docker compose without a .env). Refuse to start
+# instead of creating a headless superuser with no or a well-known
+# password. PB itself requires >= 8 characters.
+if [ -n "$PB_SUPERUSER_EMAIL" ]; then
+    case "$PB_SUPERUSER_PASSWORD" in
+        ""|changeme|password|admin|admin123|12345678)
+            echo "FATAL: PB_SUPERUSER_EMAIL is set but PB_SUPERUSER_PASSWORD is empty or a placeholder." >&2
+            echo "       Set a real password (>= 8 characters) in the environment / .env, or unset" >&2
+            echo "       PB_SUPERUSER_EMAIL and create the first superuser through the /setup wizard." >&2
+            exit 1
+            ;;
+    esac
+    if [ "${#PB_SUPERUSER_PASSWORD}" -lt 8 ]; then
+        echo "FATAL: PB_SUPERUSER_PASSWORD must be at least 8 characters (got ${#PB_SUPERUSER_PASSWORD})." >&2
+        exit 1
+    fi
+fi
+
 # Create the first superuser automatically on a fresh data directory. A marker
 # file prevents resetting the password on every container restart.
 if [ -n "$PB_SUPERUSER_EMAIL" ] && [ -n "$PB_SUPERUSER_PASSWORD" ] && [ ! -f /app/pb_data/.superuser-bootstrapped ]; then

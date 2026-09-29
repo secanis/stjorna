@@ -226,7 +226,37 @@ test.describe('Media Upload', () => {
     await expect(page.locator('text=Record ID:')).toBeVisible();
   });
 
-  test('list image src includes auth token for protected file URLs', async ({ page }) => {
+  // T-08 / T-08.1: protected media URLs carry a short-lived *file* token
+  // (pb.files.getToken()), never the auth JWT. Read the live auth JWT
+  // from the SDK's LocalAuthStore and assert it appears in no URL in
+  // the DOM.
+  async function expectNoAuthJwtInDom(page: import('@playwright/test').Page): Promise<string> {
+    const authToken = await page.evaluate(() => {
+      try {
+        const raw = localStorage.getItem('pocketbase_auth');
+        return raw ? String(JSON.parse(raw)?.token || '') : '';
+      } catch {
+        return '';
+      }
+    });
+    expect(authToken, 'the SDK auth token should be present in localStorage').toBeTruthy();
+
+    const urls = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('[src],[href],[poster],[data-src]')).flatMap((el) =>
+        ['src', 'href', 'poster', 'data-src'].map((a) => el.getAttribute(a) || '').filter(Boolean),
+      ),
+    );
+    for (const u of urls) {
+      expect(u, `URL must not contain the auth JWT: ${u.slice(0, 80)}…`).not.toContain(authToken);
+    }
+    return authToken;
+  }
+
+  function tokenParam(url: string): string {
+    return new URL(url, 'http://placeholder.local').searchParams.get('token') || '';
+  }
+
+  test('list image src uses a file token, not the auth JWT', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
     await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
@@ -250,9 +280,15 @@ test.describe('Media Upload', () => {
     expect(imgSrc).toContain('/api/files/media/');
     expect(imgSrc).toContain('token=');
     expect(imgSrc).toContain('thumb=100x100');
+
+    // T-08.1: the token= value is a file token and differs from the auth JWT.
+    const authToken = await expectNoAuthJwtInDom(page);
+    const fileToken = tokenParam(imgSrc!);
+    expect(fileToken).toBeTruthy();
+    expect(fileToken).not.toBe(authToken);
   });
 
-  test('edit image src includes auth token for protected file URLs', async ({ page }) => {
+  test('edit image src uses a file token, not the auth JWT', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/media/new');
     await page.waitForSelector('#media-file', { state: 'attached', timeout: 15000 });
 
@@ -275,6 +311,12 @@ test.describe('Media Upload', () => {
     await page.reload();
     const editImg = page.locator(`img[src*="/api/files/media/${recordId}/"]`).first();
     await expect(editImg).toHaveAttribute('src', /[?&]token=/, { timeout: 10000 });
+
+    // T-08.1: file token only, and the auth JWT appears nowhere in the DOM.
+    const authToken = await expectNoAuthJwtInDom(page);
+    const fileToken = tokenParam((await editImg.getAttribute('src')) || '');
+    expect(fileToken).toBeTruthy();
+    expect(fileToken).not.toBe(authToken);
   });
 
   test('upload video larger than 10MB succeeds (schema allows 500MB)', async ({ request }) => {

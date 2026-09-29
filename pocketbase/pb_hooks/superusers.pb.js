@@ -129,7 +129,10 @@ onRecordUpdateExecute((e) => {
         var prev = $app.findRecordById("_superusers", rec.id);
         var prevActive = prev.get("active");
         var isInactive = active === false || active === "false" || active === 0 || active === "0";
-        var wasActive = prevActive === true || prevActive === 1;
+        // A row created before the `active` migration carries null;
+        // it could still log in, so treat anything that is not an
+        // explicit false as "was active" and rotate on disable.
+        var wasActive = !(prevActive === false || prevActive === "false" || prevActive === 0 || prevActive === "0");
         if (isInactive && wasActive) {
             if (typeof rec.refreshTokenKey === "function") {
                 try { rec.refreshTokenKey(); } catch (_eR) {
@@ -164,5 +167,25 @@ onRecordAuthWithPasswordRequest(_superuserAuthGuard, "_superusers");
 onRecordAuthWithOTPRequest(_superuserAuthGuard, "_superusers");
 onRecordAuthRefreshRequest(_superuserAuthGuard, "_superusers");
 onRecordAuthWithOAuth2Request(_superuserAuthGuard, "_superusers");
+
+// ---------------------------------------------------------------------------
+// Request guard — defense in depth for tokens that were minted BEFORE the
+// account was disabled. Normally the tokenKey rotation above makes such
+// JWTs fail signature verification (401) before any handler runs, but
+// `active` can also be flipped without the update hook (a migration,
+// direct SQL, the CLI) or `refreshTokenKey()` can fail. In those cases
+// PB still loads the record into `e.auth`, so reject it here for every
+// route.
+// ---------------------------------------------------------------------------
+
+routerUse((e) => {
+    if (e.hasSuperuserAuth()) {
+        var a = e.auth ? e.auth.get("active") : null;
+        if (a === false || a === "false" || a === 0 || a === "0") {
+            throw new ForbiddenError("Superuser account is disabled");
+        }
+    }
+    return e.next();
+});
 
 console.log("[stjorna-superusers] hooks loaded");

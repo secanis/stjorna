@@ -110,7 +110,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     const pngBuffer = Buffer.from(pngBase64, 'base64');
     const filename = `switch-t-${stamp}.png`;
-    await request.post(`${ctx.pbUrl}/api/collections/media/records`, {
+    const mediaRes = await request.post(`${ctx.pbUrl}/api/collections/media/records`, {
       headers: authHeader,
       multipart: {
         file: { name: filename, mimeType: 'image/png', buffer: pngBuffer },
@@ -124,6 +124,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
         tenant: newTenant.id,
       },
     });
+    expect(mediaRes.ok(), `seed media in new tenant: ${await mediaRes.text()}`).toBeTruthy();
 
     // Hand off: clear admin session, login as test user.
     await page.evaluate(() => localStorage.clear()).catch(() => {});
@@ -153,11 +154,11 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
 
     // After the switch: page shows the NEW tenant's media, sidebar
     // badge still 1 (same count, different content), header label
-    // reflects the new tenant.
-    const afterCells = await tbodyCellsText(page);
-    expect(afterCells).toContain(filename);
-    expect(afterCells).not.toContain('test-image.png');
-    expect(await sidebarBadge(page, '/media')).toBe('1');
+    // reflects the new tenant. The table shows its empty state while
+    // the refetch is in flight, so poll instead of reading once.
+    await expect.poll(() => tbodyCellsText(page), { timeout: 10000 }).toContain(filename);
+    expect(await tbodyCellsText(page)).not.toContain('test-image.png');
+    await expect.poll(() => sidebarBadge(page, '/media'), { timeout: 10000 }).toBe('1');
     const headerLabel = await page.locator('div.relative.group > div > span').first().textContent();
     expect(headerLabel).toContain(`Switch T`);
   });
