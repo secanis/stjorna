@@ -16,35 +16,20 @@ test.describe('Backup & Restore', () => {
     await ctx.waitForDashboard();
   });
 
-  test('General Settings shows JSON and ZIP download buttons', async ({ page }) => {
+  test('General Settings documents tenant-scoped backup (no instance-level download buttons)', async ({ page }) => {
     await page.goto(ctx.frontendUrl + '/settings/general');
     await page.waitForSelector('h1:has-text("General Settings")', { timeout: 15000 });
 
-    await expect(page.getByRole('button', { name: /Download JSON/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /Download ZIP/ })).toBeVisible();
-
-    await expect(page).toHaveScreenshot('settings-instance.png', { fullPage: true });
-  });
-
-  test('Download JSON yields a valid manifest file', async ({ page }) => {
-    await page.goto(ctx.frontendUrl + '/settings/general');
-    await page.waitForSelector('button:has-text("Download JSON")', { timeout: 15000 });
-
-    const downloadPromise = page.waitForEvent('download');
-    await page.getByRole('button', { name: /Download JSON/ }).click();
-    const download = await downloadPromise;
-
-    const path = await download.path();
-    expect(path).toBeTruthy();
-    const content = await fs.readFile(path!, 'utf8');
-    const manifest = JSON.parse(content);
-    expect(manifest.kind).toBe('stjorna-backup');
-    expect(manifest.version).toBe('3.0.0');
-    expect(manifest.collections).toBeDefined();
+    await expect(page.getByText(/Tenant-scoped export\/import is/)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Download JSON/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Download ZIP/ })).toHaveCount(0);
   });
 
   test('Download ZIP yields a valid zip with manifest.json inside', async ({ page }) => {
-    await page.goto(ctx.frontendUrl + '/settings/general');
+    const tenantId = ctx.tenantId;
+    expect(tenantId).toBeTruthy();
+    await page.goto(`${ctx.frontendUrl}/tenants/${tenantId}`);
+    await page.waitForSelector('h1:has-text("Tenant Settings")', { timeout: 15000 });
     await page.waitForSelector('button:has-text("Download ZIP")', { timeout: 15000 });
 
     const downloadPromise = page.waitForEvent('download');
@@ -57,6 +42,7 @@ test.describe('Backup & Restore', () => {
     expect(buf[1]).toBe(0x4b);
     expect(buf[2]).toBe(0x03);
     expect(buf[3]).toBe(0x04);
+    expect(buf.includes('manifest.json')).toBe(true);
   });
 
   test('Tenant Settings shows Restore Backup section', async ({ page }) => {
