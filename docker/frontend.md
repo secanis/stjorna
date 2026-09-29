@@ -14,7 +14,7 @@ docker run -d --rm --name stjorna-pb \
   --network stjorna \
   -e PB_SECRET=$(openssl rand -hex 16) \
   -e PB_SUPERUSER_EMAIL=admin@example.com \
-  -e PB_SUPERUSER_PASSWORD=changeme \
+  -e PB_SUPERUSER_PASSWORD="$(openssl rand -base64 18)" \
   -v stjorna-pb-data:/app/pb_data \
   secanis/stjorna-pocketbase:latest
 

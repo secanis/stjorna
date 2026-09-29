@@ -16,7 +16,9 @@ export async function getRoleId(name: string): Promise<string> {
 export async function createAdminClient(): Promise<PocketBase> {
   const pb = getPb();
   const { email, password } = getTestAdminCredentials();
-  await pb.admins.authWithPassword(email, password);
+  // PB v0.40: superusers are the `_superusers` auth collection. The SDK's
+  // `pb.admins` alias still works but is deprecated (T-09).
+  await pb.collection('_superusers').authWithPassword(email, password);
   return pb;
 }
 

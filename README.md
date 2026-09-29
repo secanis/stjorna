@@ -21,8 +21,10 @@ docker compose up -d
 
 Both `docker-compose.yml` and the helm chart create the first PocketBase
 superuser headlessly on the first boot from `PB_SUPERUSER_EMAIL` /
-`PB_SUPERUSER_PASSWORD` (Compose: `.env`; Helm: a `pre-install` Secret,
-see the helm README for the `kubectl get secret` command). The frontend
+`PB_SUPERUSER_PASSWORD` (Compose: `.env`, no default — the container refuses
+to start with an empty or placeholder password; Helm: a release Secret that is
+kept across upgrades and uninstalls, see the helm README for the
+`kubectl get secret` command). The frontend
 `/setup` wizard then signs in with those credentials.
 
 If those env vars are **not** set (bare `pocketbase serve`, custom
