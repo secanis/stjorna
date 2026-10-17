@@ -140,7 +140,8 @@ jobs:
           # include because actionlint forbids ${{ steps.* }} inside
           # matrix entries (matrix is built before steps run).
           build-args: |
-            ${{ matrix.name == 'frontend' && format('STJORNA_VERSION={0}\nSTJORNA_COMMIT={1}', steps.version.outputs.tag, github.sha) || '' }}
+            ${{ matrix.name == 'frontend' && format('STJORNA_VERSION={0}', steps.version.outputs.tag) || '' }}
+            ${{ matrix.name == 'frontend' && format('STJORNA_COMMIT={0}', github.sha) || '' }}
       # Sync the Docker Hub repo description + full README from
       # docker/<name>.md so the published image page documents itself.
       # Runs after the image push so the page only updates when the

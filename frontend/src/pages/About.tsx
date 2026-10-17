@@ -186,7 +186,7 @@ export default function About() {
 
             {/* Version */}
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Version</h2>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Build info</h2>
                 <Show
                     when={versionInfo()}
                     fallback={
@@ -208,7 +208,7 @@ export default function About() {
                         </dt>
                         <dd class="font-mono text-gray-900 dark:text-white">
                             <a href={`https://github.com/secanis/stjorna/commit/${versionInfo()!.commit}`} target="_blank" rel="noopener noreferrer" class="hover:underline">
-                                {versionInfo()!.commit}
+                                {versionInfo()!.commit.slice(0, 7)}
                             </a>
                         </dd>
 
