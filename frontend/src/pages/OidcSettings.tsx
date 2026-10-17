@@ -2,7 +2,7 @@ import { createSignal, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
-import { Save } from 'lucide-solid';
+import { Save, Copy, Check, Info } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
 
@@ -76,6 +76,37 @@ export default function OidcSettings() {
   const [error, setError] = createSignal('');
   const [success, setSuccess] = createSignal(false);
   const [hasExistingSecret, setHasExistingSecret] = createSignal(false);
+  const [tenantSlugs, setTenantSlugs] = createSignal<string[]>([]);
+  const [copiedGroup, setCopiedGroup] = createSignal('');
+
+  // Live preview of the group names the hook expects, derived from the
+  // current (possibly unsaved) form values. Mirrors resolveGroupMembership()
+  // in oidc_groups.pb.js: strip prefix, split at the LAST separator, map the
+  // suffix through the role mapping; unknown suffixes fall back to the
+  // default role.
+  const groupExamples = () => {
+    const f = form();
+    const mapping = parseRoleMapping(f.roleMapping || DEFAULT_ROLE_MAPPING);
+    const suffixes = Object.keys(mapping);
+    const slugs = tenantSlugs().length > 0 ? tenantSlugs().slice(0, 3) : ['<tenant-slug>'];
+    return slugs.map((slug) => ({
+      slug,
+      groups: suffixes.map((suffix) => ({
+        group: `${f.groupPrefix}${slug}${suffix}`,
+        role: mapping[suffix],
+      })),
+    }));
+  };
+
+  const copyGroup = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedGroup(text);
+      setTimeout(() => setCopiedGroup((cur) => (cur === text ? '' : cur)), 1500);
+    } catch {
+      /* clipboard unavailable (non-secure context) — ignore */
+    }
+  };
 
   onMount(async () => {
     await authStore.init();
@@ -146,6 +177,14 @@ export default function OidcSettings() {
     } catch (e: any) {
       setError(e.message || 'Failed to load OIDC settings');
     } finally {
+      // Tenant slugs for the group-format preview box (superuser-only page).
+      try {
+        const tenantsRes = await pb.collection('tenants').getList(1, 50, { sort: 'name' });
+        setTenantSlugs(tenantsRes.items.map((t: any) => String(t.slug || '')).filter(Boolean));
+      } catch {
+        /* preview falls back to a placeholder slug */
+      }
+
       setLoading(false);
     }
   });
@@ -480,6 +519,55 @@ export default function OidcSettings() {
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: _admin:admin,_editor:editor,_viewer:viewer</p>
+            </div>
+
+            <div class="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-4">
+              <div class="flex items-start gap-2">
+                <Info size={16} class="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div class="text-sm text-blue-900 dark:text-blue-200 space-y-2 min-w-0">
+                  <p>
+                    Expected group format:{' '}
+                    <code class="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">
+                      {form().groupPrefix || ''}&lt;tenant-slug&gt;&lt;suffix&gt;
+                    </code>
+                  </p>
+                  <p class="text-xs text-blue-800 dark:text-blue-300">
+                    The prefix is stripped first, then the name is split at the last{' '}
+                    <code class="font-mono">{form().groupSeparator || '_'}</code>. Create these groups in your
+                    identity provider and assign users to them:
+                  </p>
+                  <For each={groupExamples()}>
+                    {(ex) => (
+                      <div class="space-y-1">
+                        <For each={ex.groups}>
+                          {(g) => (
+                            <div class="flex items-center gap-2">
+                              <code class="font-mono text-xs bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800 rounded px-2 py-1 break-all">
+                                {g.group}
+                              </code>
+                              <span class="text-xs text-blue-800 dark:text-blue-300">→ {g.role}</span>
+                              <button
+                                type="button"
+                                title="Copy group name"
+                                onClick={() => copyGroup(g.group)}
+                                class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
+                              >
+                                <Show when={copiedGroup() === g.group} fallback={<Copy size={14} />}>
+                                  <Check size={14} />
+                                </Show>
+                              </button>
+                            </div>
+                          )}
+                        </For>
+                      </div>
+                    )}
+                  </For>
+                  <p class="text-xs text-blue-800 dark:text-blue-300">
+                    Unknown suffixes fall back to the default role ({form().defaultRole}). Users without any
+                    matching group {form().denyOnNoGroup ? 'are denied login' : 'get no tenant access'}.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div class="mt-4 flex flex-col gap-3">
