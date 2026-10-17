@@ -13,7 +13,7 @@ export interface Tenant {
   slug: string;
   plan: string;
   custom_domain: string;
-  theme_config: string;
+  theme_config: Record<string, unknown> | string | null;
   created: string;
   updated: string;
 }

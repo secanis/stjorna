@@ -17,6 +17,14 @@ interface TenantUser {
   roleId: string;
 }
 
+// PocketBase JSON fields arrive as parsed objects via the SDK; the textarea
+// needs a string. Older records may still hold a raw string — keep those as-is.
+function themeConfigToText(value: Tenant['theme_config']): string {
+  if (value == null) return '{}';
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value, null, 2);
+}
+
 export default function TenantSettings() {
   const navigate = useNavigate();
   const params = useParams();
@@ -137,7 +145,7 @@ export default function TenantSettings() {
         slug: tenant.slug || '',
         plan: tenant.plan || 'starter',
         custom_domain: tenant.custom_domain || '',
-        theme_config: tenant.theme_config || '{}',
+        theme_config: themeConfigToText(tenant.theme_config),
       });
     } catch (e: any) {
       if (e.status === 404) {
