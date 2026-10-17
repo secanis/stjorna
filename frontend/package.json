@@ -22,7 +22,7 @@
     "clsx": "^2.1.1",
     "lucide-solid": "^1.21.0",
     "pocketbase": "^0.28.0",
-    "solid-js": "^1.9.3",
+    "solid-js": "^1.9.17",
     "swagger-ui-dist": "^5.32.8"
   },
   "devDependencies": {
@@ -38,6 +38,6 @@
     "typescript": "^5.7.2",
     "vite": "^8.2.2",
     "vite-plugin-solid": "^2.11.0",
-    "vitest": "^3.2.7"
+    "vitest": "^5.0.5"
   }
 }

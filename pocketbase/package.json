@@ -12,10 +12,10 @@
     "test:api-rules": "tsx ../scripts/test-api-rules.ts"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^26.2.0",
     "tsx": "^4.19.0",
     "typescript": "^5.3.0",
-    "vitest": "^3.2.7"
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "pocketbase": "^0.28.1"
