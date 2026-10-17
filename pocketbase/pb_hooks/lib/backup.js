@@ -535,6 +535,17 @@ function importProducts(txApp, tenantId, prods, catMap, mediaMap, stats) {
     }
 }
 
+// A v1 export is plain JSON with top-level categories/products arrays whose
+// records use "_id", plus users/services/cronjobs sections. v3 backups always
+// carry kind="stjorna-tenant-backup" and (for real exports) come as ZIP.
+function looksLikeV1(manifest, isZip) {
+    if (isZip || !manifest || typeof manifest !== "object") return false;
+    if (manifest.kind === "stjorna-tenant-backup") return false;
+    if (manifest.users || manifest.services || manifest.cronjobs) return true;
+    var list = manifest.categories || manifest.products || [];
+    return list.length > 0 && !!list[0]._id;
+}
+
 function importV3(txApp, tenantId, manifest, files, stats) {
     var cats = (manifest.collections && manifest.collections.categories) || manifest.categories || [];
     var prods = (manifest.collections && manifest.collections.products) || manifest.products || [];
@@ -759,7 +770,8 @@ function importHandler(e) {
 
         var manifest = null;
         var files = {};
-        if (fileBytes.length >= 4 && fileBytes[0] === 0x50 && fileBytes[1] === 0x4B && fileBytes[2] === 0x03 && fileBytes[3] === 0x04) {
+        var isZip = fileBytes.length >= 4 && fileBytes[0] === 0x50 && fileBytes[1] === 0x4B && fileBytes[2] === 0x03 && fileBytes[3] === 0x04;
+        if (isZip) {
             var parsed = parseZipBytes(fileBytes);
             manifest = parsed.manifest;
             files = parsed.files;
@@ -770,6 +782,14 @@ function importHandler(e) {
                 replyError(e, 400, "file is not a valid ZIP or JSON backup");
                 return;
             }
+        }
+
+        // Guard: importing a v1-shaped JSON export as source=v3 silently
+        // corrupts data (no category links, duplicate slugs merged). Reject it
+        // with a clear message instead.
+        if (source === "v3" && looksLikeV1(manifest, isZip)) {
+            replyError(e, 400, "this looks like a v1 STJÓRNA export, not a v3 backup ZIP — convert it to the v3 format first (or use the API with ?source=v1)");
+            return;
         }
 
         var stats = { created: { categories: 0, products: 0, media: 0 }, updated: { categories: 0, products: 0, media: 0 }, warnings: [] };

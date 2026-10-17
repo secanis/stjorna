@@ -1,5 +1,5 @@
 import { createSignal, Show } from 'solid-js';
-import type { BackupSource, ImportResult } from '~/services/backup';
+import type { ImportResult } from '~/services/backup';
 import { downloadTenantBackup, importBackup } from '~/services/backup';
 import { Download, Upload, FileWarning, CheckCircle2 } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
@@ -9,7 +9,6 @@ interface Props {
 }
 
 export default function BackupSection(props: Props) {
-  const [source, setSource] = createSignal<BackupSource>('v3');
   const [file, setFile] = createSignal<File | null>(null);
   const [importing, setImporting] = createSignal(false);
   const [result, setResult] = createSignal<ImportResult | null>(null);
@@ -48,7 +47,7 @@ export default function BackupSection(props: Props) {
     setError('');
     setResult(null);
     try {
-      const r = await importBackup({ source: source(), file: f, tenantId: props.tenantId });
+      const r = await importBackup({ file: f, tenantId: props.tenantId });
       if (!r.success) setError(r.error || 'Import failed');
       setResult(r);
     } catch (err: any) {
@@ -88,46 +87,17 @@ export default function BackupSection(props: Props) {
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Restore Backup</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Import content from a backup file into this tenant. Records that already exist
-          (same category/product slug) are skipped. v1 imports drop <code>users</code>,{' '}
-          <code>services</code> and <code>cronjobs</code> by design.
+          Import content from a v3 backup ZIP (created with "Download ZIP") into this tenant.
+          Records that already exist (same category/product slug) are skipped.
         </p>
       </div>
 
       <form onSubmit={handleImport} class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Backup source</label>
-          <div class="flex gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="backup-source"
-                value="v1"
-                checked={source() === 'v1'}
-                onChange={() => setSource('v1')}
-                class="text-blue-600 focus:ring-blue-500"
-              />
-              <span class="text-sm text-gray-800 dark:text-gray-200">Old STJÓRNA (v1)</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                name="backup-source"
-                value="v3"
-                checked={source() === 'v3'}
-                onChange={() => setSource('v3')}
-                class="text-blue-600 focus:ring-blue-500"
-              />
-              <span class="text-sm text-gray-800 dark:text-gray-200">STJÓRNA v3 (current)</span>
-            </label>
-          </div>
-        </div>
-
-        <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Backup file</label>
           <input
             type="file"
-            accept=".json,.zip"
+            accept=".zip"
             onChange={onFileChange}
             class="block w-full text-sm text-gray-700 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-sm file:bg-gray-50 dark:bg-gray-700 file:text-gray-800 dark:text-gray-200 hover:file:bg-gray-100 dark:bg-gray-600"
           />

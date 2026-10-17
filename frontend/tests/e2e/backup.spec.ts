@@ -52,29 +52,21 @@ test.describe('Backup & Restore', () => {
     await page.waitForSelector('h1:has-text("Tenant Settings")', { timeout: 15000 });
 
     await expect(page.getByText('Restore Backup')).toBeVisible();
-    await expect(page.getByText('Old STJÓRNA (v1)')).toBeVisible();
-    await expect(page.getByText('STJÓRNA v3')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Import' })).toBeDisabled();
   });
 
-  test('v1 import via Restore Backup section populates categories and products', async ({ page }) => {
+  test('v1 JSON export is rejected with a clear error', async ({ page }) => {
     const tenantId = ctx.tenantId;
     expect(tenantId).toBeTruthy();
     await page.goto(`${ctx.frontendUrl}/tenants/${tenantId}`);
     await page.waitForSelector('h1:has-text("Tenant Settings")', { timeout: 15000 });
 
-    // Pick v1 source
-    await page.getByLabel('Old STJÓRNA (v1)').check();
-
-    // Choose file
     const fileInput = page.locator('input[type="file"]');
     await fileInput.setInputFiles(V1_FIXTURE);
-
-    // Import
     await page.getByRole('button', { name: 'Import' }).click();
 
-    // Success message
-    await expect(page.getByText(/Imported 3 categories, 4 products/)).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText(/v1 category image references ignored/)).toBeVisible();
+    await expect(
+      page.getByText(/looks like a v1 STJÓRNA export/)
+    ).toBeVisible({ timeout: 30000 });
   });
 });

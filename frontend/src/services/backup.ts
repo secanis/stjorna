@@ -1,7 +1,5 @@
 import { pb } from '~/services/pocketbase';
 
-export type BackupSource = 'v1' | 'v3';
-
 export interface ImportStats {
   created: { categories: number; products: number; media: number };
   updated: { categories: number; products: number; media: number };
@@ -43,20 +41,21 @@ export async function downloadTenantBackup(tenantId: string): Promise<void> {
   triggerDownload(blob, `stjorna-export-${tenantId}-${ts}.zip`);
 }
 
+// Imports a v3 backup ZIP (as produced by downloadTenantBackup). Legacy v1
+// JSON exports are no longer accepted by the UI; the API still supports
+// ?source=v1 for scripted migrations.
 export async function importBackup(args: {
-  source: BackupSource;
   file: File;
   tenantId: string;
 }): Promise<ImportResult> {
-  const { source, file, tenantId } = args;
-  const contentType = source === 'v1' ? 'application/json' : 'application/zip';
+  const { file, tenantId } = args;
   const arrayBuffer = await file.arrayBuffer();
 
-  const res = await fetch(pb.buildUrl(`/api/stjorna/import/${tenantId}?source=${source}`), {
+  const res = await fetch(pb.buildUrl(`/api/stjorna/import/${tenantId}`), {
     method: 'POST',
     headers: {
       Authorization: pb.authStore.token,
-      'Content-Type': contentType,
+      'Content-Type': 'application/zip',
     },
     body: arrayBuffer,
   });
@@ -71,7 +70,7 @@ export async function importBackup(args: {
     return {
       success: false,
       stats: { created: { categories: 0, products: 0, media: 0 }, updated: { categories: 0, products: 0, media: 0 }, warnings: [] },
-      error: body.error || `import failed: ${res.status}`,
+      error: body.error?.message || body.message || `import failed: ${res.status}`,
     };
   }
   return body as ImportResult;
