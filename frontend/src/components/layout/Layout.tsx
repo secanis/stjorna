@@ -1,8 +1,16 @@
-import { ParentProps } from 'solid-js';
+import { ParentProps, createEffect } from 'solid-js';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import { authStore } from '~/stores/auth';
+import { tenantTheme } from '~/stores/tenantTheme';
 
 export default function Layout(props: ParentProps) {
+  // (Re)load the per-tenant theme whenever the selected tenant changes
+  // (and clear it for PB admins, who have no tenant selected).
+  createEffect(() => {
+    void tenantTheme.load(authStore.currentTenant ?? null);
+  });
+
   return (
     <div class="flex min-h-screen bg-gray-50 dark:bg-gray-900">
       <Sidebar />

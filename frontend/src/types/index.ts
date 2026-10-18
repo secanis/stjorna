@@ -7,13 +7,26 @@ export interface UserTenant {
   role: Role;
 }
 
+// Per-tenant theming. All keys optional; unknown keys are preserved
+// by the settings editors so forward-compatible fields survive a save.
+export interface TenantThemeConfig {
+  // Media record ID used as the header logo (replaces the "STJÓRNA" text
+  // in the top header of the content area; the sidebar stays untouched).
+  logoMediaId?: string;
+  // CSS color for the header background in light mode. Empty/unset = default.
+  headerBgLight?: string;
+  // CSS color for the header background in dark mode. Empty/unset = default.
+  headerBgDark?: string;
+  [key: string]: unknown;
+}
+
 export interface Tenant {
   id: string;
   name: string;
   slug: string;
   plan: string;
   custom_domain: string;
-  theme_config: Record<string, unknown> | string | null;
+  theme_config: TenantThemeConfig | string | null;
   created: string;
   updated: string;
 }

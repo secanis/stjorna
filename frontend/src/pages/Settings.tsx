@@ -2,16 +2,11 @@ import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
-import type { Tenant } from '~/types';
+import { tenantTheme } from '~/stores/tenantTheme';
+import type { Tenant, TenantThemeConfig } from '~/types';
+import { parseThemeConfig, buildThemeConfig, asTrimmedString } from '~/utils/themeConfig';
+import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeConfigFields';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
-
-// PocketBase JSON fields arrive as parsed objects via the SDK; the textarea
-// needs a string. Older records may still hold a raw string — keep those as-is.
-function themeConfigToText(value: Tenant['theme_config']): string {
-  if (value == null) return '{}';
-  if (typeof value === 'string') return value;
-  return JSON.stringify(value, null, 2);
-}
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -21,8 +16,10 @@ export default function Settings() {
     slug: '',
     plan: 'starter',
     custom_domain: '',
-    theme_config: '',
   });
+  const [theme, setTheme] = createSignal<ThemeFields>({ logoMediaId: '', headerBgLight: '', headerBgDark: '' });
+  // Unknown theme_config keys, merged back verbatim on save.
+  const [themeExtra, setThemeExtra] = createSignal<TenantThemeConfig>({});
   const [loading, setLoading] = createSignal(true);
   const [saving, setSaving] = createSignal(false);
   const [error, setError] = createSignal('');
@@ -39,8 +36,14 @@ export default function Settings() {
         slug: tenant.slug || '',
         plan: tenant.plan || 'starter',
         custom_domain: tenant.custom_domain || '',
-        theme_config: themeConfigToText(tenant.theme_config),
       });
+      const cfg = parseThemeConfig(tenant.theme_config);
+      setTheme({
+        logoMediaId: asTrimmedString(cfg.logoMediaId),
+        headerBgLight: asTrimmedString(cfg.headerBgLight),
+        headerBgDark: asTrimmedString(cfg.headerBgDark),
+      });
+      setThemeExtra(cfg);
     } catch (e: any) {
       setError(e.message || 'Failed to load tenant settings');
     }
@@ -82,14 +85,15 @@ export default function Settings() {
     setSuccess(false);
 
     try {
-      const themeConfig = JSON.parse(formData().theme_config || '{}');
       await pb.collection('tenants').update(tenantId, {
         name: formData().name,
         slug: formData().slug,
         plan: formData().plan,
         custom_domain: formData().custom_domain,
-        theme_config: JSON.stringify(themeConfig),
+        theme_config: buildThemeConfig(themeExtra(), theme()),
       });
+      // Apply the new theme to the header without a reload.
+      void tenantTheme.refresh(tenantId);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e: any) {
@@ -175,16 +179,7 @@ export default function Settings() {
             />
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Theme Config (JSON)</label>
-            <textarea
-              value={formData().theme_config}
-              onInput={(e) => setFormData(d => ({ ...d, theme_config: e.currentTarget.value }))}
-              rows={4}
-              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 font-mono text-sm"
-              placeholder='{"primaryColor": "#000000"}'
-            />
-          </div>
+          <ThemeConfigFields value={theme()} onChange={setTheme} />
 
           <button
             type="submit"
