@@ -6,6 +6,7 @@ import { tenantTheme } from '~/stores/tenantTheme';
 import type { Tenant, TenantThemeConfig } from '~/types';
 import { parseThemeConfig, buildThemeConfig, asTrimmedString } from '~/utils/themeConfig';
 import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeConfigFields';
+import BackupSection from '~/components/backup/BackupSection';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 export default function Settings() {
@@ -190,6 +191,10 @@ export default function Settings() {
           </button>
         </form>
         </section>
+
+        <Show when={authStore.isAdminOrAbove()}>
+          <BackupSection tenantId={authStore.currentTenant!} />
+        </Show>
       </Show>
     </div>
   );
