@@ -5,6 +5,7 @@ export interface UserTenant {
   tenant: string;
   tenantName?: string;
   role: Role;
+  themeConfig?: TenantThemeConfig;
 }
 
 // Per-tenant theming. All keys optional; unknown keys are preserved

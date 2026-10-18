@@ -33,7 +33,7 @@ export default function UserMenu() {
 
   return (
     <div class="relative group">
-      <div class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+      <div class="flex items-center gap-2 cursor-pointer px-2 py-1 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
         <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-gray-900 dark:text-white text-sm font-medium">
           {initials()}
         </div>

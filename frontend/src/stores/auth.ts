@@ -1,6 +1,7 @@
 import { createSignal, createMemo } from 'solid-js';
 import { pbInstance as pb, setCurrentTenant, getCurrentTenant, clearAuth } from '~/services/pocketbase';
-import type { Role, UserTenant } from '~/types';
+import type { Role, UserTenant, TenantThemeConfig } from '~/types';
+import { parseThemeConfig } from '~/utils/themeConfig';
 import { tenantStore } from '~/stores/tenant';
 
 const [user, setUser] = createSignal<Record<string, any> | null>(
@@ -232,12 +233,14 @@ export const authStore = {
 
       const tenantList: UserTenant[] = await Promise.all(result.items.map(async (r: any) => {
         let tenantName = r.expand?.tenant?.name;
+        let themeConfig: TenantThemeConfig = parseThemeConfig(r.expand?.tenant?.theme_config);
         let roleName = r.expand?.role?.name;
 
         if (!tenantName && r.tenant) {
           try {
             const tenantRec = await pb.collection('tenants').getOne(r.tenant);
             tenantName = tenantRec.name || r.tenant;
+            themeConfig = parseThemeConfig(tenantRec.theme_config);
           } catch {
             tenantName = r.tenant;
           }
@@ -257,6 +260,7 @@ export const authStore = {
           tenant: r.tenant,
           tenantName: tenantName || r.tenant,
           role: (roleName || 'viewer') as Role,
+          themeConfig,
         };
       }));
 
@@ -293,6 +297,7 @@ export const authStore = {
         tenant: t.id,
         tenantName: t.name || t.id,
         role: 'admin' as Role,
+        themeConfig: parseThemeConfig(t.theme_config),
       }));
       setTenants(allTenants);
     } catch (e: any) {
