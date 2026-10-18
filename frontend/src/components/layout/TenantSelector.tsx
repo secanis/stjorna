@@ -13,9 +13,15 @@ function getTenantName(tenantId: string | null): string {
 }
 
 // Resolves a tenant's logo media ID into a file URL, reactive to the
-// protected-file token refresh. Falls back to the color swatch when there
-// is no logo (or the media record is missing/inaccessible).
-function TenantAvatar(props: { themeConfig?: TenantThemeConfig }) {
+// protected-file token refresh. Falls back to the tenant's initials (first
+// two chars of the name) when there is no logo or the media record is
+// missing/inaccessible.
+function initialsOf(name: string): string {
+  const t = (name || '').trim();
+  return t ? t.slice(0, 2).toUpperCase() : '?';
+}
+
+function TenantAvatar(props: { name?: string; themeConfig?: TenantThemeConfig }) {
   const [media, setMedia] = createSignal<{ id: string; file: string } | null>(null);
 
   createEffect(() => {
@@ -29,30 +35,20 @@ function TenantAvatar(props: { themeConfig?: TenantThemeConfig }) {
         const file = String((m as any).file || '');
         if (!cancelled && file) setMedia({ id: m.id, file });
       } catch {
-        // unknown/deleted media or no read access → fall through to swatch
+        // unknown/deleted media or no read access → fall through to initials
       }
     })();
     onCleanup(() => { cancelled = true; });
   });
-
-  const dark = () => props.themeConfig?.headerBgDark?.trim();
-  const light = () => props.themeConfig?.headerBgLight?.trim();
-  const swatchStyle = () => {
-    if (light() && dark()) return { background: `linear-gradient(135deg, ${light()} 0%, ${light()} 50%, ${dark()} 50%, ${dark()} 100%)` };
-    if (dark()) return { 'background-color': dark() };
-    if (light()) return { 'background-color': light() };
-    return undefined;
-  };
 
   return (
     <Show
       when={media()}
       keyed
       fallback={
-        <div
-          class={`w-6 h-6 rounded-full flex-shrink-0 border border-gray-200 dark:border-gray-700 ${swatchStyle() ? '' : 'bg-gray-200 dark:bg-gray-700'}`}
-          style={swatchStyle()}
-        />
+        <div class="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-semibold flex-shrink-0">
+          {initialsOf(props.name || '')}
+        </div>
       }
     >
       {(m) => (
@@ -69,7 +65,10 @@ export default function TenantSelector() {
   return (
     <div class="relative group">
       <div class="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-        <TenantAvatar themeConfig={currentTenant()?.themeConfig} />
+        <TenantAvatar
+          name={currentTenant()?.tenantName || currentTenant()?.tenant}
+          themeConfig={currentTenant()?.themeConfig}
+        />
         <span class="text-gray-900 dark:text-white text-sm truncate max-w-[150px]">
           {getTenantName(currentValue())}
         </span>
@@ -106,7 +105,7 @@ export default function TenantSelector() {
                   currentValue() === t.tenant ? 'text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:text-white'
                 }`}
               >
-                <TenantAvatar themeConfig={t.themeConfig} />
+                <TenantAvatar name={t.tenantName || t.tenant} themeConfig={t.themeConfig} />
                 <span class="flex-1 truncate">{t.tenantName || t.tenant}</span>
                 <span class="text-xs text-gray-600 dark:text-gray-500">{t.role}</span>
                 <Show when={currentValue() === t.tenant}>
