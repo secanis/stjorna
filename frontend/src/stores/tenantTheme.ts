@@ -49,7 +49,10 @@ async function load(tenantId: string | null, force = false): Promise<void> {
         try {
             const m = await pb.collection('media').getOne(mediaId);
             if (loadedFor !== tenantId) return;
-            const file = String(m.get('file') || '');
+            // JS SDK records are plain objects — no .get() (that is the
+            // Go-side JSVM API). Calling .get() here threw and silently
+            // disabled the logo.
+            const file = String((m as any).file || '');
             setLogoMedia(file ? { id: m.id, file } : null);
         } catch {
             // Unknown/deleted media ID or no read access — fall back to text.
