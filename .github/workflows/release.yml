@@ -364,9 +364,10 @@ jobs:
         # volumes are root-owned. The container's pocketbase user (uid
         # 1000) can't write to a root-owned mount, so PB exits immediately
         # with a permission error and --rm removes the container. A
-        # --tmpfs is owned by root but writable by any uid inside the
-        # container. We don't need persistence here (we just want the
-        # spec out), so --tmpfs is the right tool.
+        # --tmpfs avoids persistence, but its default mode is 0755 root
+        # (still not writable by uid 1000 — that's the "unable to open
+        # database file (14)" failure), so we set mode=1777 explicitly.
+        # We don't need persistence here (we just want the spec out).
         #
         # No --rm: if PB exits during boot we want `docker logs` to still
         # work. We capture the container ID from `docker run` and use it
@@ -380,7 +381,7 @@ jobs:
         run: |
           set -e
           CONTAINER_ID="$(docker run -d --network=host \
-            --tmpfs /app/pb_data:rw,size=64m \
+            --tmpfs /app/pb_data:rw,size=64m,mode=1777 \
             -e PB_SUPERUSER_EMAIL=release-bot@stjorna.local \
             -e PB_SUPERUSER_PASSWORD=release-bot-password \
             -e STJORNA_SETUP_TOKEN=release-bot-setup-token \
