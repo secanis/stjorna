@@ -23,6 +23,8 @@ interface OidcFormData {
   defaultRole: string;
   roleMapping: string;
   denyOnNoGroup: boolean;
+  syncMode: string;
+  allowUnverifiedEmail: boolean;
   disablePasswordLogin: boolean;
 }
 
@@ -67,6 +69,8 @@ export default function OidcSettings() {
     defaultRole: 'viewer',
     roleMapping: DEFAULT_ROLE_MAPPING,
     denyOnNoGroup: true,
+    syncMode: 'replace-oidc',
+    allowUnverifiedEmail: false,
     disablePasswordLogin: false,
   });
 
@@ -145,6 +149,8 @@ export default function OidcSettings() {
           defaultRole: String(s.oidc_default_role || 'viewer'),
           roleMapping: rm || DEFAULT_ROLE_MAPPING,
           denyOnNoGroup: s.oidc_deny_on_no_group !== false,
+          syncMode: String(s.oidc_sync_mode || 'replace-oidc'),
+          allowUnverifiedEmail: !!s.oidc_allow_unverified_email,
           disablePasswordLogin: !!s.oidc_disable_password_login,
         });
       }
@@ -247,6 +253,8 @@ export default function OidcSettings() {
         oidc_default_role: f.defaultRole,
         oidc_role_mapping: f.roleMapping,
         oidc_deny_on_no_group: f.denyOnNoGroup,
+        oidc_sync_mode: f.syncMode,
+        oidc_allow_unverified_email: f.allowUnverifiedEmail,
         oidc_disable_password_login: f.disablePasswordLogin,
       };
       if (settingsId()) {
@@ -579,6 +587,42 @@ export default function OidcSettings() {
                 />
                 <span class="text-gray-900 dark:text-white font-medium">Deny login if no matching tenant group is found</span>
               </label>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sync &amp; security</h2>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Membership sync mode</label>
+              <select
+                value={form().syncMode}
+                onChange={(e) => setForm((f) => ({ ...f, syncMode: e.currentTarget.value }))}
+                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
+              >
+                <option value="replace-oidc">Replace — remove memberships for groups the user left</option>
+                <option value="additive">Additive — only add/update, never remove</option>
+              </select>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Manual memberships are never touched either way. "Replace" also removes OIDC-sourced
+                memberships whose group no longer appears in the IdP.
+              </p>
+            </div>
+
+            <div class="mt-4">
+              <label class="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={form().allowUnverifiedEmail}
+                  onChange={(e) => setForm((f) => ({ ...f, allowUnverifiedEmail: e.currentTarget.checked }))}
+                />
+                <span class="text-gray-900 dark:text-white font-medium">Allow unverified email from the identity provider</span>
+              </label>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                When disabled (default), sign-in for existing accounts is blocked if the provider does not
+                assert <code class="font-mono">email_verified: true</code>. This prevents account takeover
+                through an unverified email match.
+              </p>
             </div>
           </div>
 

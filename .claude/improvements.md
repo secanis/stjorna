@@ -318,7 +318,7 @@ see the follow-up table below; **open** = not started.
 | T-10 | 🟠 | auth | Disabled-superuser guard bypassable; tokens not revoked | ✅ passed |
 | T-11 | 🟠 | backup | Export without media, OOM, non-transactional import | ✅ passed, follow-ups T-11.1, T-11.2 |
 | T-12 | 🟠 | nginx | 1 MB upload limit, SSE buffering, no security headers | ✅ passed, follow-up T-12.1 |
-| T-13 | 🟡 | oidc | Manual memberships hijacked/deleted; email auto-link | open (partly done in T-03) |
+| T-13 | 🟡 | oidc | Manual memberships hijacked/deleted; email auto-link | ✅ passed |
 | T-14 | 🟡 | auth | Superuser MFA never enabled on fresh installs | open |
 | T-15 | 🟡 | frontend | Pagination, custom_fields, auth store, filter injection | open |
 | T-16 | 🟡 | hooks | String-built handlers → modules; remove helm hook copy | open |
@@ -330,7 +330,7 @@ see the follow-up table below; **open** = not started.
 | T-22 | 🔵 | schema | Redundant/unused fields, relation types, indexes | open |
 | T-23 | 🔵 | scripts/docs | Delete dangerous fix script; fix stale v0.22 docs | open |
 
-### Follow-ups from the T-01…T-12 verification (ordered by criticality)
+### Follow-ups from the T-01…T-13 verification (ordered by criticality)
 
 | ID | Sev | Area | Gap | Do |
 |---|---|---|---|---|
