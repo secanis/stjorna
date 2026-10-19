@@ -21,7 +21,8 @@ COPY . .
 RUN STJORNA_VERSION=${STJORNA_VERSION} STJORNA_COMMIT=${STJORNA_COMMIT} npm run build
 
 # Stage 2: Serve with nginx-unprivileged (designed to run as non-root on port 8080)
-FROM docker.io/nginxinc/nginx-unprivileged:1.25-alpine
+# 1.25 is EOL; 1.27 is the current non-EOL mainline branch.
+FROM docker.io/nginxinc/nginx-unprivileged:1.27-alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

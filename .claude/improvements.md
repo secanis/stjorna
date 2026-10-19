@@ -316,8 +316,8 @@ see the follow-up table below; **open** = not started.
 | T-08 | 🟠 | media | Public files; auth JWT leaked in file URLs | ✅ passed, follow-up T-08.1 |
 | T-09 | 🟠 | tests | Integration tests never run in CI; harness targets v0.22 | ✅ passed |
 | T-10 | 🟠 | auth | Disabled-superuser guard bypassable; tokens not revoked | ✅ passed |
-| T-11 | 🟠 | backup | Export without media, OOM, non-transactional import | open |
-| T-12 | 🟠 | nginx | 1 MB upload limit, SSE buffering, no security headers | open |
+| T-11 | 🟠 | backup | Export without media, OOM, non-transactional import | ✅ passed, follow-ups T-11.1, T-11.2 |
+| T-12 | 🟠 | nginx | 1 MB upload limit, SSE buffering, no security headers | ✅ passed, follow-up T-12.1 |
 | T-13 | 🟡 | oidc | Manual memberships hijacked/deleted; email auto-link | open (partly done in T-03) |
 | T-14 | 🟡 | auth | Superuser MFA never enabled on fresh installs | open |
 | T-15 | 🟡 | frontend | Pagination, custom_fields, auth store, filter injection | open |
@@ -330,7 +330,7 @@ see the follow-up table below; **open** = not started.
 | T-22 | 🔵 | schema | Redundant/unused fields, relation types, indexes | open |
 | T-23 | 🔵 | scripts/docs | Delete dangerous fix script; fix stale v0.22 docs | open |
 
-### Follow-ups from the T-01…T-09 verification (ordered by criticality)
+### Follow-ups from the T-01…T-12 verification (ordered by criticality)
 
 | ID | Sev | Area | Gap | Do |
 |---|---|---|---|---|
@@ -341,3 +341,6 @@ see the follow-up table below; **open** = not started.
 | T-04.2 | 🟡 | tests | The e2e for "wizard reload after completion redirects to `/login`" is `test.skip` in `frontend/tests/e2e/auth.spec.ts:55` and still relies on a stale `localStorage.pb_setup_done` flag. The five `setup-storage.spec.ts` tests self-skip because they probe the removed `/api/admins` endpoint. The T-04 redirect acceptance has no automated coverage. | Rewrite the redirect test to drive `/api/stjorna/setup-status` (`setupDone: true`) and un-skip it. Port `setup-storage.spec.ts` to `/api/stjorna/setup-status` instead of `/api/admins`. |
 | T-08.1 | 🟡 | tests | `media.spec.ts` asserts `img[src]` contains `token=` but never asserts the value is **not** the auth JWT. The T-08 acceptance ("no URL in the DOM contains the auth JWT") is only covered by the unit test. | Add an e2e assertion that no `src`/`href` in the DOM contains `pb.authStore.token` (read it via `page.evaluate`) and that the `token=` value differs from it. |
 | T-05.2 | 🔵 | tests | No test performs a **write** with a service-user JWT. Read-only enforcement is covered only transitively (service users get the `viewer` role; T-02 tests prove viewers cannot write). | Add a case in `api-keys-v2.test.ts`: exchange → POST/PATCH/DELETE on products/categories/media → expect 403/400. |
+| T-11.2 | 🟠 | backup | Export still assembles the whole ZIP as a JS number array (`buildZipBytes`) and import reads the entire body into memory (`toBytes(e.request.body)`), so a large tenant export/import can exceed the 256 Mi pod limit. The import route also sets no `bodyLimit`, so PB's default may reject large bodies before the handler runs. | Stream/chunk the ZIP build and the import (or defer large instances to PB's native `/api/backups`), add an explicit body limit to the import route, and add a 200 MB round-trip test that asserts it stays under the pod memory limit. |
+| T-11.1 | 🟡 | backup | The T-11 acceptance requires a round-trip test on S3 (MinIO) storage, but only the local-filesystem round-trip is covered. The export/import code is S3-aware (`$app.newFilesystem()`, `record.baseFilesPath()`) but has never been exercised against real S3. | Stand up MinIO in the test harness (container + PB S3 settings via `/api/settings`), then run the export→import round-trip with media on S3 and assert identical counts, relations and file bytes. |
+| T-12.1 | 🟡 | nginx | The frontend proxy forwards `X-Forwarded-For`/`X-Real-IP`, but PocketBase does not trust the proxy, so PB rate limits and `PB_SUPERUSER_IPS` see the nginx pod IP instead of the real client. | Configure PB's trusted proxy settings (Settings → trusted proxy headers `X-Forwarded-For`/`X-Real-IP`) through a migration or the setup step. |
