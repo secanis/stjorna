@@ -14,6 +14,11 @@ data:
         root /usr/share/nginx/html;
         index index.html;
 
+        # Backup imports and media uploads can be up to 500 MB (matches the
+        # backend MAX_FILE_BYTES / media maxSize); nginx's 1 MB default would
+        # otherwise reject them with 413 before they reach PocketBase.
+        client_max_body_size 500m;
+
         location / {
             try_files $uri $uri/ /index.html;
         }
