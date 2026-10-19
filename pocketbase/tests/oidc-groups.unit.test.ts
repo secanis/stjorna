@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
+import { createRequire } from 'node:module';
 
-// Mirrors the group parsing logic in ../pb_hooks/oidc_groups.pb.js.
-// Kept pure so it can be unit-tested without PocketBase runtime.
+// Load the shared pure helpers from pb_hooks/lib/oidc.js (CommonJS, used by
+// both the PB hook and this unit test). createRequire bridges the ESM test
+// to the CJS module.
+const require = createRequire(import.meta.url);
+const { parseGroup, normalizeToStringArray } = require('../pb_hooks/lib/oidc.js');
 
 const DEFAULT_SEPARATOR = '_';
 const DEFAULT_MAPPING: Record<string, string> = {
@@ -10,24 +14,9 @@ const DEFAULT_MAPPING: Record<string, string> = {
   _viewer: 'viewer',
 };
 
-function parseGroup(
-  group: string,
-  separator: string,
-  roleMapping: Record<string, string>,
-  defaultRole: string
-): { tenantSlug: string; roleName: string } | null {
-  const g = String(group || '').trim();
-  if (!g) return null;
-
-  const sepIdx = g.lastIndexOf(separator);
-  if (sepIdx < 0 || sepIdx === g.length - 1) return null;
-
-  const tenantSlug = g.substring(0, sepIdx).toLowerCase();
-  const suffix = g.substring(sepIdx).toLowerCase();
-  const roleName = roleMapping[suffix] || defaultRole;
-  return { tenantSlug, roleName };
-}
-
+// Resolves a list of group names against in-memory tenant/role tables —
+// mirrors the $app-dependent part of oidc_groups.pb.js (resolveGroupMembership)
+// so the mapping + dedupe behaviour can be asserted without a PB runtime.
 function resolveMemberships(
   groups: (string | number)[],
   tenants: { id: string; slug: string }[],
@@ -99,6 +88,27 @@ describe('OIDC group parser', () => {
       tenantSlug: 'acme',
       roleName: 'admin',
     });
+  });
+});
+
+describe('OIDC group claim normalization', () => {
+  it('accepts a comma-separated string', () => {
+    expect(normalizeToStringArray('a,b, c ,')).toEqual(['a', 'b', 'c']);
+  });
+
+  it('accepts an array', () => {
+    expect(normalizeToStringArray(['a', ' b', '', 'c'])).toEqual(['a', 'b', 'c']);
+  });
+
+  it('accepts a nested object (teams/groups)', () => {
+    expect(normalizeToStringArray({ teams: ['a', 'b'] })).toEqual(['a', 'b']);
+    expect(normalizeToStringArray({ groups: 'x,y' })).toEqual(['x', 'y']);
+  });
+
+  it('returns empty for null/undefined/empty', () => {
+    expect(normalizeToStringArray(null)).toEqual([]);
+    expect(normalizeToStringArray(undefined)).toEqual([]);
+    expect(normalizeToStringArray('')).toEqual([]);
   });
 });
 

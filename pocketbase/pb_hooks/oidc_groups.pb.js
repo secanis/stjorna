@@ -2,6 +2,7 @@
 //
 // Uses PocketBase v0.40 onRecordAuthWithOAuth2Request hook:
 //   - validates groups and denies if none match BEFORE e.next().
+//   - enforces email_verified for auto-linked (existing) users (T-13).
 //   - syncs user_tenants rows with source = "oidc" AFTER e.next().
 //
 // Docs reference:
@@ -9,6 +10,9 @@
 //   Event fields: e.providerName, e.providerClient, e.record, e.oauth2User,
 //   e.createData, e.isNewRecord.
 //   Throwing an error (or not calling e.next()) stops the hook chain.
+//
+// Pure group-mapping helpers live in pb_hooks/lib/oidc.js (unit-tested in
+// pocketbase/tests/oidc-groups.unit.test.ts).
 
 console.log("[stjorna-oidc] loading");
 
@@ -16,6 +20,17 @@ console.log("[stjorna-oidc] loading");
 // Combined OIDC auth hook: validate before e.next(), sync after e.next().
 // -----------------------------------------------------------------------------
 onRecordAuthWithOAuth2Request(function (e) {
+    var oidcLib = require(`${__hooks}/lib/oidc.js`);
+
+    // Verbose logging (raw group claims, user keys) is opt-in — it is a
+    // privacy/security concern on every login, so only emit it when the
+    // operator explicitly sets STJORNA_LOG_OIDC (T-13).
+    var debugLog = false;
+    try {
+        var v = $os.getenv("STJORNA_LOG_OIDC");
+        debugLog = v === "1" || v === "true" || v === "yes";
+    } catch (_) {}
+
     // ---- Load OIDC settings from instance_settings ----------------------------
     var cfg = {
         enabled: false,
@@ -26,7 +41,8 @@ onRecordAuthWithOAuth2Request(function (e) {
         defaultRole: "viewer",
         roleMapping: { "_admin": "admin", "_editor": "editor", "_viewer": "viewer" },
         denyOnNoGroup: true,
-        syncMode: "replace-oidc"
+        syncMode: "replace-oidc",
+        allowUnverifiedEmail: false
     };
 
     try {
@@ -55,6 +71,12 @@ onRecordAuthWithOAuth2Request(function (e) {
             var sm = String(rec.get("oidc_sync_mode") || "").trim();
             if (sm) cfg.syncMode = sm;
 
+            // Secure default: the check is on unless the operator explicitly
+            // opts out by setting oidc_allow_unverified_email = true.
+            if (rec.get("oidc_allow_unverified_email") === true) {
+                cfg.allowUnverifiedEmail = true;
+            }
+
             var rm = String(rec.get("oidc_role_mapping") || "").trim();
             if (rm) {
                 var parts = rm.split(",");
@@ -70,7 +92,7 @@ onRecordAuthWithOAuth2Request(function (e) {
         console.log("[stjorna-oidc] failed to load config: " + (err && err.message));
     }
 
-    console.log("[stjorna-oidc] provider=" + e.providerName + " enabled=" + cfg.enabled);
+    if (debugLog) console.log("[stjorna-oidc] provider=" + e.providerName + " enabled=" + cfg.enabled);
 
     if (!cfg.enabled || e.providerName !== cfg.providerName) {
         return e.next();
@@ -86,42 +108,41 @@ onRecordAuthWithOAuth2Request(function (e) {
     try { if (o2u) rawUser = o2u.rawUser; } catch (_) {}
     if (!rawUser) try { if (o2u) rawUser = o2u.RawUser; } catch (_) {}
 
-    try {
-        console.log("[stjorna-oidc] rawUser keys=" + (rawUser ? JSON.stringify(Object.keys(rawUser)) : "none"));
-    } catch (_) {}
+    if (debugLog) {
+        try {
+            console.log("[stjorna-oidc] rawUser keys=" + (rawUser ? JSON.stringify(Object.keys(rawUser)) : "none"));
+        } catch (_) {}
+    }
+
+    // ---- T-13: reject auto-linked accounts with unverified email --------------
+    // PocketBase auto-links an OAuth2 login to an existing user with the same
+    // email. If the IdP does not assert email_verified, an attacker can claim
+    // the victim's email at the IdP and take over the real account. New
+    // records (first login) have no pre-existing account to hijack, so the
+    // check only applies when the login would link to an existing user.
+    if (!cfg.allowUnverifiedEmail && !e.isNewRecord) {
+        var emailVerified = false;
+        try {
+            if (rawUser) {
+                var ev = rawUser.email_verified;
+                if (ev === undefined) ev = rawUser.emailVerified;
+                emailVerified = ev === true || ev === "true" || ev === 1 || ev === "1";
+            }
+        } catch (_) {}
+        if (!emailVerified) {
+            throw new ForbiddenError("OIDC login denied: email is not verified by the identity provider");
+        }
+    }
 
     // ---- Extract group list from the configured claim -------------------------
-    function normalizeToStringArray(value) {
-        if (value === undefined || value === null) return [];
-        if (typeof value === "string") {
-            return value.split(",").map(function (s) { return s.trim(); }).filter(function (s) { return s; });
-        }
-        if (Array.isArray(value)) {
-            return value.map(function (v) { return String(v || "").trim(); }).filter(function (s) { return s; });
-        }
-        // If the provider sends an object (e.g. { teams: [...] }), try common nested keys.
-        if (typeof value === "object") {
-            var nestedKeys = ["groups", "group", "roles", "role", "teams", "members", "permissions"];
-            for (var n = 0; n < nestedKeys.length; n++) {
-                if (value[nestedKeys[n]] !== undefined) {
-                    return normalizeToStringArray(value[nestedKeys[n]]);
-                }
-            }
-        }
-        return [];
+    var extracted = { value: undefined, usedClaim: cfg.groupClaim };
+    if (rawUser) {
+        extracted.value = rawUser[cfg.groupClaim];
     }
-
-    function extractRawGroups(raw, configuredClaim) {
-        if (!raw) return { value: undefined, usedClaim: configuredClaim };
-        return { value: raw[configuredClaim], usedClaim: configuredClaim };
-    }
-
-    var extracted = extractRawGroups(rawUser, cfg.groupClaim);
     var rawGroups = extracted.value;
-    var usedClaim = extracted.usedClaim;
-    var groups = normalizeToStringArray(rawGroups);
+    var groups = oidcLib.normalizeToStringArray(rawGroups);
 
-    console.log("[stjorna-oidc] groupClaim=" + usedClaim + " rawValue=" + JSON.stringify(rawGroups) + " normalizedGroups=" + JSON.stringify(groups));
+    if (debugLog) console.log("[stjorna-oidc] groupClaim=" + cfg.groupClaim + " normalizedGroups=" + JSON.stringify(groups));
 
     // ---- BEFORE e.next(): validate that at least one group maps to a tenant ---
     function resolveGroupMembership(groupStr) {
@@ -132,23 +153,20 @@ onRecordAuthWithOAuth2Request(function (e) {
             g = g.substring(cfg.groupPrefix.length);
         }
 
-        var sepIdx = g.lastIndexOf(cfg.separator);
-        if (sepIdx < 0 || sepIdx === g.length - 1) return null;
-
-        var tenantSlug = g.substring(0, sepIdx).toLowerCase();
-        var suffix = g.substring(sepIdx).toLowerCase();
-        var roleName = cfg.roleMapping[suffix];
-        if (!roleName) roleName = cfg.defaultRole;
+        // Parsing is delegated to the shared, unit-tested helper; the
+        // tenant/role ID lookups are the only $app-dependent part.
+        var parsed = oidcLib.parseGroup(g, cfg.separator, cfg.roleMapping, cfg.defaultRole);
+        if (!parsed) return null;
 
         var tenant = null;
         try {
-            tenant = $app.findFirstRecordByFilter("tenants", "slug={:s}", { s: tenantSlug });
+            tenant = $app.findFirstRecordByFilter("tenants", "slug={:s}", { s: parsed.tenantSlug });
         } catch (_) {}
         if (!tenant) return null;
 
         var role = null;
         try {
-            role = $app.findFirstRecordByFilter("roles", "name={:r}", { r: roleName });
+            role = $app.findFirstRecordByFilter("roles", "name={:r}", { r: parsed.roleName });
         } catch (_) {}
         if (!role) return null;
 
@@ -156,8 +174,8 @@ onRecordAuthWithOAuth2Request(function (e) {
             group: g,
             tenantId: String(tenant.id),
             roleId: String(role.id),
-            tenantSlug: tenantSlug,
-            roleName: roleName
+            tenantSlug: parsed.tenantSlug,
+            roleName: parsed.roleName
         };
     }
 
@@ -171,7 +189,7 @@ onRecordAuthWithOAuth2Request(function (e) {
         }
     }
 
-    console.log("[stjorna-oidc] matchedMemberships=" + desired.length);
+    if (debugLog) console.log("[stjorna-oidc] matchedMemberships=" + desired.length);
 
     if (desired.length === 0 && cfg.denyOnNoGroup) {
         throw new UnauthorizedError("OIDC login denied: no matching tenant group");
@@ -233,11 +251,9 @@ onRecordAuthWithOAuth2Request(function (e) {
             var item = desired[d];
             var existingInfo = existingByTenant[item.tenantId];
             if (existingInfo) {
-                // T-03: respect manual rows. A membership that an admin
-                // created (source != "oidc") stays manual — we only
-                // update its role. Flipping `source` to "oidc" would
-                // also make it eligible for `replace-oidc` deletion the
-                // next time the user leaves that group.
+                // T-03/T-13: respect manual rows. A membership that an admin
+                // created (source != "oidc") stays manual — we never touch
+                // it. Only oidc-sourced rows get their role refreshed.
                 if (existingInfo.source === "oidc") {
                     try {
                         var currentRole = String(existingInfo.record.get("role") || "");
@@ -258,7 +274,7 @@ onRecordAuthWithOAuth2Request(function (e) {
                     ut.set("role", item.roleId);
                     ut.set("source", "oidc");
                     $app.save(ut);
-                    console.log("[stjorna-oidc] created membership tenant=" + item.tenantSlug + " role=" + item.roleName + " for user=" + userId);
+                    if (debugLog) console.log("[stjorna-oidc] created membership tenant=" + item.tenantSlug + " role=" + item.roleName + " for user=" + userId);
                 } catch (crErr) {
                     console.log("[stjorna-oidc] membership create failed: " + (crErr && crErr.message));
                 }
@@ -275,7 +291,7 @@ onRecordAuthWithOAuth2Request(function (e) {
                 if (!desiredTenantIds[key] && existingByTenant[key].source === "oidc") {
                     try {
                         $app.delete(existingByTenant[key].record);
-                        console.log("[stjorna-oidc] removed obsolete membership tenant=" + key + " for user=" + userId);
+                        if (debugLog) console.log("[stjorna-oidc] removed obsolete membership tenant=" + key + " for user=" + userId);
                     } catch (delErr) {
                         console.log("[stjorna-oidc] membership delete failed: " + (delErr && delErr.message));
                     }
