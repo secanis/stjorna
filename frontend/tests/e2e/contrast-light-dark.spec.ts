@@ -41,13 +41,18 @@ test.describe('Color contrast (light mode)', () => {
     const ctx = getContext(page);
     await ctx.loginAsUser();
     await page.goto(ctx.frontendUrl + '/activities');
-    await page.waitForTimeout(800);
 
-    const labels = await page.locator('label').all();
-    expect(labels.length).toBeGreaterThan(0);
-    for (const label of labels) {
+    // The Activities SPA route hydrates ~1s after a full reload, so the old
+    // 800ms sleep raced the render and flaked. Give it a safe margin before
+    // asserting the filter labels' color.
+    await page.waitForTimeout(1500);
+
+    const labels = page.locator('label');
+    const all = await labels.all();
+    expect(all.length).toBeGreaterThan(0);
+    for (const label of all) {
       const color = await label.evaluate(el => getComputedStyle(el).color);
-      expect(color, label.textContent()).toBe(GRAY_700);
+      expect(color, await label.textContent()).toBe(GRAY_700);
     }
   });
 
