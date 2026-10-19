@@ -758,7 +758,13 @@ function importHandler(e) {
         // application/zip or application/json directly. We avoid multipart
         // because Node's native fetch + PB's multipart parser are flaky
         // together in some CI environments (multipart: NextPart: EOF).
-        var fileBytes = toBytes(e.request.body);
+        //
+        // NB: pass an explicit size limit. toBytes() falls back to
+        // router.DefaultMaxMemory (16 MB) when the limit is omitted, which
+        // silently truncates any larger ZIP and breaks the import with a
+        // generic 400/500. Read up to MAX_FILE_BYTES + 1 so the size check
+        // below can still reject an over-limit body with a clear 413.
+        var fileBytes = toBytes(e.request.body, MAX_FILE_BYTES + 1);
         if (!fileBytes || !fileBytes.length) {
             replyError(e, 400, "empty request body");
             return;

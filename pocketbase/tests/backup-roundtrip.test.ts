@@ -234,4 +234,51 @@ describe('T-11: tenant backup round-trip', () => {
     expect(hardware).toBeDefined();
     expect(hammer.category).toBe(hardware.id);
   });
+
+  // Regression guard: the import handler must read the raw request body with
+  // an explicit size limit. toBytes(e.request.body) without a limit falls back
+  // to router.DefaultMaxMemory (16 MB) and silently truncates larger ZIPs,
+  // breaking the round-trip for any tenant with >16 MB of media.
+  it('round-trips a tenant whose backup ZIP exceeds 16 MB', async () => {
+    const adminPb = await createAdminClient();
+
+    const largeSource = await adminPb.collection('tenants').create(
+      createTenantFixture({ name: 'Large Source', slug: 'large-source-' + Date.now() }),
+    );
+    const largeTarget = await adminPb.collection('tenants').create(
+      createTenantFixture({ name: 'Large Target', slug: 'large-target-' + Date.now() }),
+    );
+
+    // ~17 MB payload: big enough that the exported ZIP (STORE method, so no
+    // compression) crosses the 16 MB DefaultMaxMemory truncation boundary.
+    // Prefix a real PNG signature so the media file passes the media.file
+    // mimeTypes validation (`image/png`) regardless of the filler bytes.
+    const LARGE_SIZE = 17 * 1024 * 1024;
+    const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const largeBytes = Buffer.concat([PNG_SIG, Buffer.alloc(LARGE_SIZE - PNG_SIG.length, 0xab)]);
+
+    const form = new FormData();
+    form.append('tenant', largeSource.id);
+    form.append('filename', 'large.png');
+    form.append('original_name', 'large.png');
+    form.append('mime_type', 'image/png');
+    form.append('file', new Blob([largeBytes], { type: 'image/png' }), 'large.png');
+    await adminPb.collection('media').create(form);
+
+    const exported = await exportTenant(largeSource.id, adminToken);
+    expect(exported.length).toBeGreaterThan(16 * 1024 * 1024);
+
+    const { status, body } = await importTenant(largeTarget.id, adminToken, exported, 'v3');
+    expect(status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.stats.created.media).toBe(1);
+
+    const medias = await adminPb.collection('media').getList(1, 50, {
+      filter: `tenant = "${largeTarget.id}"`,
+    });
+    expect(medias.items.length).toBe(1);
+    // The import recomputes size from the actual file bytes (importMedia's
+    // fallback), so this also proves the 17 MB payload was not truncated.
+    expect(medias.items[0].size).toBe(LARGE_SIZE);
+  });
 });
