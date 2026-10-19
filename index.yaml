@@ -201,6 +201,34 @@ entries:
       category: CMS
       licenses: MIT
     apiVersion: v2
+    appVersion: v3.0.0-rc14
+    created: "2026-10-19T22:02:30.544678589Z"
+    dependencies:
+    - condition: garage.enabled
+      name: garage
+      repository: file://../garage
+      version: 0.7.3
+    description: STJÓRNA — multi-tenant product management (PocketBase + SolidJS frontend)
+    digest: 3251cc040ea149835e8bf6a20f5c302292e065b3ff518bde2526759f28c063d2
+    home: https://github.com/secanis/stjorna
+    keywords:
+    - pocketbase
+    - cms
+    - product-management
+    - multi-tenant
+    kubeVersion: '>=1.20.0-0'
+    maintainers:
+    - email: support@secanis.ch
+      name: secanis
+    name: stjorna
+    type: application
+    urls:
+    - https://github.com/secanis/stjorna/releases/download/stjorna-3.0.0-rc14/stjorna-3.0.0-rc14.tgz
+    version: 3.0.0-rc14
+  - annotations:
+      category: CMS
+      licenses: MIT
+    apiVersion: v2
     appVersion: v3.0.0-rc13
     created: "2026-10-18T22:37:13.279062497Z"
     dependencies:
@@ -337,4 +365,4 @@ entries:
     urls:
     - https://github.com/secanis/stjorna/releases/download/stjorna-3.0.0-rc1/stjorna-3.0.0-rc1.tgz
     version: 3.0.0-rc1
-generated: "2026-10-18T22:37:13.279108485Z"
+generated: "2026-10-19T22:02:30.544825005Z"
