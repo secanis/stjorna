@@ -1,6 +1,6 @@
 import { createSignal, createResource, For, Show, onMount } from 'solid-js';
 import { useNavigate, useParams, useLocation } from '@solidjs/router';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
@@ -12,7 +12,7 @@ import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 async function fetchMedia() {
   const tenant = getCurrentTenant();
-  const filter = tenant ? `tenant = "${tenant}"` : '';
+  const filter = tenantFilter(tenant);
   return await pb.collection('media').getList<Media>(1, 200, { filter, sort: '-created' });
 }
 
@@ -33,12 +33,13 @@ export default function CategoryEdit() {
   const [loading, setLoading] = createSignal(true);
   const [saving, setSaving] = createSignal(false);
   const [error, setError] = createSignal('');
+  // Only a failed load hides the form; save errors keep it editable.
+  const [loadFailed, setLoadFailed] = createSignal(false);
   const [success, setSuccess] = createSignal(false);
 
   const [media] = createResource(fetchMedia);
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;
@@ -73,6 +74,7 @@ export default function CategoryEdit() {
         });
         setSlugManuallyEdited(true);
       } catch (e: any) {
+        setLoadFailed(true);
         setError(e.message || 'Failed to load category');
       }
     }
@@ -196,7 +198,7 @@ export default function CategoryEdit() {
         </div>
       </Show>
 
-      <Show when={!loading() && !error()}>
+      <Show when={!loading() && !loadFailed()}>
         <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-name">Name</label>

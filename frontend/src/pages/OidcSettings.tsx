@@ -5,6 +5,7 @@ import { authStore } from '~/stores/auth';
 import { Save, Copy, Check, Info } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
+import { getConfiguredPbUrl } from '~/services/config';
 
 interface OidcFormData {
   enabled: boolean;
@@ -113,7 +114,6 @@ export default function OidcSettings() {
   };
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;
@@ -269,7 +269,7 @@ export default function OidcSettings() {
       const oauth2: any = usersColl.oauth2 || { enabled: false, mappedFields: {}, providers: [] };
       const mappedFields = oauth2.mappedFields || { id: '', name: 'name', username: '', avatarURL: '' };
 
-      let providers = (oauth2.providers || []).filter((p: any) => p.name !== f.providerName);
+      const providers = (oauth2.providers || []).filter((p: any) => p.name !== f.providerName);
 
       const newProvider: any = {
         name: f.providerName,
@@ -316,7 +316,7 @@ export default function OidcSettings() {
   };
 
   const redirectUrl = () => {
-    const base = (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || window.location.origin;
+    const base = getConfiguredPbUrl() || window.location.origin;
     return `${base}/api/oauth2-redirect`;
   };
 

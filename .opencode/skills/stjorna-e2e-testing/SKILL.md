@@ -130,7 +130,7 @@ test('user auth', async ({ page, request }) => {
     const ctx = getContext(page);
 
     // Use Playwright's request fixture to do a separate auth
-    const auth = await request.post(ctx.pbUrl + '/api/admins/auth-with-password', {
+    const auth = await request.post(ctx.pbUrl + '/api/collections/_superusers/auth-with-password', {
         data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
     expect(auth.ok()).toBeTruthy();
@@ -344,7 +344,7 @@ podman cp /path/to/file container:/app/path/  # copy to container
 
 ### PB's built-in
 - `GET /api/health` — health check
-- `POST /api/admins/auth-with-password` — PB admin login
+- `POST /api/collections/_superusers/auth-with-password` — PB superuser login (v0.23+; `/api/admins` no longer exists)
 - `POST /api/collections/users/auth-with-password` — user login
 - `GET/POST/PATCH/DELETE /api/collections/{collection}/records[/{id}]` — collection CRUD
 - `GET/POST/PATCH /api/collections/{collection}/records[/{id}]/{file_field}` — file download/upload
@@ -453,5 +453,5 @@ PB's built-in `/api/settings/test/s3` fails on Scaleway because `DeletePrefix` u
 4. Run: `npx playwright test tests/e2e/new-feature.spec.ts`
 
 ## Related Skills
-- `pocketbase-jsvm-hooks` — PB v0.22.7 JS hook gotchas (loader/executor VM, response writing, file patterns)
+- `pocketbase-jsvm-hooks` — PB v0.40 JS hook module pattern (loader/executor VM, response writing, file patterns)
 - `stjorna-architecture` — STJÓRNA architecture, schema, role model, S3, OpenAPI

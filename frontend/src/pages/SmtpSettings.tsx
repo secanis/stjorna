@@ -48,7 +48,6 @@ export default function SmtpSettings() {
   const [testSuccess, setTestSuccess] = createSignal('');
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

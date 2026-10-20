@@ -39,15 +39,17 @@ describe('Media Collection', () => {
     expect(record.height).toBe(2160);
   });
 
-  it('should create media with S3 metadata', async () => {
-    const fixture = createMediaFixture(tenantId, {
-      s3_key: 'tenants/' + tenantId + '/uploads/original/media-id/photo.jpg',
-      s3_url: 'https://bucket.s3.region.amazonaws.com/tenants/' + tenantId + '/uploads/original/media-id/photo.jpg',
+  it('does not store the legacy S3 / thumbnail columns (T-22)', async () => {
+    const record = await pb.collection('media').create({
+      ...createMediaFixture(tenantId),
+      s3_key: 'legacy-key.jpg',
+      s3_url: 'https://example.invalid/legacy.jpg',
+      thumbnail_url: 'https://example.invalid/thumb.webp',
+      usage_count: 3,
     });
-    const record = await pb.collection('media').create(fixture);
-
-    expect(record.s3_key).toBe('tenants/' + tenantId + '/uploads/original/media-id/photo.jpg');
-    expect(record.s3_url).toBeDefined();
+    for (const k of ['s3_key', 's3_url', 'thumbnail_url', 'usage_count']) {
+      expect((record as any)[k], k).toBeUndefined();
+    }
   });
 
   it('should read a media record by id', async () => {
@@ -69,18 +71,6 @@ describe('Media Collection', () => {
 
     expect(updated.filename).toBe('updated-filename.jpg');
     expect(updated.id).toBe(created.id);
-  });
-
-  it('should update s3_url after processing', async () => {
-    const fixture = createMediaFixture(tenantId, { s3_key: 'initial-key.jpg' });
-    const created = await pb.collection('media').create(fixture);
-
-    const thumbnailUrl = 'https://bucket.s3.region.amazonaws.com/thumbnails/' + created.id + '.webp';
-    const updated = await pb.collection('media').update(created.id, {
-      thumbnail_url: thumbnailUrl,
-    });
-
-    expect(updated.thumbnail_url).toBe(thumbnailUrl);
   });
 
   it('should delete a media record', async () => {
@@ -109,17 +99,6 @@ describe('Media Collection', () => {
     });
 
     expect(results.items.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('should increment usage_count', async () => {
-    const fixture = createMediaFixture(tenantId, { usage_count: 0 });
-    const created = await pb.collection('media').create(fixture);
-
-    const updated = await pb.collection('media').update(created.id, {
-      usage_count: created.usage_count + 1,
-    });
-
-    expect(updated.usage_count).toBe(1);
   });
 
   it('should filter by mime_type', async () => {

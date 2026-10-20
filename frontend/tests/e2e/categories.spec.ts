@@ -236,8 +236,8 @@ async function getAdminPb(): Promise<PocketBase> {
       const count = await rows.count();
       if (count === 0) return;
 
-      page.on('dialog', dialog => dialog.accept());
       await page.locator('button:has-text("Delete")').first().click();
+      await page.getByTestId('confirm-dialog-confirm').click();
       await page.waitForTimeout(1000);
     });
 

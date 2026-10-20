@@ -1,15 +1,17 @@
 # SPDX-License-Identifier: MIT
-# CI for STJÓRNA — runs on PRs and pushes to main / feature/**.
+# CI for STJÓRNA — runs on PRs and pushes to main / feature/**, and is
+# called by release.yml (workflow_call) so releases are gated on it.
 #
 # Jobs:
-#   - lint-frontend: type-check + build the SolidJS frontend
-#   - test-frontend: vitest unit tests in frontend/src/utils
-#   - test-pb:      vitest integration tests in pocketbase
+#   - test-frontend: lint + typecheck + build + vitest unit tests
+#   - test-pb:       vitest integration tests in pocketbase
+#   - test-e2e:      Playwright against a real PB (non-blocking, T-15)
 #   - lint-helm:     helm lint + template render check
 #   - test-helm:     full kind-based end-to-end test (slower, only on push)
-#   - build-images:  build PB + frontend images, push to ghcr.io for caching
-#                    (only on push, not on PRs from forks)
+#   - build-images:  build PB + frontend images (no push), warms the GHA
+#                    cache (only on branch pushes; release.yml builds itself)
 #
+# Actions are pinned to commit SHAs (version in the trailing comment).
 # Required secrets: none (uses GITHUB_TOKEN for ghcr.io login)
 
 name: CI
@@ -22,11 +24,22 @@ on:
   pull_request:
     branches:
       - main
+  # release.yml calls this workflow so a release is only published when
+  # the test suite is green.
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to test (empty = the triggering ref)'
+        type: string
+        default: ''
 
-# Cancel in-progress runs of the same workflow when a new commit lands
+# Cancel in-progress runs of the same workflow when a new commit lands.
+# Only for push / pull_request: when called from release.yml
+# (workflow_call), github.workflow is the CALLER's name, so sharing the
+# caller's group would make the release wait on / cancel itself.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -43,8 +56,10 @@ jobs:
     name: Frontend (build + unit tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
           cache: npm
@@ -52,6 +67,12 @@ jobs:
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Type-check
+        working-directory: frontend
+        run: npm run typecheck
       - name: Build (also runs TypeScript type-check)
         working-directory: frontend
         run: npm run build
@@ -66,8 +87,10 @@ jobs:
     name: PocketBase (vitest)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
           cache: npm
@@ -75,6 +98,9 @@ jobs:
       - name: Install dependencies
         working-directory: pocketbase
         run: npm install --no-audit --no-fund
+      - name: Check hooks (syntax + route registry)
+        working-directory: pocketbase
+        run: npm run check:hooks
       - name: Build PocketBase image
         # Tests spin up a real PB container via setup.ts; the image must
         # exist locally as `localhost/stjorna-pocketbase:test` before
@@ -127,8 +153,10 @@ jobs:
     # check the job result on PRs and remove this once specs are green.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
           cache: npm
@@ -165,7 +193,7 @@ jobs:
         run: npm run test:e2e:fast
       - name: Upload Playwright report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: playwright-report
           path: frontend/playwright-report
@@ -178,8 +206,10 @@ jobs:
     name: Helm chart (lint + render)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: azure/setup-helm@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:
           version: v4.2.2
       - name: Run lint
@@ -194,11 +224,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
-      - uses: azure/setup-helm@v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:
           version: v4.2.2
       - name: Install kind
@@ -220,7 +252,7 @@ jobs:
   build-images:
     name: Build image (${{ matrix.name }})
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
     strategy:
       fail-fast: false
       matrix:
@@ -232,22 +264,26 @@ jobs:
             context: frontend
             dockerfile: frontend/Dockerfile
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set image name
         id: image
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
         run: |
-          if [ "${{ matrix.name }}" = "pocketbase" ]; then
-            echo "name=${{ env.PB_IMAGE }}" >> "$GITHUB_OUTPUT"
+          if [ "$MATRIX_NAME" = "pocketbase" ]; then
+            echo "name=$PB_IMAGE" >> "$GITHUB_OUTPUT"
           else
-            echo "name=${{ env.FE_IMAGE }}" >> "$GITHUB_OUTPUT"
+            echo "name=$FE_IMAGE" >> "$GITHUB_OUTPUT"
           fi
-      - uses: docker/metadata-action@v6
+      - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         id: meta
         with:
           images: ${{ steps.image.outputs.name }}
@@ -261,7 +297,7 @@ jobs:
             type=raw,value=edge,enable={{is_default_branch}}
           # Strip the leading slash docker adds for branch refs
           flavor: latest=auto
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}

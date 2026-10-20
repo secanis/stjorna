@@ -37,7 +37,6 @@ export default function Activities() {
   const [nameFilter, setNameFilter] = createSignal<string>('');
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

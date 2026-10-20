@@ -1,6 +1,7 @@
 import { ParentProps, createEffect } from 'solid-js';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import MfaBanner from './MfaBanner';
 import { authStore } from '~/stores/auth';
 import { tenantTheme } from '~/stores/tenantTheme';
 
@@ -16,6 +17,7 @@ export default function Layout(props: ParentProps) {
       <Sidebar />
       <div class="flex-1 flex flex-col">
         <Header />
+        <MfaBanner />
         <main class="flex-1 p-6">
           {props.children}
         </main>

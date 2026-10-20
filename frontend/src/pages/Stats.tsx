@@ -1,17 +1,20 @@
-import { createSignal, Show, onMount, createEffect } from 'solid-js';
-import { useNavigate } from '@solidjs/router';
+import { createSignal, Show, createEffect, on } from 'solid-js';
 import { Package, Folder, Image, Users, HardDrive, Clock, BarChart3, RefreshCw } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { tenantStore } from '~/stores/tenant';
 import { fetchMyStats, fetchTenantStats, type StatsSnapshot, StatsFormatting } from '~/services/stats';
 
 export default function Stats() {
-    const navigate = useNavigate();
     const [snapshot, setSnapshot] = createSignal<StatsSnapshot | null>(null);
     const [loading, setLoading] = createSignal(true);
     const [error, setError] = createSignal<string | null>(null);
 
+    // Sequence guard: ignore responses from a superseded load (tenant
+    // switched or Refresh clicked while a request was in flight).
+    let loadSeq = 0;
     const load = async () => {
+        const seq = ++loadSeq;
+        const isCurrent = () => seq === loadSeq;
         setLoading(true);
         setError(null);
         try {
@@ -29,32 +32,21 @@ export default function Stats() {
                 if (!tenant) {
                     throw new Error('Pick a tenant from the header to view its stats.');
                 }
-                setSnapshot(await fetchTenantStats(tenant));
+                const snap = await fetchTenantStats(tenant);
+                if (isCurrent()) setSnapshot(snap);
             } else {
-                setSnapshot(await fetchMyStats());
+                const snap = await fetchMyStats();
+                if (isCurrent()) setSnapshot(snap);
             }
         } catch (e: any) {
-            setError(String(e?.message || e));
+            if (isCurrent()) setError(String(e?.message || e));
         } finally {
-            setLoading(false);
+            if (isCurrent()) setLoading(false);
         }
     };
 
-    onMount(async () => {
-        await authStore.init();
-        if (!authStore.isAuthenticated()) {
-            navigate('/login', { replace: true });
-            return;
-        }
-        await load();
-    });
-
-    createEffect(() => {
-        // Refetch when the active tenant changes (PB admin scenario).
-        tenantStore.version;
-        if (!authStore.isAuthenticated()) return;
-        load();
-    });
+    // Initial load plus a refetch whenever the active tenant changes.
+    createEffect(on(() => tenantStore.version, () => { void load(); }));
 
     const fmt = StatsFormatting.formatBytes;
     const friendly = StatsFormatting.friendlyMime;

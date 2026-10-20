@@ -4,8 +4,8 @@ import { authStore } from '~/stores/auth';
 import { pb } from '~/services/pocketbase';
 // CSS is referenced by URL to avoid pulling the entire swagger-ui CSS
 // into the main bundle. Vite returns the resolved asset URL.
-// @ts-ignore — swagger-ui-dist has no type declarations
 import swaggerCss from 'swagger-ui-dist/swagger-ui.css?url';
+import { getConfiguredPbUrl } from '~/services/config';
 
 // Builds the OpenAPI spec URL without triggering mixed-content in HTTPS
 // deployments.
@@ -60,7 +60,7 @@ export default function ApiDocs() {
         document.head.appendChild(link);
       }
 
-      const pbUrl = (import.meta.env.VITE_PB_URL as string)?.replace(/\/+$/, '') || '';
+      const pbUrl = getConfiguredPbUrl();
       const specUrl = buildSpecUrl(pbUrl);
       const ui = SwaggerUIBundle({
         url: specUrl,

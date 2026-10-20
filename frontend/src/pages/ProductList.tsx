@@ -1,7 +1,7 @@
 import { createSignal, createResource, Show, onMount, For } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import Table, { Column } from '~/components/ui/Table';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, tenantFilter, toSortExpr } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
@@ -10,13 +10,14 @@ import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Product } from '~/types';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
-async function fetchProducts() {
-  const tenant = getCurrentTenant();
-  const filter = tenant ? `tenant = "${tenant}"` : '';
-  return await pb.collection('products').getList<Product>(1, 50, {
-    filter,
-    sort: 'sort_order,name',
+const PER_PAGE = 50;
+
+async function fetchProducts(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc' }) {
+  return await pb.collection('products').getList<Product>(src.page, PER_PAGE, {
+    filter: tenantFilter(),
+    sort: toSortExpr(src.sortKey, src.sortDir, 'name'),
     expand: 'media',
   });
 }
@@ -25,7 +26,6 @@ export default function ProductList() {
   const navigate = useNavigate();
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;
@@ -53,16 +53,17 @@ export default function ProductList() {
   const handleSort = (key: string, dir: 'asc' | 'desc') => {
     setSortKey(key);
     setSortDir(dir);
+    setPage(1);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
+    if (!(await confirmDialog({ message: 'Delete this product?', danger: true }))) return;
     try {
       await pb.collection('products').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to delete: ${e.message}`);
+      void alertDialog(`Failed to delete: ${e.message}`);
     }
   };
 
@@ -72,7 +73,7 @@ export default function ProductList() {
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to update: ${e.message}`);
+      void alertDialog(`Failed to update: ${e.message}`);
     }
   };
 

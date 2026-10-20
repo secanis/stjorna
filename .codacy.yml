@@ -34,4 +34,3 @@ engines:
       - id: category/ecmascript/errorprone/InaccurateNumericLiteral
         paths:
           - pocketbase/pb_hooks/lib/backup.js
-          - helm/stjorna/files/hooks/lib/backup.js

@@ -8,6 +8,9 @@
  * prints the generated OTP code to the PocketBase process logs so it can be
  * copied manually during testing/development.
  *
+ * DEV-ONLY (T-14): when enabled, superuser OTP mails are NEVER sent, even if
+ * SMTP is configured — the code only goes to the log.
+ *
  * Security warning:
  * OTP codes are authentication secrets. Enabling this logger writes those
  * secrets to stdout/log output. Anyone with access to the logs can impersonate

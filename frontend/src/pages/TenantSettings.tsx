@@ -10,6 +10,7 @@ import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeC
 import { ArrowLeft, Save, UserPlus, X, BarChart3 } from 'lucide-solid';
 import BackupSection from '~/components/backup/BackupSection';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 interface TenantUser {
   id: string;
@@ -51,6 +52,14 @@ export default function TenantSettings() {
   const [showAddUser, setShowAddUser] = createSignal(false);
   const [availableUsers, setAvailableUsers] = createSignal<{ id: string; email: string; name: string }[]>([]);
   const [availableLoading, setAvailableLoading] = createSignal(true);
+  const [availableTruncated, setAvailableTruncated] = createSignal(false);
+  const [userSearch, setUserSearch] = createSignal('');
+  let userSearchTimer: ReturnType<typeof setTimeout> | undefined;
+  const onUserSearchInput = (value: string) => {
+    setUserSearch(value);
+    clearTimeout(userSearchTimer);
+    userSearchTimer = setTimeout(() => { void loadAvailableUsers(); }, 300);
+  };
   const [selectedUserId, setSelectedUserId] = createSignal('');
   const [newUserRole, setNewUserRole] = createSignal('editor');
   const [addingUser, setAddingUser] = createSignal(false);
@@ -67,11 +76,12 @@ export default function TenantSettings() {
     if (!tenantId()) return;
     setUsersLoading(true);
     try {
-      const result = await pb.collection('user_tenants').getList(1, 500, {
-        filter: `tenant = "${tenantId()}"`,
+      const items = await pb.collection('user_tenants').getFullList({
+        batch: 500,
+        filter: pb.filter('tenant = {:tenant}', { tenant: tenantId() }),
         expand: 'user,role',
       });
-      const users: TenantUser[] = result.items.map((ut: any) => ({
+      const users: TenantUser[] = items.map((ut: any) => ({
         id: ut.expand?.user?.id || ut.user,
         userTenantId: ut.id,
         name: ut.expand?.user?.name || '',
@@ -90,29 +100,44 @@ export default function TenantSettings() {
     await loadAvailableUsers();
   };
 
-  // Lists every user on the system minus the ones already linked to
-  // this tenant. PB admin sees all users; non-admin scope is irrelevant
-  // because TenantSettings requires PB admin (already gated upstream).
+  // Candidate users for the "assign existing user" dropdown, minus the
+  // ones already linked to this tenant. Without a search term only the
+  // first AVAILABLE_LIMIT users (by email) are listed instead of
+  // downloading the whole users table; typing a term narrows the list
+  // server-side via /api/stjorna/users/search (superuser substring
+  // match). TenantSettings is PB-admin only (gated in onMount).
+  const AVAILABLE_LIMIT = 200;
+  let availableSeq = 0;
   const loadAvailableUsers = async () => {
     if (!tenantId()) return;
+    const seq = ++availableSeq;
+    const q = userSearch().trim();
     setAvailableLoading(true);
     try {
-      const all = await pb.collection('users').getFullList({ fields: 'id,email,name' });
+      let rows: { id: string; email: string; name: string }[];
+      let more = false;
+      if (q) {
+        const res = (await pb.send('/api/stjorna/users/search', { method: 'GET', query: { q } })) as {
+          users?: { id: string; email: string; name: string }[];
+        };
+        rows = res.users || [];
+      } else {
+        const page = await pb.collection('users').getList(1, AVAILABLE_LIMIT, { fields: 'id,email,name', sort: 'email' });
+        rows = page.items.map((u: any) => ({ id: u.id, email: u.email || '', name: u.name || '' }));
+        more = page.totalItems > page.items.length;
+      }
+      if (seq !== availableSeq) return;
       const takenIds = new Set(tenantUsers().map((u) => u.id));
-      setAvailableUsers(
-        all
-          .filter((u: any) => !takenIds.has(u.id))
-          .map((u: any) => ({ id: u.id, email: u.email || '', name: u.name || '' }))
-      );
+      setAvailableUsers(rows.filter((u) => !takenIds.has(u.id)));
+      setAvailableTruncated(more);
     } catch (e: any) {
-      console.error('Failed to load available users:', e);
+      if (seq === availableSeq) console.error('Failed to load available users:', e);
     } finally {
-      setAvailableLoading(false);
+      if (seq === availableSeq) setAvailableLoading(false);
     }
   };
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;
@@ -238,13 +263,13 @@ export default function TenantSettings() {
   };
 
   const handleRemoveUser = async (userTenantId: string) => {
-    if (!confirm('Remove this user from the tenant?')) return;
+    if (!(await confirmDialog({ message: 'Remove this user from the tenant?', danger: true }))) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       await loadTenantUsers();
     } catch (e: any) {
-      alert(`Failed to remove user: ${e.message}`);
+      void alertDialog(`Failed to remove user: ${e.message}`);
     }
   };
 
@@ -255,7 +280,7 @@ export default function TenantSettings() {
       setEditingUserId(null);
       await loadTenantUsers();
     } catch (e: any) {
-      alert(`Failed to update role: ${e.message}`);
+      void alertDialog(`Failed to update role: ${e.message}`);
     }
   };
 
@@ -407,6 +432,15 @@ export default function TenantSettings() {
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-user">
                   Assign existing user
                 </label>
+                <input
+                  id="ts-user-search"
+                  type="search"
+                  aria-label="Search users by email"
+                  placeholder="Search by email…"
+                  value={userSearch()}
+                  onInput={(e) => onUserSearchInput(e.currentTarget.value)}
+                  class="w-full mb-2 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
+                />
                 <select
                   id="ts-existing-user"
                   value={selectedUserId()}
@@ -424,7 +458,15 @@ export default function TenantSettings() {
                     )}
                   </For>
                 </select>
-                <Show when={!availableLoading() && availableUsers().length === 0}>
+                <Show when={!userSearch() && availableTruncated()}>
+                  <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">
+                    Showing the first {AVAILABLE_LIMIT} users. Search by email to find others.
+                  </p>
+                </Show>
+                <Show when={!availableLoading() && availableUsers().length === 0 && !!userSearch()}>
+                  <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">No matching users.</p>
+                </Show>
+                <Show when={!availableLoading() && availableUsers().length === 0 && !userSearch()}>
                   <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">
                     No users available. Go to{' '}
                     <a href="/users" class="text-blue-600 dark:text-blue-400 hover:underline">

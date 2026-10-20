@@ -27,6 +27,8 @@ export interface Tenant {
   slug: string;
   plan: string;
   custom_domain: string;
+  // JSON field. Normally an object; older records may hold a JSON-encoded
+  // string, so always read it through utils/themeConfig.parseThemeConfig.
   theme_config: TenantThemeConfig | string | null;
   created: string;
   updated: string;
@@ -42,10 +44,6 @@ export interface Media {
   size: number;
   width: number;
   height: number;
-  s3_key: string;
-  s3_url: string;
-  thumbnail_url: string;
-  usage_count: number;
   createdUser: string;
   created: string;
   updated: string;
@@ -59,6 +57,8 @@ export interface Category {
   description: string;
   active: boolean;
   sort_order: number;
+  // Single relation to a media record ('' when unset).
+  media: string;
   created: string;
   updated: string;
 }
@@ -74,9 +74,59 @@ export interface Product {
   media: string[];
   active: boolean;
   sort_order: number;
-  custom_fields: string;
+  /** PocketBase JSON field: parsed object (or null) as returned by the SDK. */
+  custom_fields: Record<string, unknown> | null;
   createdUser: string;
   updatedUser: string;
   created: string;
   updated: string;
+}
+// Singleton `instance_settings` record (superuser-only). Secret columns
+// (s3_secret_key, s3_access_key, oidc_client_secret) were dropped; those
+// values live in PocketBase's own encrypted settings. Instance name and S3
+// config were dropped in 1780001000 (PB settings are the source of truth).
+export interface InstanceSettings {
+  id: string;
+  instance_logo_url: string;
+  instance_tagline: string;
+  setup_done: boolean;
+  oidc_enabled: boolean;
+  oidc_provider_name: string;
+  oidc_display_name: string;
+  oidc_client_id: string;
+  oidc_auth_url: string;
+  oidc_token_url: string;
+  oidc_user_info_url: string;
+  oidc_scopes: string;
+  oidc_group_claim: string;
+  oidc_group_separator: string;
+  oidc_group_prefix: string;
+  oidc_default_role: string;
+  oidc_role_mapping: string;
+  oidc_auto_create_tenants: boolean;
+  oidc_deny_on_no_group: boolean;
+  oidc_disable_password_login: boolean;
+  oidc_sync_mode: '' | 'replace-oidc' | 'additive';
+  oidc_allow_unverified_email: boolean;
+  created: string;
+  updated: string;
+}
+
+// API key as returned by GET /api/stjorna/api-keys. The plaintext key is
+// only ever present in the issue response, never in a stored record.
+export interface ApiKey {
+  id: string;
+  tenant: string;
+  name: string;
+  prefix: string;
+  // JSON field.
+  permissions: Record<string, unknown> | null;
+  last_used: string | null;
+  expires: string | null;
+  revoked: boolean;
+  created_by?: string;
+  service_user_id?: string;
+  service_user_email?: string;
+  created: string;
+  updated?: string;
 }

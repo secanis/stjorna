@@ -1,19 +1,54 @@
-FROM docker.io/alpine:3.19
+# Stage 1: download + verify the PocketBase binary. wget/unzip only live in
+# this stage; the final image never ships them.
+FROM docker.io/alpine:3.22 AS download
 
-RUN apk add --no-cache \
-    ca-certificates \
-    unzip \
-    wget \
+ARG PB_VERSION=0.40.4
+# Set automatically by BuildKit / buildx (amd64, arm64, arm, ...). Defaults
+# to amd64 for legacy builders that don't populate it.
+ARG TARGETARCH=amd64
+ARG TARGETVARIANT=
+
+RUN apk add --no-cache ca-certificates unzip wget
+
+WORKDIR /download
+
+# Map the buildx platform to PocketBase's release naming, then verify the
+# archive against the release's checksums.txt (the build fails on a
+# mismatch or when the archive is missing from the list).
+RUN set -eu; \
+    case "${TARGETARCH}${TARGETVARIANT}" in \
+        amd64)        PB_ARCH=linux_amd64 ;; \
+        arm64*)       PB_ARCH=linux_arm64 ;; \
+        armv7|arm)    PB_ARCH=linux_armv7 ;; \
+        ppc64le)      PB_ARCH=linux_ppc64le ;; \
+        s390x)        PB_ARCH=linux_s390x ;; \
+        *) echo "unsupported TARGETARCH=${TARGETARCH}${TARGETVARIANT}" >&2; exit 1 ;; \
+    esac; \
+    ZIP="pocketbase_${PB_VERSION}_${PB_ARCH}.zip"; \
+    BASE="https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}"; \
+    wget -q "${BASE}/${ZIP}" "${BASE}/checksums.txt"; \
+    grep " ${ZIP}\$" checksums.txt > zip.sha256; \
+    test -s zip.sha256; \
+    sha256sum -c zip.sha256; \
+    unzip -q "${ZIP}" pocketbase; \
+    chmod 0755 pocketbase
+
+# Stage 2: runtime image.
+FROM docker.io/alpine:3.22
+
+# ca-certificates: outbound TLS (S3, SMTP, OIDC). busybox (part of the
+# base image) still provides `wget` for the docker-compose healthcheck.
+RUN apk add --no-cache ca-certificates \
     && adduser -D -u 1000 -s /bin/sh pocketbase
 
 WORKDIR /app
 
-ARG PB_VERSION=0.40.4
-ARG PB_ARCH=linux_amd64
+COPY --from=download /download/pocketbase /app/pocketbase
 
-RUN wget -q https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_${PB_ARCH}.zip && \
-    unzip pocketbase_${PB_VERSION}_${PB_ARCH}.zip && \
-    rm pocketbase_${PB_VERSION}_${PB_ARCH}.zip
+# Release tag (set by .github/workflows/release.yml); shown as the OpenAPI
+# info.version. "dev" → "3.x".
+ARG STJORNA_VERSION=dev
+ENV STJORNA_VERSION=${STJORNA_VERSION}
 
 COPY pb_migrations /app/pb_migrations
 COPY pb_hooks /app/pb_hooks

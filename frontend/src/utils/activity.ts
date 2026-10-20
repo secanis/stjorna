@@ -1,4 +1,4 @@
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 
 export type ActivityType = 'tenant' | 'user' | 'product' | 'media' | 'category';
@@ -137,7 +137,7 @@ export async function fetchActivity(query: ActivityQuery = {}): Promise<Activity
 
   const perType = query.perType ?? 50;
   const actions = new Set(query.actions && query.actions.length > 0 ? query.actions : ['created', 'updated']);
-  const filter = getCurrentTenant() ? `tenant = "${getCurrentTenant()}"` : '';
+  const filter = tenantFilter();
 
   const collectionsToFetch = requested
     .map((t) => ({ type: t, collection: COLLECTIONS_BY_TYPE[t] }))

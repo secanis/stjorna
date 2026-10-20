@@ -140,7 +140,7 @@ If you'd rather not use the wizard at all (e.g. fully headless CI):
 ```bash
 kubectl exec -n stjorna deploy/stjorna-pocketbase -- \
   /app/pocketbase superuser upsert admin@example.com 'yourPassword123' \
-  --dir /app/pb_data --hooksDir /app/pb_hooks
+  --dir /app/pb_data --hooksDir /app/pb_hooks --encryptionEnv PB_SECRET
 ```
 
 The PB v0.40 installer URL is **not** reachable from outside the
@@ -168,7 +168,7 @@ helm upgrade stjorna ./helm/stjorna \
   -n stjorna
 ```
 
-When upgrading PocketBase versions, the PB data PVC is preserved (reclaimPolicy: Retain). The PB data directory is `data.db` (sqlite) plus `storage/` (uploads).
+When upgrading PocketBase versions, the PB data PVC is preserved (`helm.sh/resource-policy: keep`; whether the PV survives a PVC deletion depends on the StorageClass `reclaimPolicy`, which the chart cannot set). The PB data directory is `data.db` (sqlite) plus `storage/` (uploads).
 
 > **T-06 — upgrade is now data-safe by default.** Three resources are
 > annotated with `helm.sh/resource-policy: keep`, so `helm upgrade` and
@@ -331,38 +331,43 @@ frontend:
     tag: v3.0.0-rc1
 ```
 
-### VITE_PB_URL
+### Security, probes and networking values
 
-`VITE_PB_URL` is a **build-time** variable baked into the frontend image by Vite. The chart does **not** override it. In-cluster, the frontend proxies `/api/*` to the PocketBase service via nginx, so the default build works without any override.
+| Value | Default | Description |
+|---|---|---|
+| `pocketbase.podSecurityContext` | uid/gid 1000, `fsGroup: 1000`, `runAsNonRoot`, seccomp `RuntimeDefault` | Pod-level security context for PocketBase. |
+| `pocketbase.containerSecurityContext` | `allowPrivilegeEscalation: false`, `readOnlyRootFilesystem: true`, `capabilities.drop: [ALL]`, seccomp `RuntimeDefault` | Container-level security context. Writable paths: `/app/pb_data` (PVC) and `/tmp` (emptyDir). |
+| `pocketbase.resources` | requests `50m`/`128Mi`, limits `1000m`/`1Gi` | Large media uploads and backup imports are buffered in memory; 256Mi was too small. |
+| `pocketbase.startupProbe.periodSeconds` / `.failureThreshold` | `5` / `30` | First boot (migrations, superuser upsert) may take up to 150s before liveness kicks in. |
+| `pocketbase.superuserIps` | `""` | `PB_SUPERUSER_IPS`: space-separated IPs/CIDRs allowed to log in as superuser, applied on every start. Empty = unrestricted. Behind an ingress PB sees the proxy's IP unless PB's trusted-proxy settings are configured. |
+| `pocketbase.automigrate` | `false` | `PB_AUTOMIGRATE`. Shipped migrations are always applied; this only controls generating migration files from dashboard schema edits, which cannot be written on the read-only root filesystem. |
+| `pocketbase.service.port` | `8090` | Service port only. The container always listens on 8090 (port name `http`), so changing this no longer breaks the probes. |
+| `frontend.podSecurityContext` | uid/gid 101, `runAsNonRoot`, seccomp `RuntimeDefault` | Pod-level security context for nginx-unprivileged. |
+| `frontend.containerSecurityContext` | same hardening as PocketBase | Writable emptyDirs: `/tmp` (nginx pid + temp files, runtime `config.js` in `/tmp/stjorna`), `/var/cache/nginx`. |
+| `networkPolicy.enabled` | `true` | Creates NetworkPolicies: PocketBase accepts traffic on 8090 only from the frontend pods (and the `helm test` pod); the frontend accepts traffic on its port from anywhere. Egress is unrestricted. Needs a CNI that enforces NetworkPolicies (Calico, Cilium, ...); otherwise inert. |
+| `networkPolicy.pocketbase.extraFrom` | `[]` | Extra NetworkPolicy `from` peers allowed to reach PocketBase (e.g. a monitoring namespace). |
 
-If you need to point the frontend at a different PB (e.g., a public PB for storefront mode), rebuild the frontend image with `VITE_PB_URL` set:
+Both pods set `automountServiceAccountToken: false` (neither talks to the
+Kubernetes API). The frontend Deployment carries a `checksum/config`
+annotation, so changing the nginx ConfigMap rolls its pods on `helm upgrade`.
 
-```bash
-podman build -t docker.io/secanis/stjorna-frontend:v3.0.0-rc1 \
-  --build-arg VITE_PB_URL=https://pb.yourdomain.com \
-  -f frontend/Dockerfile frontend
-```
+### PocketBase URL (`PB_URL` / `VITE_PB_URL`)
 
-(Requires the `frontend/Dockerfile` to forward the arg; the current Dockerfile doesn't. To enable, edit the `builder` stage to add `ARG VITE_PB_URL` before `npm run build`.)
+In-cluster, the frontend proxies `/api/*` to the PocketBase service via nginx, so the default image works without any override (same-origin).
+
+To point the frontend at a different PB (e.g. a public PB for storefront mode), set `PB_URL` on the frontend container. At start, `/docker-entrypoint.d/40-stjorna-config.sh` writes `/tmp/stjorna/config.js` (`window.__STJORNA_CONFIG__ = { pbUrl }`), which nginx serves as `/config.js` with `Cache-Control: no-cache`. The chart does not expose `PB_URL` as a value yet; add it via an env patch on the frontend Deployment. Note that the default CSP (`connect-src 'self'`) blocks a cross-origin PB, so the CSP in `frontend-configmap.yaml` must be widened as well.
+
+Precedence in the frontend: runtime `PB_URL` → build-time `VITE_PB_URL` → same origin.
 
 ### Hooks iteration
 
-PocketBase hook files live in `helm/stjorna/files/hooks/*.pb.js`. The chart ships them as a ConfigMap mounted at `/app/pb_hooks`. The `pocketbase/Dockerfile` copies the same files from `pocketbase/pb_hooks/` (so local dev with `docker compose` works), and the chart's `files/hooks/` keeps an in-chart copy for the helm install.
+PocketBase hooks (`pocketbase/pb_hooks/*.pb.js` plus the CommonJS helpers in
+`pocketbase/pb_hooks/lib/`) and migrations are baked into the PocketBase image
+by `pocketbase/Dockerfile`. The chart does not mount them from a ConfigMap, so
+a hook change ships as a new image:
 
-> **Keep the two locations in sync.** When you add/edit a hook, update both:
->
-> ```bash
-> cp pocketbase/pb_hooks/*.pb.js helm/stjorna/files/hooks/
-> git add pocketbase/pb_hooks/ helm/stjorna/files/hooks/
-> ```
-
-To update a hook on a running release:
-
-1. Edit the file in `helm/stjorna/files/hooks/`.
-2. `helm upgrade stjorna ./helm/stjorna -n stjorna`.
-3. PB's `HooksWatch` reloads changed files on the next request.
-
-> **Note:** `HooksWatch` only re-loads **changed** existing files. Renaming a file or adding a new one requires `kubectl rollout restart deployment/stjorna-pocketbase -n stjorna`.
+1. Edit the file under `pocketbase/pb_hooks/` (run `npm run check:hooks` in `pocketbase/`).
+2. Build + push the image, then `helm upgrade stjorna ./helm/stjorna -n stjorna --set pocketbase.image.tag=<tag>`.
 
 ## Backup
 
@@ -390,13 +395,13 @@ Internet
    ▼
 ┌──────────────────────┐
 │  frontend (2× Pods)  │  nginx + Vite build
-│  nginx:80            │  /api/* → stjorna-pocketbase:8090
+│  nginx:8080          │  /api/* → stjorna-pocketbase:8090
 └──────────────────────┘
    │
    ▼
 ┌──────────────────────┐
 │  pocketbase (1× Pod) │  PocketBase v0.22.7
 │  :8090               │  /app/pb_data → PVC (longhorn, 5Gi, Retain)
-│                      │  /app/pb_hooks → ConfigMap
+│                      │  /app/pb_hooks → baked into image
 └──────────────────────┘
 ```

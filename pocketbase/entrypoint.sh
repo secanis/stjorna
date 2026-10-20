@@ -35,6 +35,26 @@ if [ -n "$PB_SECRET" ]; then
     ENCRYPTION_FLAG="--encryptionEnv PB_SECRET"
 fi
 
+# Extra arguments:
+#   - none                     -> `pocketbase serve` with the flags below
+#   - first arg is a flag (-x) -> appended to `pocketbase serve`
+#   - first arg is `serve`     -> dropped, remaining args appended to serve
+#                                 (compat with `args: [serve, ...]`)
+#   - anything else            -> exec'd as-is (e.g. `sh`, or
+#                                 `/app/pocketbase superuser list`), skipping
+#                                 the superuser bootstrap below
+if [ "$#" -gt 0 ]; then
+    case "$1" in
+        serve) shift ;;
+        -*) ;;
+        *) exec "$@" ;;
+    esac
+fi
+
+# Listen address. The port must stay in sync with the container port your
+# orchestrator probes (the helm chart always uses 8090 inside the pod).
+PB_HTTP_ADDR="${PB_HTTP_ADDR:-0.0.0.0:8090}"
+
 # T-04.1: a superuser email without a real password is a misconfigured
 # deployment (typically docker compose without a .env). Refuse to start
 # instead of creating a headless superuser with no or a well-known
@@ -79,9 +99,11 @@ if [ -n "$IPS" ] && [ "$IPS" != "0.0.0.0/0" ]; then
         $ENCRYPTION_FLAG || true
 fi
 
+# shellcheck disable=SC2086 # ENCRYPTION_FLAG is intentionally word-split
 exec /app/pocketbase serve \
-    --http 0.0.0.0:8090 \
+    --http "$PB_HTTP_ADDR" \
     --dir /app/pb_data \
     --hooksDir /app/pb_hooks \
     --automigrate="${PB_AUTOMIGRATE:-true}" \
-    $ENCRYPTION_FLAG
+    $ENCRYPTION_FLAG \
+    "$@"

@@ -1,4 +1,4 @@
-import { createSignal, Show, onMount, createEffect } from 'solid-js';
+import { createSignal, Show, onMount, createEffect, on } from 'solid-js';
 import { useNavigate, useParams, A } from '@solidjs/router';
 import { Package, Folder, Image, Users, HardDrive, Clock, BarChart3, RefreshCw, ArrowLeft } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
@@ -13,44 +13,40 @@ export default function TenantStats() {
     const [loading, setLoading] = createSignal(true);
     const [error, setError] = createSignal<string | null>(null);
 
+    // Sequence guard: a response for a previous tenant id (SPA nav) or
+    // a superseded Refresh never overwrites the current state.
+    let loadSeq = 0;
     const load = async () => {
-        if (!params.id) return;
+        const id = params.id;
+        if (!id || !authStore.isPBAdmin) return;
+        const seq = ++loadSeq;
+        const isCurrent = () => seq === loadSeq;
         setLoading(true);
         setError(null);
         try {
-            // Fetch the tenant name in parallel for the header.
-            const tenant = await pb
-                .collection('tenants')
-                .getOne(params.id)
-                .catch(() => null);
-            if (tenant) setTenantName(String((tenant as any).name || params.id));
-            setSnapshot(await fetchTenantStats(params.id));
+            const [tenant, snap] = await Promise.all([
+                pb.collection('tenants').getOne(id).catch(() => null),
+                fetchTenantStats(id),
+            ]);
+            if (!isCurrent()) return;
+            if (tenant) setTenantName(String((tenant as any).name || id));
+            setSnapshot(snap);
         } catch (e: any) {
-            setError(String(e?.message || e));
+            if (isCurrent()) setError(String(e?.message || e));
         } finally {
-            setLoading(false);
+            if (isCurrent()) setLoading(false);
         }
     };
 
-    onMount(async () => {
-        await authStore.init();
-        if (!authStore.isAuthenticated()) {
-            navigate('/login', { replace: true });
-            return;
-        }
+    onMount(() => {
         if (!authStore.isPBAdmin) {
             // Non-admin landed here — bounce them.
             navigate('/', { replace: true });
-            return;
         }
-        await load();
     });
 
-    // Refetch if the URL id changes (rare but possible with SPA nav).
-    createEffect(() => {
-        params.id;
-        load();
-    });
+    // Initial load plus a refetch if the URL id changes (SPA nav).
+    createEffect(on(() => params.id, () => { void load(); }));
 
     const fmt = StatsFormatting.formatBytes;
     const friendly = StatsFormatting.friendlyMime;
@@ -59,7 +55,6 @@ export default function TenantStats() {
         <div class="space-y-6">
             <div class="flex items-start justify-between">
                 <div>
-                    {/* eslint-disable-next-line i18next/no-literal-string */}
                     <A href="/tenants" class="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                         <ArrowLeft size={14} /> Back to tenants
                     </A>

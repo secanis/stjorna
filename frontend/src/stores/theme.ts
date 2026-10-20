@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onCleanup } from 'solid-js';
+import { createSignal } from 'solid-js';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -49,14 +49,11 @@ export const themeStore = {
   },
 };
 
-// React to OS-level theme changes while in 'system' mode.
+// React to OS-level theme changes while in 'system' mode. The listener
+// lives for the lifetime of the page; onCleanup() at module scope has
+// no owner and never runs, so it is intentionally not used here.
 if (typeof window !== 'undefined') {
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  const onChange = () => {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (mode() === 'system') applyTheme('system');
-  };
-  mq.addEventListener('change', onChange);
-  // Keep the listener alive for the lifetime of the app. No cleanup
-  // needed — the same handler is idempotent.
-  onCleanup(() => mq.removeEventListener('change', onChange));
+  });
 }

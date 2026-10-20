@@ -9,7 +9,6 @@ export default function SecuritySettingsPage() {
   const navigate = useNavigate();
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

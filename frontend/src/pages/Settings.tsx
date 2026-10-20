@@ -51,7 +51,6 @@ export default function Settings() {
   };
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

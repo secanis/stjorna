@@ -159,7 +159,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     await expect.poll(() => tbodyCellsText(page), { timeout: 10000 }).toContain(filename);
     expect(await tbodyCellsText(page)).not.toContain('test-image.png');
     await expect.poll(() => sidebarBadge(page, '/media'), { timeout: 10000 }).toBe('1');
-    const headerLabel = await page.locator('div.relative.group > div > span').first().textContent();
+    const headerLabel = await page.locator('#tenant-selector-trigger span').first().textContent();
     expect(headerLabel).toContain(`Switch T`);
   });
 

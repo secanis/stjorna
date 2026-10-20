@@ -76,8 +76,8 @@ function slugify(s) {
     return String(s || "")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .substring(0, 100);
+        .substring(0, 100)
+        .replace(/^-+|-+$/g, "");
 }
 
 function utf8Bytes(s) {
@@ -415,7 +415,8 @@ function importCategories(txApp, tenantId, cats, catMap, stats) {
     var catRecords = {};
     for (var i = 0; i < cats.length; i++) {
         var cat = cats[i];
-        var slug = cat.slug || slugify(cat.name || "");
+        // Normalise: slugs must match the T-22 pattern, old backups may not.
+        var slug = slugify(cat.slug || cat.name || "");
         if (!slug) slug = "category-" + i;
 
         var existing = null;
@@ -496,7 +497,7 @@ function importMedia(txApp, tenantId, medias, files, mediaMap, stats) {
 function importProducts(txApp, tenantId, prods, catMap, mediaMap, stats) {
     for (var i = 0; i < prods.length; i++) {
         var prod = prods[i];
-        var slug = prod.slug || slugify(prod.name || "");
+        var slug = slugify(prod.slug || prod.name || "");
         if (!slug) slug = "product-" + i;
 
         var existing = null;

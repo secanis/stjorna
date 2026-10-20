@@ -2,24 +2,26 @@ import { createSignal, createResource, Show, For, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { FileText, Video } from 'lucide-solid';
 import Table, { Column } from '~/components/ui/Table';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, tenantFilter, toSortExpr } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
 import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Media } from '~/types';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
-async function fetchMedia(filterType: string) {
-  const tenant = getCurrentTenant();
+const PER_PAGE = 50;
+
+async function fetchMedia(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc'; filterType: string }) {
   const parts: string[] = [];
-  if (tenant) parts.push(`tenant = "${tenant}"`);
-  if (filterType === 'image') parts.push(`mime_type ?~ "image/"`);
-  if (filterType === 'video') parts.push(`mime_type ?~ "video/"`);
-  const filter = parts.length ? parts.join(' && ') : '';
-  return await pb.collection('media').getList<Media>(1, 50, {
-    filter,
-    sort: '-created',
+  const tf = tenantFilter();
+  if (tf) parts.push(tf);
+  if (src.filterType === 'image') parts.push(`mime_type ?~ "image/"`);
+  if (src.filterType === 'video') parts.push(`mime_type ?~ "video/"`);
+  return await pb.collection('media').getList<Media>(src.page, PER_PAGE, {
+    filter: parts.join(' && '),
+    sort: toSortExpr(src.sortKey, src.sortDir, 'id'),
   });
 }
 
@@ -27,7 +29,6 @@ export default function MediaList() {
   const navigate = useNavigate();
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;
@@ -49,23 +50,24 @@ export default function MediaList() {
   // trigger a refetch and the page would still show the previous
   // tenant's records after the user switched tenant via the header.
   const [data, { refetch }] = createResource(
-    () => ({ filterType: filterType(), tenantVersion: tenantStore.version }),
-    ({ filterType }) => fetchMedia(filterType)
+    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), filterType: filterType(), tenantVersion: tenantStore.version }),
+    fetchMedia
   );
 
   const handleSort = (key: string, dir: 'asc' | 'desc') => {
     setSortKey(key);
     setSortDir(dir);
+    setPage(1);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this media item?')) return;
+    if (!(await confirmDialog({ message: 'Delete this media item?', danger: true }))) return;
     try {
       await pb.collection('media').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to delete: ${e.message}`);
+      void alertDialog(`Failed to delete: ${e.message}`);
     }
   };
 
@@ -111,11 +113,6 @@ export default function MediaList() {
       render: (v) => v ? `${(v / 1024).toFixed(1)} KB` : '-',
     },
     {
-      key: 'usage_count',
-      label: 'Usage',
-      sortable: true,
-    },
-    {
       key: 'created',
       label: 'Created',
       sortable: true,
@@ -159,7 +156,7 @@ export default function MediaList() {
       <div class="flex gap-4 items-center">
         <select
           value={filterType()}
-          onChange={(e) => setFilterType(e.currentTarget.value)}
+          onChange={(e) => { setFilterType(e.currentTarget.value); setPage(1); }}
           class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
         >
           <option value="">All types</option>
