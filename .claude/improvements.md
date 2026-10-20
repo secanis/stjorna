@@ -319,7 +319,7 @@ see the follow-up table below; **open** = not started.
 | T-11 | 🟠 | backup | Export without media, OOM, non-transactional import | ✅ passed, follow-ups T-11.1, T-11.2 |
 | T-12 | 🟠 | nginx | 1 MB upload limit, SSE buffering, no security headers | ✅ passed, follow-up T-12.1 |
 | T-13 | 🟡 | oidc | Manual memberships hijacked/deleted; email auto-link | ✅ passed |
-| T-14 | 🟡 | auth | Superuser MFA never enabled on fresh installs | open |
+| T-14 | 🟡 | auth | Superuser MFA never enabled on fresh installs | ✅ done (`mfa.pb.js` + `lib/mfa.js`, admin banner, `superuser-mfa-setup.test.ts`) |
 | T-15 | 🟡 | frontend | Pagination, custom_fields, auth store, filter injection | open |
 | T-16 | 🟡 | hooks | String-built handlers → modules; remove helm hook copy | open |
 | T-17 | 🟡 | frontend | Lint, lazy routes, types, runtime config, split components | open |

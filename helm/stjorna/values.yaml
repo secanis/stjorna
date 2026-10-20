@@ -150,6 +150,8 @@ pocketbase:
     existingSecretKey: STJORNA_SETUP_TOKEN
   # -- Log generated superuser OTP codes to stdout. Only used when SMTP is not
   # configured. Accepted values: "1", "true" or "yes". Leave empty to disable.
+  # DEV-ONLY: when enabled the OTP mail is never sent (even with SMTP), the
+  # code only goes to the log.
   # NEVER enable in production — OTP codes are authentication secrets.
   logOtp: ""
   podSecurityContext:
