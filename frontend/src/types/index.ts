@@ -83,19 +83,13 @@ export interface Product {
 }
 // Singleton `instance_settings` record (superuser-only). Secret columns
 // (s3_secret_key, s3_access_key, oidc_client_secret) were dropped; those
-// values live in PocketBase's own encrypted settings.
+// values live in PocketBase's own encrypted settings. Instance name and S3
+// config were dropped in 1780001000 (PB settings are the source of truth).
 export interface InstanceSettings {
   id: string;
-  instance_name: string;
-  instance_url: string;
   instance_logo_url: string;
   instance_tagline: string;
   setup_done: boolean;
-  storage_type: string;
-  s3_bucket: string;
-  s3_region: string;
-  s3_endpoint: string;
-  s3_force_path_style: boolean;
   oidc_enabled: boolean;
   oidc_provider_name: string;
   oidc_display_name: string;
