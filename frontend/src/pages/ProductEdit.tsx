@@ -90,7 +90,7 @@ export default function ProductEdit() {
           media: product.media || [],
           active: product.active ?? true,
           sort_order: product.sort_order ?? 0,
-          custom_fields: product.custom_fields || '',
+          custom_fields: product.custom_fields ? JSON.stringify(product.custom_fields, null, 2) : '',
         });
         setSlugManuallyEdited(true);
 
