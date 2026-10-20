@@ -62,9 +62,9 @@ Files are stored inside the PocketBase container at
 
 **For development:** the default works out of the box.
 
-**For production:** mount `pb_data` as a host volume to persist data across
-container restarts. The volume mount is commented out in
-`docker-compose.yml`:
+`docker-compose.yml` persists `pb_data` in the named volume `pb_data`
+(survives `docker compose down`; `docker compose down -v` deletes it). To use
+a host directory instead (owned by uid 1000), replace the volume line:
 
 ```yaml
 volumes:
@@ -124,7 +124,7 @@ that supports basic object operations (which is essentially all of them).
 
 #### Change storage after setup
 Use the PocketBase Admin UI:
-1. Open `http://localhost:8090/_/`
+1. Open `http://localhost:8090/_/` (Compose binds PocketBase to 127.0.0.1 only)
 2. Go to **Settings → Files storage**
 3. Toggle S3 enabled, fill in credentials
 4. Save
