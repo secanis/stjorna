@@ -149,6 +149,7 @@ export const authStore = {
       }
 
       await this.loadTenants();
+      initPromise = Promise.resolve();
     } catch (e: any) {
       if (!e.message?.includes('superuser')) {
         setError(e.message || 'Login failed');
@@ -169,6 +170,7 @@ export const authStore = {
       setCurrentTenantSignal(null);
       setRole(null);
       await this.loadAllTenantsForPBAdmin();
+      initPromise = Promise.resolve();
     } catch (e: any) {
       setError(e.message || 'Admin login failed');
       throw e;
@@ -201,6 +203,7 @@ export const authStore = {
       setCurrentTenantSignal(null);
       setRole(null);
       await this.loadAllTenantsForPBAdmin();
+      initPromise = Promise.resolve();
     } catch (e: any) {
       setError(e.message || 'OTP verification failed');
       throw e;
@@ -230,6 +233,7 @@ export const authStore = {
       const authData = await pb.collection('users').authWithOTP(otpId, code, { mfaId });
       setUser(authData.record);
       await this.loadTenants();
+      initPromise = Promise.resolve();
     } catch (e: any) {
       setError(e.message || 'OTP verification failed');
       throw e;
@@ -267,6 +271,7 @@ export const authStore = {
       setUser(authData.record);
       setIsPBAdmin(false);
       await this.loadTenants();
+      initPromise = Promise.resolve();
     } catch (e: any) {
       setError(e.message || 'OIDC login failed');
       throw e;
