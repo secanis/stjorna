@@ -8,6 +8,7 @@ import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { X, ExternalLink, Search, UserPlus } from 'lucide-solid';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 // One row per tenant membership of a given user.
 interface UserMembership {
@@ -291,18 +292,18 @@ export default function UserManagement() {
       await pb.collection('user_tenants').update(userTenantId, { role: roleId });
       refetch();
     } catch (e: any) {
-      alert(`Failed to update role: ${e?.message}`);
+      void alertDialog(`Failed to update role: ${e?.message}`);
     }
   };
 
   const handleRemove = async (userTenantId: string, tenantName: string) => {
-    if (!confirm(`Remove this user from "${tenantName}"?`)) return;
+    if (!(await confirmDialog({ message: `Remove this user from "${tenantName}"?`, danger: true }))) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to remove user: ${e?.message}`);
+      void alertDialog(`Failed to remove user: ${e?.message}`);
     }
   };
 

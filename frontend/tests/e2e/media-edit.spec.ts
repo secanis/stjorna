@@ -88,16 +88,10 @@ test.describe('Media Edit Page', () => {
     await page.goto(ctx.frontendUrl + `/media/${media.id}`);
     await page.waitForSelector('h1:has-text("Edit Media")', { timeout: 15000 });
 
-    let dialogAccepted = false;
-    page.on('dialog', async (dialog) => {
-      dialogAccepted = true;
-      await dialog.accept();
-    });
-
     await page.locator('button:has-text("Delete")').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByTestId('confirm-dialog-confirm').click();
     await page.waitForURL('**/media', { timeout: 15000 });
-
-    expect(dialogAccepted).toBe(true);
 
     const listRes = await request.get(`${ctx.pbUrl}/api/collections/media/records?filter=id="${media.id}"`, {
       headers: { Authorization: token },

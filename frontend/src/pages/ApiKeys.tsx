@@ -5,6 +5,7 @@ import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import Table, { Column } from '~/components/ui/Table';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 // PB-side enum of API key records. Plaintext NEVER appears here — it's only
 // emitted in the issue endpoint response and never persisted.
@@ -118,12 +119,12 @@ export default function ApiKeys() {
     }
 
     async function handleRevoke(id: string, name: string) {
-        if (!confirm(`Revoke API key "${name}"? This cannot be undone.`)) return;
+        if (!(await confirmDialog({ message: `Revoke API key "${name}"? This cannot be undone.`, danger: true }))) return;
         try {
             await revokeKey(id);
             await refetch();
         } catch (e: any) {
-            alert(`Failed to revoke: ${e.message}`);
+            void alertDialog(`Failed to revoke: ${e.message}`);
         }
     }
 

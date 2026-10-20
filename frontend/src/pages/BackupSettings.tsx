@@ -6,6 +6,7 @@ import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
 import Table, { Column } from '~/components/ui/Table';
 import { Database, Plus, Download, Trash2, Save, CalendarClock } from 'lucide-solid';
+import { confirmDialog } from '~/components/ui/ConfirmDialog';
 
 interface Backup {
   key: string;
@@ -112,7 +113,7 @@ export default function BackupSettings() {
   };
 
   const handleDelete = async (key: string) => {
-    if (!confirm(`Delete backup "${key}"? This cannot be undone.`)) return;
+    if (!(await confirmDialog({ message: `Delete backup "${key}"? This cannot be undone.`, danger: true }))) return;
     setError('');
     try {
       await pb.backups.delete(key);

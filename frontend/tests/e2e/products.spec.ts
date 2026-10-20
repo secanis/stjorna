@@ -297,8 +297,8 @@ test.describe('Products', () => {
       return;
     }
 
-    page.on('dialog', dialog => dialog.accept());
     await page.locator('button:has-text("Delete")').first().click();
+    await page.getByTestId('confirm-dialog-confirm').click();
     await page.waitForTimeout(1000);
   });
 });

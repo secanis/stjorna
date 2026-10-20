@@ -10,6 +10,7 @@ import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Product } from '~/types';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 const PER_PAGE = 50;
 
@@ -56,13 +57,13 @@ export default function ProductList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this product?')) return;
+    if (!(await confirmDialog({ message: 'Delete this product?', danger: true }))) return;
     try {
       await pb.collection('products').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to delete: ${e.message}`);
+      void alertDialog(`Failed to delete: ${e.message}`);
     }
   };
 
@@ -72,7 +73,7 @@ export default function ProductList() {
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to update: ${e.message}`);
+      void alertDialog(`Failed to update: ${e.message}`);
     }
   };
 

@@ -9,6 +9,7 @@ import { tenantStore } from '~/stores/tenant';
 import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Media } from '~/types';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 const PER_PAGE = 50;
 
@@ -60,13 +61,13 @@ export default function MediaList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this media item?')) return;
+    if (!(await confirmDialog({ message: 'Delete this media item?', danger: true }))) return;
     try {
       await pb.collection('media').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to delete: ${e.message}`);
+      void alertDialog(`Failed to delete: ${e.message}`);
     }
   };
 

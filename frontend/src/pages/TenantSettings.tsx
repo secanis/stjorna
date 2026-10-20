@@ -10,6 +10,7 @@ import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeC
 import { ArrowLeft, Save, UserPlus, X, BarChart3 } from 'lucide-solid';
 import BackupSection from '~/components/backup/BackupSection';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 interface TenantUser {
   id: string;
@@ -262,13 +263,13 @@ export default function TenantSettings() {
   };
 
   const handleRemoveUser = async (userTenantId: string) => {
-    if (!confirm('Remove this user from the tenant?')) return;
+    if (!(await confirmDialog({ message: 'Remove this user from the tenant?', danger: true }))) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       await loadTenantUsers();
     } catch (e: any) {
-      alert(`Failed to remove user: ${e.message}`);
+      void alertDialog(`Failed to remove user: ${e.message}`);
     }
   };
 
@@ -279,7 +280,7 @@ export default function TenantSettings() {
       setEditingUserId(null);
       await loadTenantUsers();
     } catch (e: any) {
-      alert(`Failed to update role: ${e.message}`);
+      void alertDialog(`Failed to update role: ${e.message}`);
     }
   };
 

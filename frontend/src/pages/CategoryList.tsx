@@ -9,6 +9,7 @@ import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 const PER_PAGE = 50;
 
@@ -53,13 +54,13 @@ export default function CategoryList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this category?')) return;
+    if (!(await confirmDialog({ message: 'Delete this category?', danger: true }))) return;
     try {
       await pb.collection('categories').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to delete: ${e.message}`);
+      void alertDialog(`Failed to delete: ${e.message}`);
     }
   };
 
@@ -69,7 +70,7 @@ export default function CategoryList() {
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to update: ${e.message}`);
+      void alertDialog(`Failed to update: ${e.message}`);
     }
   };
 

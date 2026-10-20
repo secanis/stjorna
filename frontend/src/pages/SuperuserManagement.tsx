@@ -6,6 +6,7 @@ import { sidebarStore } from '~/stores/sidebar';
 import Table, { Column } from '~/components/ui/Table';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { Shield, Plus, KeyRound, Trash2 } from 'lucide-solid';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 interface Superuser {
   id: string;
@@ -97,7 +98,7 @@ export default function SuperuserManagement() {
       await pb.collection('_superusers').update(su.id, { active: !su.active });
       refetch();
     } catch (err: any) {
-      alert(`Failed to update status: ${err?.message}`);
+      void alertDialog(`Failed to update status: ${err?.message}`);
     }
   };
 
@@ -125,13 +126,13 @@ export default function SuperuserManagement() {
   };
 
   const handleDelete = async (id: string, email: string) => {
-    if (!confirm(`Delete superuser "${email}"? This cannot be undone.`)) return;
+    if (!(await confirmDialog({ message: `Delete superuser "${email}"? This cannot be undone.`, danger: true }))) return;
     try {
       await pb.collection('_superusers').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (err: any) {
-      alert(`Failed to delete superuser: ${err?.message}`);
+      void alertDialog(`Failed to delete superuser: ${err?.message}`);
     }
   };
 

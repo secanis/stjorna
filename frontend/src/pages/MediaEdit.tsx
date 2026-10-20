@@ -8,6 +8,7 @@ import { Upload, X, AlertTriangle, Copy, Check, Scissors, Trash2, ExternalLink }
 import { ImageCropperModal } from '~/components/media';
 import type { Media, Product, Category } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { confirmDialog } from '~/components/ui/ConfirmDialog';
 
 const MAX_FILE_BYTES = 524288000; // 500 MiB — matches pocketbase/setup.ts media.file.maxSize
 
@@ -307,7 +308,7 @@ export default function MediaEdit() {
     const message = usedCount > 0
       ? `This media is used in ${usedInProducts().length} product(s) and ${usedInCategories().length} category(ies). Delete anyway?`
       : 'Delete this media item?';
-    if (!confirm(message)) return;
+    if (!(await confirmDialog({ message: message, danger: true }))) return;
     try {
       await pb.collection('media').delete(params.id!);
       sidebarStore.bump();
