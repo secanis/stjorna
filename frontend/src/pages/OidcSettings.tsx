@@ -5,6 +5,7 @@ import { authStore } from '~/stores/auth';
 import { Save, Copy, Check, Info } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
+import { getConfiguredPbUrl } from '~/services/config';
 
 interface OidcFormData {
   enabled: boolean;
@@ -316,7 +317,7 @@ export default function OidcSettings() {
   };
 
   const redirectUrl = () => {
-    const base = (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || window.location.origin;
+    const base = getConfiguredPbUrl() || window.location.origin;
     return `${base}/api/oauth2-redirect`;
   };
 

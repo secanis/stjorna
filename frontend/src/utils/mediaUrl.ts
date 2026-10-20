@@ -1,5 +1,6 @@
 import { createSignal } from 'solid-js';
 import { pb } from '~/services/pocketbase';
+import { getConfiguredPbUrl } from '~/services/config';
 
 interface MediaUrlOptions {
     thumb?: string;
@@ -106,7 +107,7 @@ export function buildAbsolutePath(origin: string, path: string, pageProto: strin
 // different origins and the FE must hit PB directly. Returns '' otherwise
 // (empty VITE_PB_URL = FE and PB share an origin, vite proxy handles it).
 function pbOrigin(): string {
-    return (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || '';
+    return getConfiguredPbUrl();
 }
 
 function buildFileUrl(recordId: string, filename: string, options: MediaUrlOptions, includeToken: boolean): string {

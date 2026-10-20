@@ -1,6 +1,8 @@
 import PocketBase from 'pocketbase';
+import { getConfiguredPbUrl } from '~/services/config';
 
-const ENV_PB_URL = (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || '/';
+// Runtime config (/config.js) → VITE_PB_URL → same origin.
+const ENV_PB_URL = getConfiguredPbUrl() || '/';
 
 export function getPbUrl(): string {
   return ENV_PB_URL;
