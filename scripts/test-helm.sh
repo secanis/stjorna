@@ -30,9 +30,14 @@ KIND_CONFIG="$SCRIPT_DIR/kind-cluster.yaml"
 REPO_OWNER="secanis"
 PB_REPO="docker.io/${REPO_OWNER}/stjorna-pocketbase"
 FE_REPO="docker.io/${REPO_OWNER}/stjorna-frontend"
-TAG="v3.0.0-rc1"
-PB_IMAGE="${PB_REPO}:${TAG}"
-FE_IMAGE="${FE_REPO}:${TAG}"
+# Overridable from the environment (the Makefile passes TAG / PB_IMAGE /
+# FE_IMAGE); these are only the fallbacks for a direct invocation.
+TAG="${TAG:-v3.0.0-rc1}"
+PB_IMAGE="${PB_IMAGE:-${PB_REPO}:${TAG}}"
+FE_IMAGE="${FE_IMAGE:-${FE_REPO}:${TAG}}"
+# The Makefile passes the repository without a tag; append $TAG then.
+[[ "${PB_IMAGE##*/}" == *:* ]] || PB_IMAGE="${PB_IMAGE}:${TAG}"
+[[ "${FE_IMAGE##*/}" == *:* ]] || FE_IMAGE="${FE_IMAGE}:${TAG}"
 
 KIND_VERSION="v0.24.0"
 KIND_PATH="$HOME/.local/bin/kind"
@@ -65,13 +70,16 @@ Options:
 Environment:
   KIND_VERSION   Kind version to install (default: $KIND_VERSION)
   TAG            Image tag to build and test (default: $TAG)
+  PB_IMAGE       PocketBase image (default: $PB_IMAGE)
+  FE_IMAGE       Frontend image (default: $FE_IMAGE)
+  KUBE_CONTEXT   Same as --kube-context (default: kind-$KIND_CLUSTER)
 EOF
 }
 
 # --- Arg parse ---------------------------------------------------------
 MODE="full"
 KEEP_KIND=0
-KUBE_CONTEXT="kind-${KIND_CLUSTER}"
+KUBE_CONTEXT="${KUBE_CONTEXT:-kind-${KIND_CLUSTER}}"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     "")            shift ;;
@@ -103,6 +111,10 @@ else
   fail "missing dependency: neither docker nor podman found (install one)"
 fi
 log "container runtime: $CONTAINER_CLI"
+# kind needs to be told explicitly when it should drive podman.
+if [[ "$CONTAINER_CLI" == "podman" ]]; then
+  export KIND_EXPERIMENTAL_PROVIDER="${KIND_EXPERIMENTAL_PROVIDER:-podman}"
+fi
 
 log "STJÓRNA helm chart test rig"
 log "  mode:   $MODE"
@@ -201,7 +213,8 @@ resolve_chart() {
 # --- Image build -------------------------------------------------------
 build_image_if_missing() {
   local image=$1 dockerfile=$2 context=$3
-  if "$CONTAINER_CLI" image exists "$image" >/dev/null 2>&1; then
+  # `image inspect` works on docker and podman (`image exists` is podman-only).
+  if "$CONTAINER_CLI" image inspect "$image" >/dev/null 2>&1; then
     log "image $image already present, skipping build"
     return
   fi
@@ -252,8 +265,19 @@ fi
 
 # Load images
 log "loading images into kind ..."
-"$KIND_PATH" load docker-image "$PB_IMAGE" --name "$KIND_CLUSTER" >/dev/null
-"$KIND_PATH" load docker-image "$FE_IMAGE" --name "$KIND_CLUSTER" >/dev/null
+# `kind load docker-image` only talks to a docker daemon; go through an
+# image archive so the same path works for docker and podman.
+load_image_into_kind() {
+  local image=$1 archive
+  archive="$(mktemp "${TMPDIR:-/tmp}/stjorna-kind-image.XXXXXX.tar")"
+  "$CONTAINER_CLI" save -o "$archive" "$image" >/dev/null \
+    || { rm -f "$archive"; fail "failed to export $image"; }
+  "$KIND_PATH" load image-archive "$archive" --name "$KIND_CLUSTER" >/dev/null \
+    || { rm -f "$archive"; fail "failed to load $image into kind"; }
+  rm -f "$archive"
+}
+load_image_into_kind "$PB_IMAGE"
+load_image_into_kind "$FE_IMAGE"
 ok "images loaded"
 
 # Resolve chart (strips optional garage dep if not vendored)

@@ -44,10 +44,6 @@ export interface Media {
   size: number;
   width: number;
   height: number;
-  s3_key: string;
-  s3_url: string;
-  thumbnail_url: string;
-  usage_count: number;
   createdUser: string;
   created: string;
   updated: string;

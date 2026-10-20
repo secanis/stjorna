@@ -46,8 +46,6 @@ export interface MediaFixture {
   size?: number;
   width?: number;
   height?: number;
-  s3_key?: string;
-  s3_url?: string;
 }
 
 export interface WebhookFixture {
