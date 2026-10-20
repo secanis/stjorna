@@ -1,24 +1,25 @@
 import { createSignal, createResource, For, Show, onMount } from 'solid-js';
 import { useNavigate, useParams, useLocation } from '@solidjs/router';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
 import MediaThumb from '~/components/media/MediaThumb';
 import Combobox from '~/components/ui/Combobox';
 import ActiveBadge from '~/components/ui/ActiveBadge';
+import { formatCustomFields, parseCustomFields } from '~/utils/customFields';
 import type { Product, Category, Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 async function fetchCategories() {
   const tenant = getCurrentTenant();
-  const filter = tenant ? `tenant = "${tenant}"` : '';
+  const filter = tenantFilter(tenant);
   return await pb.collection('categories').getList<Category>(1, 200, { filter, sort: 'name' });
 }
 
 async function fetchMedia() {
   const tenant = getCurrentTenant();
-  const filter = tenant ? `tenant = "${tenant}"` : '';
+  const filter = tenantFilter(tenant);
   return await pb.collection('media').getList<Media>(1, 200, { filter, sort: '-created' });
 }
 
@@ -56,7 +57,6 @@ export default function ProductEdit() {
   let dragSourceIndex: number | null = null;
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;
@@ -90,7 +90,7 @@ export default function ProductEdit() {
           media: product.media || [],
           active: product.active ?? true,
           sort_order: product.sort_order ?? 0,
-          custom_fields: product.custom_fields ? JSON.stringify(product.custom_fields, null, 2) : '',
+          custom_fields: formatCustomFields(product.custom_fields),
         });
         setSlugManuallyEdited(true);
 
@@ -194,6 +194,13 @@ export default function ProductEdit() {
       return;
     }
 
+    const customFields = parseCustomFields(formData().custom_fields);
+    if (!customFields.ok) {
+      setError(customFields.error);
+      setSaving(false);
+      return;
+    }
+
     try {
       const payload: any = {
         name: formData().name,
@@ -204,7 +211,7 @@ export default function ProductEdit() {
         media: selectedMediaIds(),
         active: formData().active,
         sort_order: formData().sort_order,
-        custom_fields: formData().custom_fields,
+        custom_fields: customFields.value,
       };
 
       if (isNew()) {

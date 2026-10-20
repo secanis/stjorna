@@ -1,6 +1,6 @@
 import { createSignal, createResource, For, Show, onMount } from 'solid-js';
 import { useNavigate, useParams, useLocation } from '@solidjs/router';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
@@ -12,7 +12,7 @@ import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 async function fetchMedia() {
   const tenant = getCurrentTenant();
-  const filter = tenant ? `tenant = "${tenant}"` : '';
+  const filter = tenantFilter(tenant);
   return await pb.collection('media').getList<Media>(1, 200, { filter, sort: '-created' });
 }
 
@@ -38,7 +38,6 @@ export default function CategoryEdit() {
   const [media] = createResource(fetchMedia);
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

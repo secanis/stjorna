@@ -180,8 +180,8 @@ test.describe('Media Upload', () => {
       return;
     }
 
-    page.on('dialog', dialog => dialog.accept());
     await page.locator('button:has-text("Delete")').first().click();
+    await page.getByTestId('confirm-dialog-confirm').click();
     await page.waitForTimeout(1500);
   });
 
@@ -205,17 +205,12 @@ test.describe('Media Upload', () => {
     await page.waitForLoadState('networkidle');
     await page.waitForSelector(`text=${uniqueName}`, { timeout: 10000 });
 
-    let dialogCount = 0;
-    page.on('dialog', async (dialog) => {
-      dialogCount++;
-      await dialog.accept();
-    });
-
     const row = page.locator(`tbody tr:has-text("${uniqueName}")`);
     await row.locator('button:has-text("Delete")').click();
+    await expect(page.getByRole('alertdialog')).toBeVisible();
+    await page.getByTestId('confirm-dialog-confirm').click();
     await page.waitForTimeout(1500);
 
-    expect(dialogCount).toBeGreaterThan(0);
     await expect(page.locator(`text=${uniqueName}`)).toHaveCount(0);
   });
 

@@ -218,12 +218,9 @@ test.describe('User Management table — aggregate by user', () => {
     expect(newTenant, `tenant ${secondTenant}`).toBeTruthy();
     expect(beforeIds, 'memberships include new tenant before removal').toContain(newTenant.id);
 
-    // Click that specific X button. Register the dialog handler
-    // BEFORE clicking — handleRemove pops a confirm() that the
-    // default browser dismisses if no listener is attached, which
-    // silently aborts the removal.
-    page.once('dialog', (d) => d.accept());
+    // Click that specific X button, then accept the in-app confirm dialog.
     await row.locator(`[data-membership-tenant-id="${newTenant.id}"] button[title^="Remove from"]`).click();
+    await page.getByTestId('confirm-dialog-confirm').click();
     await page.waitForTimeout(1500);
 
     // Reload — count AFTER removal = BEFORE - 1.

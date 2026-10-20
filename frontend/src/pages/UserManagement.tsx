@@ -1,6 +1,6 @@
 import { createSignal, createResource, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
@@ -8,6 +8,7 @@ import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { X, ExternalLink, Search, UserPlus } from 'lucide-solid';
+import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 // One row per tenant membership of a given user.
 interface UserMembership {
@@ -106,19 +107,21 @@ async function fetchUsers(): Promise<AggregatedUser[]> {
   try {
     let raw: RawUserTenant[];
     if (authStore.isPBAdmin) {
-      const r = await pb.collection('user_tenants').getList(1, 500, {
+      const items = await pb.collection('user_tenants').getFullList({
+        batch: 500,
         expand: 'user,tenant,role',
         sort: 'tenant',
       });
-      raw = r.items as unknown as RawUserTenant[];
+      raw = items as unknown as RawUserTenant[];
     } else {
-      const filter = tenant ? `tenant = "${tenant}"` : '';
-      const r = await pb.collection('user_tenants').getList(1, 500, {
+      const filter = tenantFilter(tenant);
+      const items = await pb.collection('user_tenants').getFullList({
+        batch: 500,
         filter,
         expand: 'user,tenant,role',
         sort: 'tenant',
       });
-      raw = r.items as unknown as RawUserTenant[];
+      raw = items as unknown as RawUserTenant[];
       if (tenant) raw = await withMemberDetails(raw, tenant);
     }
     return aggregateUserTenants(raw);
@@ -133,7 +136,6 @@ export default function UserManagement() {
   const [initialized, setInitialized] = createSignal(false);
 
   onMount(async () => {
-    await authStore.init();
     setInitialized(true);
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
@@ -290,18 +292,18 @@ export default function UserManagement() {
       await pb.collection('user_tenants').update(userTenantId, { role: roleId });
       refetch();
     } catch (e: any) {
-      alert(`Failed to update role: ${e?.message}`);
+      void alertDialog(`Failed to update role: ${e?.message}`);
     }
   };
 
   const handleRemove = async (userTenantId: string, tenantName: string) => {
-    if (!confirm(`Remove this user from "${tenantName}"?`)) return;
+    if (!(await confirmDialog({ message: `Remove this user from "${tenantName}"?`, danger: true }))) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      alert(`Failed to remove user: ${e?.message}`);
+      void alertDialog(`Failed to remove user: ${e?.message}`);
     }
   };
 

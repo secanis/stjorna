@@ -78,7 +78,7 @@ export interface Product {
   media: string[];
   active: boolean;
   sort_order: number;
-  // JSON field: PocketBase returns the parsed value (null when empty).
+  /** PocketBase JSON field: parsed object (or null) as returned by the SDK. */
   custom_fields: Record<string, unknown> | null;
   createdUser: string;
   updatedUser: string;

@@ -1,6 +1,7 @@
 import { render } from 'solid-js/web';
 import { Suspense } from 'solid-js';
 import App from './App';
+import { DialogHost } from './components/ui/ConfirmDialog';
 import './index.css';
 import './styles/colors.css';
 import { applyTheme } from './stores/theme';
@@ -13,9 +14,12 @@ applyTheme(
 
 render(
   () => (
-    <Suspense>
-      <App />
-    </Suspense>
+    <>
+      <Suspense>
+        <App />
+      </Suspense>
+      <DialogHost />
+    </>
   ),
   document.getElementById('root')!,
 );
