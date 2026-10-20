@@ -85,6 +85,26 @@ wait_for_deployment() {
   ok "deployment $ns/$name available"
 }
 
+# wait_for_endpoints <ns> <service> [timeout_seconds]
+# Waits until the Service has at least one ready endpoint. The deployment's
+# Available condition can flip just before the Endpoints controller
+# publishes the Service's endpoints, and `kubectl port-forward svc/...`
+# exits immediately with "no endpoints available" when run in that window —
+# the smoke test then fails with a 000 HTTP code. Poll here instead of
+# sleeping blindly so the port-forward always has a backend to reach.
+wait_for_endpoints() {
+  local ns=$1 svc=$2 timeout=${3:-60} i=0 addrs
+  while [ "$i" -lt "$timeout" ]; do
+    addrs="$(kubectl get endpoints -n "$ns" "$svc" -o jsonpath='{.subsets[*].addresses[*].ip}' 2>/dev/null || true)"
+    if [ -n "$addrs" ]; then
+      return 0
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+  return 1
+}
+
 # Free-port picker (returns a random port in 30000-39999 that isn't bound)
 pick_free_port() {
   while :; do

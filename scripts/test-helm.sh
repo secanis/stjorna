@@ -333,6 +333,11 @@ wait_for_deployment "$NS" "$FE_DEPLOY" 180
 # Port-forward
 PB_PORT=$(pick_free_port)
 FE_PORT=$(pick_free_port)
+# The deployments are Available, but the Endpoints controller may not have
+# published the Service endpoints yet; port-forwarding to a svc with no
+# endpoints exits immediately and the smoke test would fail with 000.
+wait_for_endpoints "$NS" "$PB_SVC" 60 || fail "PB service $NS/$PB_SVC has no ready endpoints"
+wait_for_endpoints "$NS" "$FE_SVC" 60 || fail "FE service $NS/$FE_SVC has no ready endpoints"
 log "port-forwarding: PB http://localhost:$PB_PORT, FE http://localhost:$FE_PORT"
 kubectl port-forward -n "$NS" "svc/$PB_SVC" "$PB_PORT:8090" >/dev/null 2>&1 &
 PF_PB_PID=$!
@@ -505,7 +510,16 @@ if [[ "$SUPERUSER_PASSWORD_AFTER" != "$SUPERUSER_PASSWORD_BEFORE" ]]; then
 fi
 ok "PB_SUPERUSER_PASSWORD unchanged across upgrade"
 
-# Re-port-forward and wait for the PB pod to come back
+# Wait for the new PB pod to be ready BEFORE re-port-forwarding. The upgrade
+# replaces the pod (Recreate), so port-forwarding to the svc before the new
+# pod is ready (or before the Endpoints controller publishes it) exits
+# immediately and the test record check below would fail with 000.
+wait_for_deployment "$NS" "$PB_DEPLOY" 180
+wait_for_deployment "$NS" "$FE_DEPLOY" 180
+wait_for_endpoints "$NS" "$PB_SVC" 60 || fail "PB service $NS/$PB_SVC has no ready endpoints"
+wait_for_endpoints "$NS" "$FE_SVC" 60 || fail "FE service $NS/$FE_SVC has no ready endpoints"
+
+# Re-port-forward
 PB_PORT=$(pick_free_port)
 FE_PORT=$(pick_free_port)
 log "re-port-forwarding: PB http://localhost:$PB_PORT, FE http://localhost:$FE_PORT"
@@ -514,11 +528,6 @@ PF_PB_PID=$!
 kubectl port-forward -n "$NS" "svc/$FE_SVC" "$FE_PORT:8080" >/dev/null 2>&1 &
 PF_FE_PID=$!
 sleep 2
-
-# Wait for the new PB pod to be ready, then confirm the test record is
-# still there.
-wait_for_deployment "$NS" "$PB_DEPLOY" 180
-wait_for_deployment "$NS" "$FE_DEPLOY" 180
 
 log "T-06: confirming test record id=$TEST_RECORD_ID still exists after upgrade ..."
 GET_STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 \
