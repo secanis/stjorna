@@ -13,7 +13,8 @@ import { execSync } from 'node:child_process';
 //   4. assert the resulting schema + data, and that the API-key hook
 //      still issues / lists / exchanges keys with the relation field
 
-const PB_IMAGE = process.env.PB_IMAGE || 'localhost/stjorna-pocketbase:test';
+// Not PB_IMAGE: CI sets that globally to the registry repo used for pushes.
+const PB_IMAGE = process.env.STJORNA_TEST_PB_IMAGE || 'localhost/stjorna-pocketbase:test';
 const HOST_PORT = 18096;
 const PB_URL = `http://127.0.0.1:${HOST_PORT}`;
 const CONTAINER_NAME = `stjorna-t22-schema-${process.pid}`;

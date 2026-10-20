@@ -156,10 +156,12 @@ if [[ "$MODE" == "lint" ]]; then
     || fail "rendered output missing PVC"
   # NOTE: persistentVolumeReclaimPolicy is intentionally NOT on the PVC
   # (it's a PV field). Retain semantics come from the StorageClass.
-  grep -q '^  openapi\.pb\.js:' "$RENDER_OUT" \
-    || fail "rendered hooks ConfigMap is missing openapi.pb.js data"
-  grep -q '^  setup\.pb\.js:' "$RENDER_OUT" \
-    || fail "rendered hooks ConfigMap is missing setup.pb.js data"
+  # T-16: hooks ship only inside the PocketBase image; the chart must not
+  # render a hooks ConfigMap (it used to miss pb_hooks/lib/*.js).
+  ! grep -q -- '-hooks$' "$RENDER_OUT" \
+    || fail "rendered output still contains a hooks ConfigMap"
+  grep -q '^kind: NetworkPolicy$' "$RENDER_OUT" \
+    || fail "rendered output missing NetworkPolicy (networkPolicy.enabled defaults to true)"
   # The default-credentials Secret must render unless an existingSecret
   # was supplied. The lint-mode render uses no overrides, so the default
   # path is what we get.
