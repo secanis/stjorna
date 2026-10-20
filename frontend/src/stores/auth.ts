@@ -284,12 +284,13 @@ export const authStore = {
     try {
       const userId = user()?.id || pb.authStore.record?.id;
       if (!userId) return;
-      const result = await pb.collection('user_tenants').getList(1, 50, {
+      const items = await pb.collection('user_tenants').getFullList({
+        batch: 200,
         filter: pb.filter('user = {:userId}', { userId }),
         expand: 'tenant,role',
       });
 
-      const tenantList: UserTenant[] = await Promise.all(result.items.map(async (r: any) => {
+      const tenantList: UserTenant[] = await Promise.all(items.map(async (r: any) => {
         let tenantName = r.expand?.tenant?.name;
         let themeConfig: TenantThemeConfig = parseThemeConfig(r.expand?.tenant?.theme_config);
         let roleName = r.expand?.role?.name;
@@ -349,8 +350,8 @@ export const authStore = {
 
   async loadAllTenantsForPBAdmin() {
     try {
-      const result = await pb.collection('tenants').getList(1, 500);
-      const allTenants: UserTenant[] = result.items.map((t: any) => ({
+      const items = await pb.collection('tenants').getFullList({ batch: 500, sort: 'name' });
+      const allTenants: UserTenant[] = items.map((t: any) => ({
         id: t.id,
         tenant: t.id,
         tenantName: t.name || t.id,

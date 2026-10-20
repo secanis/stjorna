@@ -106,19 +106,21 @@ async function fetchUsers(): Promise<AggregatedUser[]> {
   try {
     let raw: RawUserTenant[];
     if (authStore.isPBAdmin) {
-      const r = await pb.collection('user_tenants').getList(1, 500, {
+      const items = await pb.collection('user_tenants').getFullList({
+        batch: 500,
         expand: 'user,tenant,role',
         sort: 'tenant',
       });
-      raw = r.items as unknown as RawUserTenant[];
+      raw = items as unknown as RawUserTenant[];
     } else {
       const filter = tenantFilter(tenant);
-      const r = await pb.collection('user_tenants').getList(1, 500, {
+      const items = await pb.collection('user_tenants').getFullList({
+        batch: 500,
         filter,
         expand: 'user,tenant,role',
         sort: 'tenant',
       });
-      raw = r.items as unknown as RawUserTenant[];
+      raw = items as unknown as RawUserTenant[];
       if (tenant) raw = await withMemberDetails(raw, tenant);
     }
     return aggregateUserTenants(raw);

@@ -15,11 +15,12 @@ interface Superuser {
 
 async function fetchSuperusers(): Promise<Superuser[]> {
   try {
-    const result = await pb.collection('_superusers').getList(1, 500, {
+    const items = await pb.collection('_superusers').getFullList({
+      batch: 500,
       sort: 'email',
       fields: 'id,email,active',
     });
-    return result.items.map((r: any) => ({
+    return items.map((r: any) => ({
       id: r.id,
       email: r.email || '',
       active: r.active !== false,
