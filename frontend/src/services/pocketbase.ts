@@ -1,19 +1,15 @@
 import PocketBase from 'pocketbase';
+import { getConfiguredPbUrl } from '~/services/config';
 
-const ENV_PB_URL = (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') || '/';
+// Runtime config (/config.js) → VITE_PB_URL → same origin.
+const ENV_PB_URL = getConfiguredPbUrl() || '/';
 
 export function getPbUrl(): string {
   return ENV_PB_URL;
 }
 
-export let pb = new PocketBase(ENV_PB_URL);
+export const pb = new PocketBase(ENV_PB_URL);
 pb.autoCancellation(false);
-
-export function recreatePb(url?: string) {
-  const finalUrl = url ?? ENV_PB_URL;
-  pb = new PocketBase(finalUrl);
-  pb.autoCancellation(false);
-}
 
 export function setCurrentTenant(tenantId: string | null) {
   if (tenantId === null) {

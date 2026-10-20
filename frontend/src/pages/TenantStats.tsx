@@ -59,7 +59,6 @@ export default function TenantStats() {
         <div class="space-y-6">
             <div class="flex items-start justify-between">
                 <div>
-                    {/* eslint-disable-next-line i18next/no-literal-string */}
                     <A href="/tenants" class="inline-flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
                         <ArrowLeft size={14} /> Back to tenants
                     </A>

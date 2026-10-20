@@ -2,6 +2,7 @@ import { createSignal, Show, onMount, onCleanup, createEffect } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import PocketBase, { BaseAuthStore } from 'pocketbase';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { getConfiguredPbUrl } from '~/services/config';
 
 type Step = 'admin' | 'storage' | 'tenant' | 'link' | 'done';
 
@@ -9,7 +10,7 @@ export default function Setup() {
   const navigate = useNavigate();
 
   const resolvePbUrl = () =>
-    (import.meta.env.VITE_PB_URL as string | undefined)?.replace(/\/+$/, '') ||
+    getConfiguredPbUrl() ||
     (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090');
 
   const [step, setStep] = createSignal<Step>('admin');

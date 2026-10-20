@@ -1,5 +1,11 @@
 ---
-# STJÓRNA — ESLint configuration.
+# STJÓRNA — ESLint configuration for Codacy ONLY.
+#
+# The real lint config is frontend/eslint.config.js (flat config, ESLint 9,
+# typescript-eslint + eslint-plugin-solid), run via `npm run lint` in
+# frontend/. ESLint 9 ignores this legacy file; it only exists so Codacy's
+# stock ESLint run (legacy config, react/i18next/compat plugins) does not
+# flag SolidJS idioms. Keep real rule decisions in frontend/eslint.config.js.
 #
 # Codacy looks for ESLint configs at the REPO ROOT (not per-package) when
 # its ESLint tool is set to "Configuration file" mode. So even though

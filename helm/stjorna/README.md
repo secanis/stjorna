@@ -331,19 +331,13 @@ frontend:
     tag: v3.0.0-rc1
 ```
 
-### VITE_PB_URL
+### PocketBase URL (`PB_URL` / `VITE_PB_URL`)
 
-`VITE_PB_URL` is a **build-time** variable baked into the frontend image by Vite. The chart does **not** override it. In-cluster, the frontend proxies `/api/*` to the PocketBase service via nginx, so the default build works without any override.
+In-cluster, the frontend proxies `/api/*` to the PocketBase service via nginx, so the default image works without any override (same-origin).
 
-If you need to point the frontend at a different PB (e.g., a public PB for storefront mode), rebuild the frontend image with `VITE_PB_URL` set:
+To point the frontend at a different PB (e.g. a public PB for storefront mode), set `PB_URL` on the frontend container. At start, `/docker-entrypoint.d/40-stjorna-config.sh` writes `/tmp/stjorna/config.js` (`window.__STJORNA_CONFIG__ = { pbUrl }`), which nginx serves as `/config.js` with `Cache-Control: no-cache`. The chart does not expose `PB_URL` as a value yet; add it via an env patch on the frontend Deployment. Note that the default CSP (`connect-src 'self'`) blocks a cross-origin PB, so the CSP in `frontend-configmap.yaml` must be widened as well.
 
-```bash
-podman build -t docker.io/secanis/stjorna-frontend:v3.0.0-rc1 \
-  --build-arg VITE_PB_URL=https://pb.yourdomain.com \
-  -f frontend/Dockerfile frontend
-```
-
-(Requires the `frontend/Dockerfile` to forward the arg; the current Dockerfile doesn't. To enable, edit the `builder` stage to add `ARG VITE_PB_URL` before `npm run build`.)
+Precedence in the frontend: runtime `PB_URL` → build-time `VITE_PB_URL` → same origin.
 
 ### Hooks iteration
 
