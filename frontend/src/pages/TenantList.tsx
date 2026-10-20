@@ -34,7 +34,6 @@ export default function TenantList() {
   onMount(async () => {
     if (initStarted) return;
     initStarted = true;
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

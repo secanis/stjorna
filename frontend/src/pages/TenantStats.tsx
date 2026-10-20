@@ -33,7 +33,6 @@ export default function TenantStats() {
     };
 
     onMount(async () => {
-        await authStore.init();
         if (!authStore.isAuthenticated()) {
             navigate('/login', { replace: true });
             return;

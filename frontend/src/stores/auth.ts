@@ -1,11 +1,13 @@
-import { createSignal, createMemo } from 'solid-js';
+import { createSignal, createMemo, createRoot } from 'solid-js';
 import { pbInstance as pb, setCurrentTenant, getCurrentTenant, clearAuth } from '~/services/pocketbase';
 import type { Role, UserTenant, TenantThemeConfig } from '~/types';
 import { parseThemeConfig } from '~/utils/themeConfig';
 import { tenantStore } from '~/stores/tenant';
 
+// Only trust a persisted record when its token is still valid (not
+// expired). A stale localStorage entry must not look "logged in".
 const [user, setUser] = createSignal<Record<string, any> | null>(
-  pb.authStore.model
+  pb.authStore.isValid ? pb.authStore.record : null
 );
 const [tenants, setTenants] = createSignal<UserTenant[]>([]);
 const [currentTenant, setCurrentTenantSignal] = createSignal<string | null>(
@@ -15,6 +17,74 @@ const [role, setRole] = createSignal<Role | null>(null);
 const [isPBAdmin, setIsPBAdmin] = createSignal<boolean>(false);
 const [isLoading, setIsLoading] = createSignal<boolean>(false);
 const [error, setError] = createSignal<string | null>(null);
+
+// Derived state lives in an explicit root so the memos are owned (no
+// "computations created outside a createRoot" leak) for the app lifetime.
+const derived = createRoot(() => ({
+  isAuthenticated: createMemo(() => user() !== null),
+  isEditorOrAbove: createMemo(() => {
+    if (isPBAdmin()) return true;
+    const r = role();
+    return r === 'editor' || r === 'admin';
+  }),
+  isAdminOrAbove: createMemo(() => {
+    if (isPBAdmin()) return true;
+    return role() === 'admin';
+  }),
+}));
+
+function resetState() {
+  setUser(null);
+  setTenants([]);
+  setCurrentTenantSignal(null);
+  setRole(null);
+  setIsPBAdmin(false);
+}
+
+let initPromise: Promise<void> | null = null;
+
+async function doInit(): Promise<void> {
+  if (!pb.authStore.isValid) {
+    if (pb.authStore.token) clearAuth();
+    resetState();
+    return;
+  }
+  // Confirm the session server-side and rotate the token. A 401/403/404
+  // means the token was revoked or the account is gone: drop it. Network
+  // errors keep the (locally valid) session so an unreachable backend
+  // does not force a logout.
+  const collection = pb.authStore.isSuperuser ? '_superusers' : 'users';
+  try {
+    await pb.collection(collection).authRefresh();
+  } catch (e: any) {
+    if (e?.status === 401 || e?.status === 403 || e?.status === 404) {
+      clearAuth();
+      resetState();
+      return;
+    }
+  }
+  setUser(pb.authStore.record);
+  if (pb.authStore.isSuperuser) {
+    setIsPBAdmin(true);
+    await authStore.loadAllTenantsForPBAdmin();
+    return;
+  }
+  await authStore.loadTenants();
+}
+
+// Keep the store in sync with the SDK: token cleared (logout in another
+// tab, 401 handler, expiry) or replaced (authRefresh, login).
+pb.authStore.onChange((token, record) => {
+  if (!token || !record) {
+    if (user() !== null) {
+      resetState();
+      tenantStore.bump();
+    }
+    initPromise = null;
+    return;
+  }
+  setUser(record);
+});
 
 export const authStore = {
   get user() {
@@ -39,7 +109,7 @@ export const authStore = {
     return error();
   },
 
-  isAuthenticated: createMemo(() => user() !== null || pb.authStore.isValid),
+  isAuthenticated: derived.isAuthenticated,
 
   hasRole: (requiredRoles: Role | Role[]) => {
     const roles = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
@@ -48,34 +118,17 @@ export const authStore = {
     return roles.includes(currentRole);
   },
 
-  isEditorOrAbove: createMemo(() => {
-    if (isPBAdmin()) return true;
-    const r = role();
-    return r === 'editor' || r === 'admin';
-  }),
+  isEditorOrAbove: derived.isEditorOrAbove,
 
-  isAdminOrAbove: createMemo(() => {
-    if (isPBAdmin()) return true;
-    const r = role();
-    return r === 'admin';
-  }),
+  isAdminOrAbove: derived.isAdminOrAbove,
 
-  async init() {
-    if (pb.authStore.isValid) {
-      setUser(pb.authStore.model);
-      const model = pb.authStore.model;
-
-      if (pb.authStore.isSuperuser) {
-        setIsPBAdmin(true);
-        await this.loadAllTenantsForPBAdmin();
-        return;
-      }
-
-      await this.loadTenants();
-    }
-    // No auth: do not redirect here. Each page checks isAuthenticated()
-    // and navigates to /login; the Login page decides whether /setup is
-    // needed. This avoids loops when PB is unreachable.
+  /**
+   * Restore and verify the persisted session. Idempotent: called once by
+   * the route guard (RequireAuth); later callers share the same promise.
+   */
+  init(): Promise<void> {
+    if (!initPromise) initPromise = doInit();
+    return initPromise;
   },
 
   async login(email: string, password: string) {
@@ -111,7 +164,7 @@ export const authStore = {
     setError(null);
     try {
       await pb.collection('_superusers').authWithPassword(email, password);
-      setUser(pb.authStore.model);
+      setUser(pb.authStore.record);
       setIsPBAdmin(true);
       setCurrentTenantSignal(null);
       setRole(null);
@@ -143,7 +196,7 @@ export const authStore = {
     setError(null);
     try {
       await pb.collection('_superusers').authWithOTP(otpId, code, { mfaId });
-      setUser(pb.authStore.model);
+      setUser(pb.authStore.record);
       setIsPBAdmin(true);
       setCurrentTenantSignal(null);
       setRole(null);
@@ -224,7 +277,7 @@ export const authStore = {
 
   async loadTenants() {
     try {
-      const userId = user()?.id || pb.authStore.model?.id;
+      const userId = user()?.id || pb.authStore.record?.id;
       if (!userId) return;
       const result = await pb.collection('user_tenants').getList(1, 50, {
         filter: `user = "${userId}"`,
@@ -267,7 +320,7 @@ export const authStore = {
       setTenants(tenantList);
 
       let targetTenant: string | null = null;
-      const lastTenant = pb.authStore.model?.last_tenant;
+      const lastTenant = pb.authStore.record?.last_tenant;
       const savedTenant = getCurrentTenant();
 
       if (savedTenant && tenantList.some(t => t.tenant === savedTenant)) {
@@ -329,17 +382,15 @@ export const authStore = {
 
   async logout() {
     clearAuth();
-    setUser(null);
-    setTenants([]);
-    setCurrentTenantSignal(null);
-    setRole(null);
-    setIsPBAdmin(false);
+    resetState();
     setError(null);
+    initPromise = null;
     tenantStore.bump();
   },
 };
 
-if (typeof window !== 'undefined') {
+// Debug handle for local development only; never exposed in production.
+if (import.meta.env.DEV && typeof window !== 'undefined') {
   (window as any).__authStore = authStore;
 }
 

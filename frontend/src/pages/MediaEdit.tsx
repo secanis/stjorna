@@ -45,7 +45,6 @@ export default function MediaEdit() {
   const [usageLoading, setUsageLoading] = createSignal(false);
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

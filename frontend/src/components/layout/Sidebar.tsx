@@ -57,7 +57,6 @@ export default function Sidebar() {
     const [apiKeysCount, setApiKeysCount] = createSignal<number | null>(null);
 
     const fetchCounts = async () => {
-        await authStore.init();
 
         const tenant = getCurrentTenant();
 

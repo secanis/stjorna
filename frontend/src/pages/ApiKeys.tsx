@@ -60,7 +60,6 @@ export default function ApiKeys() {
     const [tenants] = createResource(initialized, (ready) => (ready ? listTenants() : []));
 
     onMount(async () => {
-        await authStore.init();
         if (!authStore.isAuthenticated()) {
             navigate('/login', { replace: true });
             return;

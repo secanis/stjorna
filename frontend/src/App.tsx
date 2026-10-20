@@ -1,5 +1,7 @@
 import { Router, Route } from '@solidjs/router';
+import type { ParentProps } from 'solid-js';
 import Layout from '~/components/layout/Layout';
+import RequireAuth from '~/components/auth/RequireAuth';
 import Setup from '~/pages/Setup';
 import Login from '~/pages/Login';
 import Dashboard from '~/pages/Dashboard';
@@ -28,13 +30,20 @@ import SuperuserManagement from '~/pages/SuperuserManagement';
 import SuperuserLogin from '~/pages/SuperuserLogin';
 import About from '~/pages/About';
 
+// Everything inside the app shell requires a verified session.
+const ProtectedLayout = (props: ParentProps) => (
+    <RequireAuth>
+        <Layout>{props.children}</Layout>
+    </RequireAuth>
+);
+
 export default function App() {
     return (
         <Router>
             <Route path="/setup" component={Setup} />
             <Route path="/login" component={Login} />
             <Route path="/superlogin" component={SuperuserLogin} />
-            <Route path="/" component={Layout}>
+            <Route path="/" component={ProtectedLayout}>
                 <Route path="/" component={Dashboard} />
                 <Route path="/media/new" component={MediaEdit} />
                 <Route path="/media/:id" component={MediaEdit} />

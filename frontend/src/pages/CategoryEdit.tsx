@@ -38,7 +38,6 @@ export default function CategoryEdit() {
   const [media] = createResource(fetchMedia);
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

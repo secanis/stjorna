@@ -57,7 +57,6 @@ export default function ProductEdit() {
   let dragSourceIndex: number | null = null;
 
   onMount(async () => {
-    await authStore.init();
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;

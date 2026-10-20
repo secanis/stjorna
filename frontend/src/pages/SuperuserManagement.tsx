@@ -35,7 +35,6 @@ export default function SuperuserManagement() {
   const [initialized, setInitialized] = createSignal(false);
 
   onMount(async () => {
-    await authStore.init();
     setInitialized(true);
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });

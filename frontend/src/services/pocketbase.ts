@@ -6,13 +6,28 @@ export function getPbUrl(): string {
   return ENV_PB_URL;
 }
 
-export let pb = new PocketBase(ENV_PB_URL);
-pb.autoCancellation(false);
+// Auth endpoints legitimately answer 401 (wrong password, MFA required),
+// so they must not trigger the global "session expired" handling.
+const AUTH_ENDPOINT_RE = /\/(auth-with-[a-z0-9]+|request-otp|auth-methods)(\?|$)/;
+
+function configure(client: PocketBase): PocketBase {
+  client.autoCancellation(false);
+  client.afterSend = (response, data) => {
+    if (response.status === 401 && client.authStore.token && !AUTH_ENDPOINT_RE.test(response.url)) {
+      // Token expired or revoked server-side: drop it. authStore listens
+      // to onChange and the route guard sends the user to /login.
+      client.authStore.clear();
+    }
+    return data;
+  };
+  return client;
+}
+
+export let pb = configure(new PocketBase(ENV_PB_URL));
 
 export function recreatePb(url?: string) {
   const finalUrl = url ?? ENV_PB_URL;
-  pb = new PocketBase(finalUrl);
-  pb.autoCancellation(false);
+  pb = configure(new PocketBase(finalUrl));
 }
 
 export function setCurrentTenant(tenantId: string | null) {
