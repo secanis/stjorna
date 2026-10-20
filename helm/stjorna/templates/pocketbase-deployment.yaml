@@ -19,6 +19,8 @@ spec:
         {{- include "stjorna.pocketbase.selectorLabels" . | nindent 8 }}
     spec:
       serviceAccountName: {{ include "stjorna.serviceAccountName" . }}
+      # Neither container talks to the Kubernetes API.
+      automountServiceAccountToken: false
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -29,16 +31,21 @@ spec:
         - name: pocketbase
           image: "{{ .Values.pocketbase.image.repository }}:{{ .Values.pocketbase.image.tag }}"
           imagePullPolicy: {{ .Values.pocketbase.image.pullPolicy | default .Values.image.pullPolicy }}
-          args:
-            - serve
-            - --http=0.0.0.0:{{ .Values.pocketbase.service.port }}
-            - --dir=/app/pb_data
-            - --hooksDir=/app/pb_hooks
+          securityContext:
+            {{- toYaml .Values.pocketbase.containerSecurityContext | nindent 12 }}
+          # No args: entrypoint.sh runs `pocketbase serve` on 0.0.0.0:8090
+          # with --dir/--hooksDir/--encryptionEnv. The container port is
+          # fixed; `pocketbase.service.port` only changes the Service port
+          # (targetPort: http), so probes and the listener never disagree.
           ports:
             - name: http
-              containerPort: {{ .Values.pocketbase.service.port }}
+              containerPort: 8090
               protocol: TCP
           env:
+            - name: PB_AUTOMIGRATE
+              value: {{ .Values.pocketbase.automigrate | toString | quote }}
+            - name: PB_SUPERUSER_IPS
+              value: {{ .Values.pocketbase.superuserIps | default "" | quote }}
             - name: PB_SECRET
               valueFrom:
                 secretKeyRef:
@@ -71,11 +78,17 @@ spec:
                   name: {{ .Values.pocketbase.setupToken.existingSecret }}
                   key: {{ .Values.pocketbase.setupToken.existingSecretKey | default "STJORNA_SETUP_TOKEN" }}
             {{- end }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.pocketbase.healthcheck.path }}
+              port: http
+            periodSeconds: {{ .Values.pocketbase.startupProbe.periodSeconds }}
+            timeoutSeconds: 3
+            failureThreshold: {{ .Values.pocketbase.startupProbe.failureThreshold }}
           livenessProbe:
             httpGet:
               path: {{ .Values.pocketbase.healthcheck.path }}
               port: http
-            initialDelaySeconds: 10
             periodSeconds: 15
             timeoutSeconds: 5
             failureThreshold: 3
@@ -83,7 +96,6 @@ spec:
             httpGet:
               path: {{ .Values.pocketbase.healthcheck.path }}
               port: http
-            initialDelaySeconds: 5
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
@@ -92,6 +104,8 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /app/pb_data
+            - name: tmp
+              mountPath: /tmp
             {{- if .Values.pocketbase.hooks.mountFromConfigMap }}
             - name: hooks
               mountPath: /app/pb_hooks
@@ -104,6 +118,8 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        - name: tmp
+          emptyDir: {}
         {{- if .Values.pocketbase.hooks.mountFromConfigMap }}
         - name: hooks
           configMap:

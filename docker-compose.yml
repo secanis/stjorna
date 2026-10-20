@@ -4,11 +4,17 @@ services:
             context: ./pocketbase
             dockerfile: Dockerfile
         ports:
-            - '8090:8090'
+            # The frontend proxies /api/ and /_/ to PocketBase over the compose
+            # network, so PB does not need to be reachable from outside. It is
+            # bound to loopback only (for local debugging / the PB admin UI at
+            # http://127.0.0.1:8090/_/). Remove this mapping entirely if you
+            # don't need it; never publish it on 0.0.0.0 on an exposed host.
+            - '127.0.0.1:8090:8090'
         volumes:
-            # Mount a host directory to persist PocketBase data and storage.
-            # Without this, all data is lost when the container is removed.
-            # - ./pocketbase/pb_data:/app/pb_data
+            # Named volume: PocketBase data (sqlite + local media storage)
+            # survives `docker compose down` / container re-creation.
+            # `docker compose down -v` deletes it.
+            - pb_data:/app/pb_data
             - ./pocketbase/pb_hooks:/app/pb_hooks
         environment:
             # Create the first superuser automatically. There is deliberately NO
@@ -50,10 +56,14 @@ services:
             context: ./frontend
             dockerfile: Dockerfile
         ports:
-            - '3000:80'
+            # nginx-unprivileged listens on 8080 inside the container.
+            - '3000:8080'
         depends_on:
             - pocketbase
         restart: unless-stopped
+
+volumes:
+    pb_data:
 
 networks:
     default:

@@ -81,20 +81,38 @@ pocketbase:
     # -- PVC access modes.
     accessModes:
       - ReadWriteOnce
-    # -- DOCUMENTATION ONLY. PVCs cannot declare a reclaim policy; the actual
-    # -- policy is defined on the StorageClass or PV. Make sure the selected
-    # -- StorageClass is configured with `reclaimPolicy: Retain`.
-    reclaimPolicy: Retain
+  # -- PocketBase holds the sqlite page cache, JSVM pools and in-flight
+  # multipart uploads/backup imports (up to 500 MB) in memory; 256Mi was
+  # OOM-killed on large imports.
   resources:
     requests:
       cpu: 50m
-      memory: 64Mi
+      memory: 128Mi
     limits:
-      cpu: 500m
-      memory: 256Mi
-  # -- Health check path (PB exposes /api/health).
+      cpu: 1000m
+      memory: 1Gi
+  # -- Health check path (PB exposes /api/health). Probes always target the
+  # container port 8090 (named `http`); `service.port` only changes the
+  # Service port.
   healthcheck:
     path: /api/health
+  # -- startupProbe: allows up to failureThreshold * periodSeconds (default
+  # 150s) for the first boot (migrations, superuser upsert) before the
+  # liveness probe takes over.
+  startupProbe:
+    periodSeconds: 5
+    failureThreshold: 30
+  # -- Superuser login allowlist (space-separated IPs/CIDRs), passed as
+  # PB_SUPERUSER_IPS and applied by entrypoint.sh on every start. Empty =
+  # no restriction. NOTE: behind an ingress PB sees the ingress
+  # controller's pod IP unless PB's "trusted proxy" settings are configured,
+  # so restrict to client ranges only after configuring those.
+  superuserIps: ""
+  # -- PB_AUTOMIGRATE. `false` (default here) because the container root
+  # filesystem is read-only and migration files generated from dashboard
+  # edits would be lost on restart anyway. Shipped migrations are always
+  # applied on start regardless of this flag.
+  automigrate: false
   # -- Hooks delivery: ConfigMap mount (recommended) or baked into the image.
   hooks:
     mountFromConfigMap: true
@@ -160,6 +178,17 @@ pocketbase:
     runAsGroup: 1000
     runAsNonRoot: true
     fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  # -- Container-level securityContext. The root filesystem is read-only;
+  # /tmp is an emptyDir and /app/pb_data the PVC.
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
 
 # -- SolidJS frontend served by nginx.
 frontend:
@@ -188,6 +217,37 @@ frontend:
   podSecurityContext:
     runAsNonRoot: true
     runAsUser: 101   # `nginx` user in nginxinc/nginx-unprivileged
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  # -- Container-level securityContext. The root filesystem is read-only;
+  # nginx writes its pid/temp files to /tmp and /var/cache/nginx (both
+  # emptyDirs), and the runtime config (config.js) goes to the `runtime`
+  # emptyDir mounted at /usr/share/nginx/html/runtime.
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+    seccompProfile:
+      type: RuntimeDefault
+
+# -- NetworkPolicies (require a CNI that enforces them, e.g. Calico, Cilium;
+# without one they are inert). When enabled, PocketBase only accepts traffic
+# on its HTTP port from the frontend pods (plus `pocketbase.extraFrom`);
+# the frontend accepts traffic on its HTTP port from anywhere (the ingress
+# controller's namespace/labels differ per cluster). Egress is not
+# restricted (PB needs S3, SMTP, OIDC). Enabled by default because the
+# chart's Ingress only routes to the frontend.
+networkPolicy:
+  enabled: true
+  pocketbase:
+    # -- Additional `from` peers allowed to reach PocketBase (NetworkPolicy
+    # peer syntax), e.g. a monitoring namespace or a backup job.
+    extraFrom: []
+    # - namespaceSelector:
+    #     matchLabels:
+    #       kubernetes.io/metadata.name: monitoring
 
 # ┌─────────────────────────────────────────────────────────────────────┐
 # │ Optional self-hosted S3 storage via the [Garage](https://garagehq.  │

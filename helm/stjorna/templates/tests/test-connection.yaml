@@ -5,6 +5,8 @@ metadata:
   namespace: {{ .Values.namespace.name }}
   labels:
     {{- include "stjorna.labels" . | nindent 4 }}
+    # Allowed to reach PocketBase by templates/networkpolicy.yaml.
+    app.kubernetes.io/component: helm-test
   annotations:
     "helm.sh/hook": test
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
