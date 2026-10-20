@@ -321,12 +321,12 @@ see the follow-up table below; **open** = not started.
 | T-13 | 🟡 | oidc | Manual memberships hijacked/deleted; email auto-link | ✅ passed |
 | T-14 | 🟡 | auth | Superuser MFA never enabled on fresh installs | ✅ done (`mfa.pb.js` + `lib/mfa.js`, admin banner, `superuser-mfa-setup.test.ts`) |
 | T-15 | 🟡 | frontend | Pagination, custom_fields, auth store, filter injection | ✅ done, follow-ups T-15.1–T-15.3 |
-| T-16 | 🟡 | hooks | String-built handlers → modules; remove helm hook copy | open |
+| T-16 | 🟡 | hooks | String-built handlers → modules; remove helm hook copy | ✅ done (no `new Function` left; `check:hooks` in CI; helm hook copy + ConfigMap removed), follow-up T-16.1 |
 | T-17 | 🟡 | frontend | Lint, lazy routes, types, runtime config, split components | ✅ done (component split + typegen deferred → T-17.1), follow-ups T-17.2, T-17.3 |
 | T-18 | 🟡 | image | Multi-arch, checksum, EOL base, entrypoint args | ✅ done, follow-up T-18.1 |
 | T-19 | 🟡 | helm | securityContext, NetworkPolicy, config checksums | ✅ done (T-06.1 already satisfied), follow-up T-19.1 |
 | T-20 | 🟡 | CI | SHA pinning, permissions, dispatch injection, release gating | ✅ done, follow-ups T-20.1–T-20.3 |
-| T-21 | 🟡 | api docs | OpenAPI spec disagrees with reality | open |
+| T-21 | 🟡 | api docs | OpenAPI spec disagrees with reality | ✅ done (spec generated from live collections + `lib/routes.js`; `openapi.test.ts`), follow-ups T-21.1, T-21.2 |
 | T-22 | 🔵 | schema | Redundant/unused fields, relation types, indexes | ✅ done (`1780001000_schema_cleanup.js`; OIDC columns kept → T-22.1), follow-ups T-22.1–T-22.3 |
 | T-23 | 🔵 | scripts/docs | Delete dangerous fix script; fix stale v0.22 docs | ✅ done, follow-up T-23.1 |
 
@@ -352,6 +352,11 @@ see the follow-up table below; **open** = not started.
 | T-17.2 | 🟠 | frontend | Runtime `PB_URL` (`/config.js`) can point the SPA at another origin, but the nginx CSP has `connect-src 'self'`, so a cross-origin PB is blocked in the browser. | Render the CSP from a template at container start (`/etc/nginx/templates` + envsubst) adding the PB origin, in both `frontend/nginx.conf` and the helm `frontend-configmap.yaml`; expose `frontend.pbUrl` in values. |
 | T-18.1 | 🟠 | compose | `pb_data` moved from an anonymous to a named volume. Existing compose users get an empty instance on the next `up`; the old data stays in the orphaned anonymous volume. | Release note with a one-time copy (`docker run --rm -v <anon>:/from -v stjorna_pb_data:/to alpine cp -a /from/. /to/`), or detect an empty volume in `entrypoint.sh` and print the hint. |
 | T-19.1 | 🟠 | helm | `pocketbase.superuserIps` (`PB_SUPERUSER_IPS`) sees the ingress/nginx IP unless PB trusts the proxy headers (same root cause as T-12.1), so an allow-list either locks everyone out or allows everyone. | Fix T-12.1 first (trusted proxy settings via migration/setup), then document the value as usable. |
+| T-21.1 | 🟠 | api docs | The public spec (also what the gh-pages site embeds) now shows almost no collection paths, because every tenant collection requires auth. The T-21 premise "tenants are public" was wrong: tenants and user_tenants are Private (membership rules). | Fetch the spec with a superuser token in the release job for the site, or add a `?full=1` superuser-only variant. |
+| T-16.1 | 🟡 | helm | Before T-16 the chart's hooks ConfigMap (mounted by default) only globbed `*.pb.js`, so `lib/*.js` was missing and every `require()`-based hook (backup, OIDC, MFA) failed on Helm installs. Fixed by baking hooks into the image only, but no helm test exercises a hook route. | Extend `scripts/test-helm.sh` smoke test to call `/api/stjorna/setup-status` and `/api/stjorna/openapi.json` through the frontend service. |
+| T-21.2 | 🟡 | hooks | An unknown `GET /api/*` path returns the static fallback's "File not found." instead of PB's JSON 404. | Register a catch-all `/api/{path...}` 404 JSON route after the custom routes, or exclude `/api/` from the static handler. |
+| T-16.2 | 🟡 | api keys | Revoking a key whose service user is already gone logs `svc-user teardown failed: sql: no rows`. | Treat a missing service user as success in `lib/apikeys.js`. |
+| T-16.3 | 🔵 | hooks | `lib/backup.js` keeps its own reply/admin helpers (`{success:false}` shape) and its `isTenantAdmin` checks only the first `user_tenants` row. | Move to `lib/http.js` helpers; keep the response shape via a thin wrapper. |
 | T-15.1 | 🟠 | frontend | Remaining truncation: ProductEdit/CategoryEdit media & category pickers load `getList(1, 200)`, MediaEdit usage 200, `activity.ts` and ApiKeys `getFullList` across all tenants. | Server-backed searchable Combobox; scope activity queries to the current tenant and paginate. |
 | T-15.2 | 🟠 | frontend | `authStore.loadTenants` falls back to one `getOne` per membership row for tenant/role when `expand` fails (N+1). | Rely on `expand`, or batch with a single `id ?= ` filter. |
 | T-22.1 | 🟠 | schema | `instance_settings.oidc_*` (client id, URLs, scopes, provider/display name) still duplicate `users.oauth2` and can drift. | Read the provider from `users.oauth2.providers` in OidcSettings + `oidc_config.pb.js`/`oidc_groups.pb.js`, then drop the columns. Also drop unused `instance_logo_url`/`instance_tagline`. |
