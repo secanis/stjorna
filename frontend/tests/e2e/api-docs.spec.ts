@@ -22,19 +22,19 @@ test.describe('API documentation', () => {
             }
         }
 
-        // Admin-only and Private-only paths must be absent
+        // Admin-only and Private-only paths must be absent. Tiers come
+        // from the live collection rules: every tenant collection requires
+        // auth, so no /collections/*/records path is public.
         expect(spec.paths['/collections/user_tenants/records']).toBeUndefined();
         expect(spec.paths['/collections/instance_settings/records']).toBeUndefined();
         expect(spec.paths['/collections/tenants/records/{id}']).toBeUndefined();
-
-        // /collections/products/records must only have GET (no POST/PATCH/DELETE)
-        const products = spec.paths['/collections/products/records'];
-        expect(products.get).toBeDefined();
-        expect(products.post).toBeUndefined();
+        expect(spec.paths['/collections/products/records']).toBeUndefined();
+        expect(spec.paths['/stjorna/api-keys']).toBeUndefined();
 
         // Public endpoints present
         expect(spec.paths['/health']).toBeDefined();
-        expect(spec.paths['/collections/categories/records'].get).toBeDefined();
+        expect(spec.paths['/collections/users/auth-with-password'].post).toBeDefined();
+        expect(spec.paths['/stjorna/setup-status'].get).toBeDefined();
     });
 
     test('GET /api/openapi.json with an invalid token returns only the Public tag', async ({ page, request }) => {
@@ -70,8 +70,8 @@ test.describe('API documentation', () => {
         expect(tagNames).toEqual(['Public', 'Private']);
 
         // Admin paths must be absent
-        expect(spec.paths['/collections/user_tenants/records']).toBeUndefined();
         expect(spec.paths['/collections/instance_settings/records']).toBeUndefined();
+        expect(spec.paths['/stjorna/api-keys']).toBeUndefined();
 
         // No operation should be tagged Admin
         for (const path of Object.values<any>(spec.paths)) {
@@ -125,13 +125,13 @@ test.describe('API documentation', () => {
 
         const productsList = spec.paths['/collections/products/records'];
         expect(productsList).toBeDefined();
-        expect(productsList.get.tags).toEqual(['Public']);
+        expect(productsList.get.tags).toEqual(['Private']);
         expect(productsList.post.tags).toEqual(['Private']);
         expect(productsList.post.security).toEqual([{ bearerAuth: [] }]);
 
         const productsItem = spec.paths['/collections/products/records/{id}'];
         expect(productsItem).toBeDefined();
-        expect(productsItem.get.tags).toEqual(['Public']);
+        expect(productsItem.get.tags).toEqual(['Private']);
         expect(productsItem.patch.tags).toEqual(['Private']);
         expect(productsItem.delete.tags).toEqual(['Private']);
 
@@ -141,7 +141,9 @@ test.describe('API documentation', () => {
         expect(tenantsList.post.tags).toEqual(['Admin']);
 
         expect(spec.paths['/collections/user_tenants/records']).toBeDefined();
-        expect(spec.paths['/collections/user_tenants/records'].get.tags).toEqual(['Admin']);
+        expect(spec.paths['/collections/user_tenants/records'].get.tags).toEqual(['Private']);
+        expect(spec.paths['/collections/instance_settings/records'].get.tags).toEqual(['Admin']);
+        expect(spec.paths['/stjorna/api-keys'].post.tags).toEqual(['Admin']);
 
         expect(spec.components.schemas.Product).toBeDefined();
         expect(spec.components.schemas.Product.type).toBe('object');

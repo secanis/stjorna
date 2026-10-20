@@ -15,6 +15,11 @@ RUN wget -q https://github.com/pocketbase/pocketbase/releases/download/v${PB_VER
     unzip pocketbase_${PB_VERSION}_${PB_ARCH}.zip && \
     rm pocketbase_${PB_VERSION}_${PB_ARCH}.zip
 
+# Release tag (set by .github/workflows/release.yml); shown as the OpenAPI
+# info.version. "dev" → "3.x".
+ARG STJORNA_VERSION=dev
+ENV STJORNA_VERSION=${STJORNA_VERSION}
+
 COPY pb_migrations /app/pb_migrations
 COPY pb_hooks /app/pb_hooks
 COPY entrypoint.sh /app/entrypoint.sh

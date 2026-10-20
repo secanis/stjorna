@@ -134,13 +134,14 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=release-${{ matrix.name }}
-          # Stamp public/version.json with the release tag + commit
-          # (frontend image only — PB's Dockerfile ignores these
-          # args). Done conditionally here rather than via the matrix
+          # Stamp the release tag into both images: the frontend's
+          # public/version.json and PocketBase's STJORNA_VERSION env (the
+          # OpenAPI info.version). STJORNA_COMMIT is frontend only.
+          # Done conditionally here rather than via the matrix
           # include because actionlint forbids ${{ steps.* }} inside
           # matrix entries (matrix is built before steps run).
           build-args: |
-            ${{ matrix.name == 'frontend' && format('STJORNA_VERSION={0}', steps.version.outputs.tag) || '' }}
+            STJORNA_VERSION=${{ steps.version.outputs.tag }}
             ${{ matrix.name == 'frontend' && format('STJORNA_COMMIT={0}', github.sha) || '' }}
       # Sync the Docker Hub repo description + full README from
       # docker/<name>.md so the published image page documents itself.
