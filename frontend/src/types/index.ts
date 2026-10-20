@@ -74,7 +74,8 @@ export interface Product {
   media: string[];
   active: boolean;
   sort_order: number;
-  custom_fields: string;
+  /** PocketBase JSON field: parsed object (or null) as returned by the SDK. */
+  custom_fields: Record<string, unknown> | null;
   createdUser: string;
   updatedUser: string;
   created: string;

@@ -7,6 +7,7 @@ import { slugify } from '~/utils/slug';
 import MediaThumb from '~/components/media/MediaThumb';
 import Combobox from '~/components/ui/Combobox';
 import ActiveBadge from '~/components/ui/ActiveBadge';
+import { formatCustomFields, parseCustomFields } from '~/utils/customFields';
 import type { Product, Category, Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -90,7 +91,7 @@ export default function ProductEdit() {
           media: product.media || [],
           active: product.active ?? true,
           sort_order: product.sort_order ?? 0,
-          custom_fields: product.custom_fields || '',
+          custom_fields: formatCustomFields(product.custom_fields),
         });
         setSlugManuallyEdited(true);
 
@@ -194,6 +195,13 @@ export default function ProductEdit() {
       return;
     }
 
+    const customFields = parseCustomFields(formData().custom_fields);
+    if (!customFields.ok) {
+      setError(customFields.error);
+      setSaving(false);
+      return;
+    }
+
     try {
       const payload: any = {
         name: formData().name,
@@ -204,7 +212,7 @@ export default function ProductEdit() {
         media: selectedMediaIds(),
         active: formData().active,
         sort_order: formData().sort_order,
-        custom_fields: formData().custom_fields,
+        custom_fields: customFields.value,
       };
 
       if (isNew()) {
