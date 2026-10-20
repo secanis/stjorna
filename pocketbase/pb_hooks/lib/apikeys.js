@@ -405,7 +405,7 @@ function exchangeHandler(e) {
     var token = "";
     try {
         if (typeof svcRec.newStaticAuthToken === "function") {
-            token = String(svcRec.newStaticAuthToken(EXCHANGE_TOKEN_TTL_SECONDS * 1000000000) || "");
+            token = String(svcRec.newStaticAuthToken(EXCHANGE_TOKEN_TTL_SECONDS * 1000 * 1000 * 1000) || "");
         } else {
             token = String(svcRec.newAuthToken() || "");
         }
