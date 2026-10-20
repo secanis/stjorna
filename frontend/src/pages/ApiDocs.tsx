@@ -4,7 +4,6 @@ import { authStore } from '~/stores/auth';
 import { pb } from '~/services/pocketbase';
 // CSS is referenced by URL to avoid pulling the entire swagger-ui CSS
 // into the main bundle. Vite returns the resolved asset URL.
-// @ts-ignore — swagger-ui-dist has no type declarations
 import swaggerCss from 'swagger-ui-dist/swagger-ui.css?url';
 
 // Builds the OpenAPI spec URL without triggering mixed-content in HTTPS

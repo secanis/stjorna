@@ -269,7 +269,7 @@ export default function OidcSettings() {
       const oauth2: any = usersColl.oauth2 || { enabled: false, mappedFields: {}, providers: [] };
       const mappedFields = oauth2.mappedFields || { id: '', name: 'name', username: '', avatarURL: '' };
 
-      let providers = (oauth2.providers || []).filter((p: any) => p.name !== f.providerName);
+      const providers = (oauth2.providers || []).filter((p: any) => p.name !== f.providerName);
 
       const newProvider: any = {
         name: f.providerName,
