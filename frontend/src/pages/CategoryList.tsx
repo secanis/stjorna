@@ -1,7 +1,7 @@
 import { createSignal, createResource, Show, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import Table, { Column } from '~/components/ui/Table';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, tenantFilter, toSortExpr } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
@@ -10,13 +10,12 @@ import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 
-async function fetchCategories() {
-  const tenant = getCurrentTenant();
-  const filter = tenant ? `tenant = "${tenant}"` : '';
-  return await pb.collection('categories').getList(1, 50, {
-    filter,
-    sort: 'sort_order,name',
-    expand: 'media',
+const PER_PAGE = 50;
+
+async function fetchCategories(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc' }) {
+  return await pb.collection('categories').getList(src.page, PER_PAGE, {
+    filter: tenantFilter(),
+    sort: toSortExpr(src.sortKey, src.sortDir, 'name'),
   });
 }
 
@@ -51,6 +50,7 @@ export default function CategoryList() {
   const handleSort = (key: string, dir: 'asc' | 'desc') => {
     setSortKey(key);
     setSortDir(dir);
+    setPage(1);
   };
 
   const handleDelete = async (id: string) => {

@@ -27,6 +27,23 @@ export function getCurrentTenant(): string | null {
   return localStorage.getItem('stjorna_current_tenant');
 }
 
+/**
+ * Build a PocketBase sort expression from a table sort key/direction.
+ * A secondary key keeps ordering stable across pages.
+ */
+export function toSortExpr(key: string, dir: 'asc' | 'desc', tiebreak?: string): string {
+  const primary = `${dir === 'desc' ? '-' : ''}${key}`;
+  return tiebreak && tiebreak !== key ? `${primary},${tiebreak}` : primary;
+}
+
+/**
+ * Safe tenant filter for the current tenant (the id comes from
+ * localStorage, so it must never be interpolated into a filter string).
+ */
+export function tenantFilter(tenant: string | null = getCurrentTenant()): string {
+  return tenant ? pb.filter('tenant = {:tenant}', { tenant }) : '';
+}
+
 export function clearAuth() {
   pb.authStore.clear();
   localStorage.removeItem('stjorna_current_tenant');
