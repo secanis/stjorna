@@ -15,7 +15,11 @@ spec:
     metadata:
       labels:
         {{- include "stjorna.frontend.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Roll the pods when the nginx config changes.
+        checksum/config: {{ include (print $.Template.BasePath "/frontend-configmap.yaml") . | sha256sum }}
     spec:
+      automountServiceAccountToken: false
       serviceAccountName: {{ include "stjorna.serviceAccountName" . }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets:
@@ -27,6 +31,8 @@ spec:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy | default .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.frontend.containerSecurityContext | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.frontend.service.port }}
@@ -53,7 +59,23 @@ spec:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d
               readOnly: true
+            # Writable paths under readOnlyRootFilesystem: nginx pid +
+            # *_temp dirs (/tmp in nginx-unprivileged), its cache dir, and
+            # the runtime config (config.js) written by the entrypoint.
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: runtime
+              mountPath: /usr/share/nginx/html/runtime
       volumes:
         - name: nginx-config
           configMap:
             name: {{ include "stjorna.frontend.fullname" . }}-nginx
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}
+        - name: runtime
+          emptyDir:
+            sizeLimit: 1Mi

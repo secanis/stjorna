@@ -31,8 +31,8 @@ NOTE: persistentVolumeReclaimPolicy is intentionally NOT set on the PVC.
 That field belongs on a PersistentVolume (PV), not a PVC. To get
 "retain data on helm uninstall" semantics, configure the StorageClass
 with reclaimPolicy: Retain (cluster-side). The chart documents this in
-README.md; the values.pocketbase.persistence.reclaimPolicy key is kept
-for documentation purposes only.
+README.md and next to persistence.storageClass in values.yaml (the old,
+misleading persistence.reclaimPolicy value was removed).
 
 T-06: the cluster-side reclaim policy covers the *PV* lifecycle
 (e.g. PV deleted → volume data gone). The PVC-level
