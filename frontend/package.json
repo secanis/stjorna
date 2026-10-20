@@ -6,13 +6,14 @@
   "scripts": {
     "dev": "vite",
     "dev:remote": "vite --mode remote",
-    "build": "node scripts/generate-version.mjs && vite build",
-    "build:remote": "node scripts/generate-version.mjs && vite build --mode remote",
+    "build": "npm run typecheck && node scripts/generate-version.mjs && vite build",
+    "build:remote": "npm run typecheck && node scripts/generate-version.mjs && vite build --mode remote",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "npm run build && playwright test",
-    "test:e2e:fast": "playwright test"
+    "test:e2e:fast": "playwright test",
+    "typecheck": "tsc --noEmit -p ."
   },
   "dependencies": {
     "@ark-ui/solid": "^5.39.1",

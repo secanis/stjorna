@@ -57,13 +57,12 @@ export default function LoginCard(props: LoginCardProps) {
 
     try {
       const methods = await pb.collection('users').listAuthMethods();
-      const passwordAuth = methods.password || {};
-      const passwordOn =
-        passwordAuth.enabled ?? methods.emailPassword ?? methods.usernamePassword ?? true;
-      setPasswordEnabled(!!passwordOn);
+      // PB JS SDK 0.28 shape: { password: { enabled, identityFields },
+      // oauth2: { enabled, providers }, otp, mfa }.
+      setPasswordEnabled(methods.password?.enabled ?? true);
 
-      const rawProviders = methods.oauth2?.providers || methods.authProviders || [];
-      const providers = rawProviders.map((p: any) => ({
+      const rawProviders = methods.oauth2?.enabled ? methods.oauth2.providers ?? [] : [];
+      const providers = rawProviders.map((p) => ({
         name: String(p.name || ''),
         displayName: String(p.displayName || p.name || 'OIDC'),
         authURL: String(p.authURL || ''),

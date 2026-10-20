@@ -107,8 +107,8 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
             onError={handleError}
           />
           <ImageCropper.Selection class="border-2 border-dashed border-white/90 shadow-lg">
-            <ImageCropper.Grid axis="x" class="border-white/40" />
-            <ImageCropper.Grid axis="y" class="border-white/40" />
+            <ImageCropper.Grid axis="horizontal" class="border-white/40" />
+            <ImageCropper.Grid axis="vertical" class="border-white/40" />
             <ImageCropper.Handle position="nw" class="w-4 h-4 bg-white border-2 border-blue-600 rounded-sm shadow" />
             <ImageCropper.Handle position="n" class="w-4 h-4 bg-white border-2 border-blue-600 rounded-sm shadow" />
             <ImageCropper.Handle position="ne" class="w-4 h-4 bg-white border-2 border-blue-600 rounded-sm shadow" />
