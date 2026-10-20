@@ -113,9 +113,8 @@ pocketbase:
   # edits would be lost on restart anyway. Shipped migrations are always
   # applied on start regardless of this flag.
   automigrate: false
-  # -- Hooks delivery: ConfigMap mount (recommended) or baked into the image.
-  hooks:
-    mountFromConfigMap: true
+  # Hooks (pb_hooks/*.pb.js + pb_hooks/lib/*.js) and migrations are baked
+  # into the PocketBase image; the chart does not mount them.
   # -- PB_SECRET source. EITHER supply an existing Secret (name + key),
   # OR leave both empty and the chart will auto-generate a Secret on install.
   #

@@ -106,10 +106,6 @@ spec:
               mountPath: /app/pb_data
             - name: tmp
               mountPath: /tmp
-            {{- if .Values.pocketbase.hooks.mountFromConfigMap }}
-            - name: hooks
-              mountPath: /app/pb_hooks
-            {{- end }}
       volumes:
         - name: data
           {{- if .Values.pocketbase.persistence.enabled }}
@@ -120,9 +116,3 @@ spec:
           {{- end }}
         - name: tmp
           emptyDir: {}
-        {{- if .Values.pocketbase.hooks.mountFromConfigMap }}
-        - name: hooks
-          configMap:
-            name: {{ include "stjorna.pocketbase.fullname" . }}-hooks
-            defaultMode: 0755
-        {{- end }}

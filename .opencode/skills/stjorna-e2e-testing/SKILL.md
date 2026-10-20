@@ -453,5 +453,5 @@ PB's built-in `/api/settings/test/s3` fails on Scaleway because `DeletePrefix` u
 4. Run: `npx playwright test tests/e2e/new-feature.spec.ts`
 
 ## Related Skills
-- `pocketbase-jsvm-hooks` — PocketBase v0.40 JSVM hook gotchas
+- `pocketbase-jsvm-hooks` — PB v0.40 JS hook module pattern (loader/executor VM, response writing, file patterns)
 - `stjorna-architecture` — STJÓRNA architecture, schema, role model, S3, OpenAPI

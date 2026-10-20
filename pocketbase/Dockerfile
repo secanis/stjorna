@@ -44,6 +44,12 @@ RUN apk add --no-cache ca-certificates \
 WORKDIR /app
 
 COPY --from=download /download/pocketbase /app/pocketbase
+
+# Release tag (set by .github/workflows/release.yml); shown as the OpenAPI
+# info.version. "dev" → "3.x".
+ARG STJORNA_VERSION=dev
+ENV STJORNA_VERSION=${STJORNA_VERSION}
+
 COPY pb_migrations /app/pb_migrations
 COPY pb_hooks /app/pb_hooks
 COPY entrypoint.sh /app/entrypoint.sh

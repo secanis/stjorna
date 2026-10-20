@@ -361,22 +361,13 @@ Precedence in the frontend: runtime `PB_URL` → build-time `VITE_PB_URL` → sa
 
 ### Hooks iteration
 
-PocketBase hook files live in `helm/stjorna/files/hooks/*.pb.js`. The chart ships them as a ConfigMap mounted at `/app/pb_hooks`. The `pocketbase/Dockerfile` copies the same files from `pocketbase/pb_hooks/` (so local dev with `docker compose` works), and the chart's `files/hooks/` keeps an in-chart copy for the helm install.
+PocketBase hooks (`pocketbase/pb_hooks/*.pb.js` plus the CommonJS helpers in
+`pocketbase/pb_hooks/lib/`) and migrations are baked into the PocketBase image
+by `pocketbase/Dockerfile`. The chart does not mount them from a ConfigMap, so
+a hook change ships as a new image:
 
-> **Keep the two locations in sync.** When you add/edit a hook, update both:
->
-> ```bash
-> cp pocketbase/pb_hooks/*.pb.js helm/stjorna/files/hooks/
-> git add pocketbase/pb_hooks/ helm/stjorna/files/hooks/
-> ```
-
-To update a hook on a running release:
-
-1. Edit the file in `helm/stjorna/files/hooks/`.
-2. `helm upgrade stjorna ./helm/stjorna -n stjorna`.
-3. PB's `HooksWatch` reloads changed files on the next request.
-
-> **Note:** `HooksWatch` only re-loads **changed** existing files. Renaming a file or adding a new one requires `kubectl rollout restart deployment/stjorna-pocketbase -n stjorna`.
+1. Edit the file under `pocketbase/pb_hooks/` (run `npm run check:hooks` in `pocketbase/`).
+2. Build + push the image, then `helm upgrade stjorna ./helm/stjorna -n stjorna --set pocketbase.image.tag=<tag>`.
 
 ## Backup
 
@@ -411,6 +402,6 @@ Internet
 ┌──────────────────────┐
 │  pocketbase (1× Pod) │  PocketBase v0.22.7
 │  :8090               │  /app/pb_data → PVC (longhorn, 5Gi, Retain)
-│                      │  /app/pb_hooks → ConfigMap
+│                      │  /app/pb_hooks → baked into image
 └──────────────────────┘
 ```
