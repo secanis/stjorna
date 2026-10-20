@@ -40,21 +40,19 @@ opencode --model opencode-go/minimax-m3 \
 
 ## CI flow
 
-The `.github/workflows/e2e-ai-artifact.yml` reusable workflow uploads the `frontend/ai-failed-tests/` directory as a GitHub Actions artifact (`e2e-ai-payload`, 7-day retention).
-
-To wire it into an existing E2E workflow job:
+No workflow uploads the payload today (the unused `e2e-ai-artifact.yml`
+reusable workflow was removed). To collect it in CI, add an upload step to
+the `test-e2e` job in `.github/workflows/ci.yml`:
 
 ```yaml
-jobs:
-  e2e:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - run: npm run test:e2e
-      - uses: ./../.github/workflows/e2e-ai-artifact.yml
+      - name: Upload AI payload on failure
+        if: failure()
+        uses: actions/upload-artifact@<pinned-sha> # v4
         with:
-          artifact-name: e2e-ai-payload-${{ github.run_id }}
-          payload-dir: frontend/ai-failed-tests
+          name: e2e-ai-payload
+          path: frontend/ai-failed-tests
+          retention-days: 7
+          if-no-files-found: ignore
 ```
 
 Then download manually after a failure:

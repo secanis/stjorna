@@ -3,7 +3,11 @@
 #
 # Job graph (parallelised where independent):
 #
-#   build-images
+#   resolve ─── validates the tag (push or workflow_dispatch input)
+#       │
+#   test ─── the full CI suite (ci.yml via workflow_call) at that tag
+#       │
+#   build-images ─── multi-arch (linux/amd64 + linux/arm64)
 #       │
 #       ├──> bootstrap-gh-pages (parallel) ─── creates orphan branch if absent
 #       │        │
@@ -35,7 +39,14 @@
 #   - DOCKERHUB_TOKEN      Docker Hub access token (NOT the account password)
 #
 # Optional (for manual releases):
-#   - workflow_dispatch input `tag` (e.g. v3.0.0) to release without a tag push
+#   - workflow_dispatch input `tag` (e.g. v3.0.0) to (re-)release an EXISTING
+#     tag without a tag push. Every job checks out that tag, not the branch
+#     the dispatch was started from.
+#
+# Security: inputs / event data never appear inside `run:` scripts as
+# ${{ }} expressions (script injection); they are passed via `env:` and
+# the tag is validated against a strict semver pattern in `resolve`.
+# Actions are pinned to commit SHAs (version in the trailing comment).
 
 name: Release
 
@@ -55,11 +66,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# Least privilege: read-only by default, write only on the jobs that push
+# to the gh-pages branch / create the chart release. Docker Hub uses its
+# own token, gh-pages is pushed with git (no Pages / OIDC API), so
+# packages / pages / id-token write are not needed anywhere.
 permissions:
-  contents: write
-  packages: write
-  pages: write
-  id-token: write
+  contents: read
 
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -68,10 +80,60 @@ env:
 
 jobs:
   # -------------------------------------------------------------------------
-  # 1. Build and push images to Docker Hub (public, for distribution)
+  # 0. Resolve + validate the release tag once; every other job uses the
+  # outputs (never ${{ inputs.tag }} directly).
+  # -------------------------------------------------------------------------
+  resolve:
+    name: Resolve release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      chart_version: ${{ steps.version.outputs.chart_version }}
+    steps:
+      - name: Resolve release tag
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            TAG="$INPUT_TAG"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+          fi
+          if [ -z "$TAG" ]; then
+            echo "::error::No tag resolved. Push a v* tag or pass 'tag' input."
+            exit 1
+          fi
+          # Strict semver (with optional pre-release) — also guarantees the
+          # value is safe to use in sed / shell / image tags downstream.
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::Tag '$TAG' is not a valid release tag (expected vX.Y.Z or vX.Y.Z-pre)."
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # Strip the leading v for the chart version (semver)
+          echo "chart_version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  # -------------------------------------------------------------------------
+  # 0b. Full test suite at the release tag. Nothing is published unless it
+  # passes (test-e2e is still continue-on-error inside ci.yml, see T-15).
+  # -------------------------------------------------------------------------
+  test:
+    name: Test
+    needs: resolve
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.resolve.outputs.tag }}
+
+  # -------------------------------------------------------------------------
+  # 1. Build and push multi-arch images to Docker Hub (public, for distribution)
   # -------------------------------------------------------------------------
   build-images:
     name: Build and push image (${{ matrix.name }})
+    needs: [resolve, test]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -92,44 +154,37 @@ jobs:
             readme: docker/frontend.md
             short_description: STJÓRNA frontend — SolidJS SPA served by nginx-unprivileged, pairs with stjorna-pocketbase.
     steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          ref: ${{ needs.resolve.outputs.tag }}
+      # QEMU for the linux/arm64 leg of the multi-arch build.
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Resolve release tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
-          fi
-          if [ -z "$TAG" ]; then
-            echo "::error::No tag resolved. Push a v* tag or pass 'tag' input."
-            exit 1
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-      - uses: docker/metadata-action@v6
+      - uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         id: meta
         with:
           images: ${{ matrix.registry }}
           tags: |
             # The exact tag (e.g. v3.0.0)
-            type=raw,value=${{ steps.version.outputs.tag }}
-            # Semver expansion: 3.0.0, 3.0, 3
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
+            type=raw,value=${{ needs.resolve.outputs.tag }}
+            # Semver expansion: 3.0.0, 3.0, 3 (value= needed for
+            # workflow_dispatch, where github.ref is a branch)
+            type=semver,pattern={{version}},value=${{ needs.resolve.outputs.tag }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ needs.resolve.outputs.tag }}
+            type=semver,pattern={{major}},value=${{ needs.resolve.outputs.tag }}
             # latest on main only
             type=raw,value=latest,enable={{is_default_branch}}
           # Avoid double-`v` when semver and raw both produce "v3.0.0"
           flavor: latest=auto
-      - uses: docker/build-push-action@v7
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -140,7 +195,7 @@ jobs:
           # include because actionlint forbids ${{ steps.* }} inside
           # matrix entries (matrix is built before steps run).
           build-args: |
-            ${{ matrix.name == 'frontend' && format('STJORNA_VERSION={0}', steps.version.outputs.tag) || '' }}
+            ${{ matrix.name == 'frontend' && format('STJORNA_VERSION={0}', needs.resolve.outputs.tag) || '' }}
             ${{ matrix.name == 'frontend' && format('STJORNA_COMMIT={0}', github.sha) || '' }}
       # Sync the Docker Hub repo description + full README from
       # docker/<name>.md so the published image page documents itself.
@@ -150,7 +205,7 @@ jobs:
       - name: Sync Docker Hub description
         if: success()
         continue-on-error: true
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@432a30c9e07499fd01da9f8a49f0faf9e0ca5b77 # v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -168,8 +223,10 @@ jobs:
     name: Bootstrap gh-pages branch
     needs: build-images
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
       - name: Ensure gh-pages branch exists on origin
@@ -208,35 +265,25 @@ jobs:
   # -------------------------------------------------------------------------
   release-helm:
     name: Package and publish helm chart
-    needs: [build-images, bootstrap-gh-pages]
+    needs: [resolve, build-images, bootstrap-gh-pages]
     runs-on: ubuntu-latest
+    permissions:
+      # chart-releaser creates the `stjorna-X.Y.Z` GitHub release (with the
+      # .tgz asset) and pushes index.yaml to gh-pages.
+      contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ needs.resolve.outputs.tag }}
           fetch-depth: 0
-      - uses: azure/setup-helm@v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5
         with:
           version: v4.2.2
-      - name: Resolve release tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
-          fi
-          if [ -z "$TAG" ]; then
-            echo "::error::No tag resolved. Push a v* tag or pass 'tag' input."
-            exit 1
-          fi
-          # Strip the leading v for the chart version (semver)
-          CHART_VERSION="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
       - name: Update Chart.yaml (version + appVersion)
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+          CHART_VERSION: ${{ needs.resolve.outputs.chart_version }}
         run: |
-          TAG="${{ steps.version.outputs.tag }}"
-          CHART_VERSION="${{ steps.version.outputs.chart_version }}"
           sed -i "s/^version: .*/version: $CHART_VERSION/" helm/stjorna/Chart.yaml
           sed -i "s/^appVersion: \".*\"/appVersion: \"$TAG\"/" helm/stjorna/Chart.yaml
           # Also sync values.yaml so `helm install` (without overrides) pulls
@@ -274,28 +321,31 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      - uses: azure/setup-helm@v5
-        with:
-          version: v4.2.2
-      # If a GitHub release for this chart version already exists (for
-      # example a maintainer created it manually before the workflow ran),
-      # delete it so chart-releaser can recreate it with the packaged chart
-      # attached. Otherwise `skip_existing` would silently skip both upload
-      # and index update, leaving ArtifactHub stale.
-      - name: Ensure clean GitHub release for chart
-        run: |
-          CHART_RELEASE="stjorna-${{ steps.version.outputs.chart_version }}"
-          if gh release view "$CHART_RELEASE" >/dev/null 2>&1; then
-            echo "Deleting existing empty release $CHART_RELEASE so chart-releaser can recreate it"
-            gh release delete "$CHART_RELEASE" --yes
-          fi
+      # Never delete an existing GitHub release (it may hold release notes
+      # or assets someone relies on). If the chart release already exists
+      # WITH the packaged chart, this is a re-run: skip_existing lets
+      # chart-releaser move on. If it exists WITHOUT the .tgz (e.g. created
+      # by hand), stop and let a maintainer decide.
+      - name: Check for an existing chart release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: helm/chart-releaser-action@v1
+          CHART_VERSION: ${{ needs.resolve.outputs.chart_version }}
+        run: |
+          CHART_RELEASE="stjorna-$CHART_VERSION"
+          if gh release view "$CHART_RELEASE" --json assets --jq '.assets[].name' > /tmp/assets 2>/dev/null; then
+            if grep -qx "$CHART_RELEASE.tgz" /tmp/assets; then
+              echo "::notice::$CHART_RELEASE already published with its chart package; re-run"
+            else
+              echo "::error::GitHub release $CHART_RELEASE exists without $CHART_RELEASE.tgz. Delete or fix it manually, then re-run."
+              exit 1
+            fi
+          fi
+      - uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
         with:
           charts_dir: helm
+          skip_existing: true
           # NB: skip_packaging is intentionally NOT set. Setting it to
           # the literal "false" is treated as truthy by the action's
           # bash -n check (any non-empty string passes), which makes
@@ -306,12 +356,10 @@ jobs:
           mark_as_latest: true
           # Push the chart + index.yaml to the gh-pages branch
           pages_branch: gh-pages
-          # Skip the GitHub Release for the chart. The tag push itself
-          # already creates `v3.0.0-rc8`; chart-releaser would otherwise
-          # create a second release named `stjorna-3.0.0-rc8` which
-          # looks like a duplicate. The .tgz is still served from the
-          # gh-pages branch via `helm install` from the Helm repo.
-          create_release: false
+          # NB: chart-releaser-action has no `create_release` input: it
+          # ALWAYS creates a `stjorna-X.Y.Z` GitHub release holding the
+          # .tgz, and index.yaml on gh-pages points at that release asset.
+          # site/index.html links there as well.
 
   # -------------------------------------------------------------------------
   # 4. Publish the static site (landing + Swagger UI) to gh-pages.
@@ -323,32 +371,20 @@ jobs:
   # -------------------------------------------------------------------------
   publish-site:
     name: Build & push site to gh-pages
-    needs: release-helm
+    needs: [resolve, release-helm]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
+          ref: ${{ needs.resolve.outputs.tag }}
           fetch-depth: 0
-      - uses: docker/login-action@v4
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: docker.io
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Resolve release tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            TAG="${{ inputs.tag }}"
-          else
-            TAG="${GITHUB_REF#refs/tags/}"
-          fi
-          if [ -z "$TAG" ]; then
-            echo "::error::No tag resolved. Push a v* tag or pass 'tag' input."
-            exit 1
-          fi
-          CHART_VERSION="${TAG#v}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
       - name: Refresh openapi.json from a live PB container
         # Boots the just-built PB image, fetches the public /api/openapi.json
         # (no auth required per pocketbase/pb_hooks/openapi.pb.js), kills the
@@ -378,6 +414,7 @@ jobs:
         # avoiding any --network=host quirks on the GHA runner.
         env:
           PB_IMAGE: ${{ env.REGISTRY_PB }}
+          TAG: ${{ needs.resolve.outputs.tag }}
         run: |
           set -e
           CONTAINER_ID="$(docker run -d --network=host \
@@ -386,7 +423,7 @@ jobs:
             -e PB_SUPERUSER_PASSWORD=release-bot-password \
             -e STJORNA_SETUP_TOKEN=release-bot-setup-token \
             -e PB_SECRET=0123456789abcdef0123456789abcdef \
-            "${PB_IMAGE}:${{ steps.version.outputs.tag }}")"
+            "${PB_IMAGE}:${TAG}")"
           echo "PB container: ${CONTAINER_ID}"
 
           # Always clean up — even on failure.
@@ -432,8 +469,9 @@ jobs:
         # version. Substitute it with the chart version that matches this
         # release (e.g. 3.0.0-rc3). This is more reliable than parsing the
         # just-updated index.yaml, which may not be visible yet.
+        env:
+          CHART_VERSION: ${{ needs.resolve.outputs.chart_version }}
         run: |
-          CHART_VERSION="${{ steps.version.outputs.chart_version }}"
           if [ -z "$CHART_VERSION" ]; then
             echo "::error::Could not resolve chart version from release tag."
             exit 1
@@ -474,6 +512,9 @@ jobs:
           # quirk cannot leave stale versions on gh-pages.
           cp -v site/index.html /tmp/gh-pages-site/index.html
           cp -v site/openapi.json /tmp/gh-pages-site/openapi.json
+          # Artifact Hub reads artifacthub-repo.yaml from the Helm repo
+          # root (ownership verification / repo metadata).
+          cp -v artifacthub-repo.yaml /tmp/gh-pages-site/artifacthub-repo.yaml
           echo "After copy — gh-pages index.html:"
           grep -n -E "(stjorna-)|--version" /tmp/gh-pages-site/index.html
           cd /tmp/gh-pages-site
@@ -502,6 +543,7 @@ jobs:
     needs: publish-site
     if: success()
     continue-on-error: true   # don't fail the release if AH is unreachable
+    permissions: {}
     steps:
       - name: Ping Artifact Hub
         run: |
