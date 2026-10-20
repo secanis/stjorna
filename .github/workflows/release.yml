@@ -28,11 +28,11 @@
 #   avoids shipping a stale version to consumers and removes the brittle
 #   regex-based parse of the live index.yaml.
 #
-# Why chart-releaser can't run before bootstrap:
-#   chart-releaser-action refuses to bootstrap the pages branch with the
-#   restricted GITHUB_TOKEN on a fresh repo, so a tiny bootstrap step runs
-#   first just to create the orphan branch. The bootstrap never touches
-#   site/ or the chart — it exists purely to satisfy that requirement.
+# Why the gh-pages bootstrap still runs first:
+#   Both release-helm (index.yaml) and publish-site (site/) push to gh-pages
+#   via `git worktree add -B gh-pages ... origin/gh-pages`, which requires the
+#   branch to already exist on origin. The bootstrap creates the orphan branch
+#   on a fresh repo and never touches site/ or the chart.
 #
 # Required secrets:
 #   - DOCKERHUB_USERNAME   Docker Hub username
@@ -215,9 +215,9 @@ jobs:
           short-description: ${{ matrix.short_description }}
 
   # -------------------------------------------------------------------------
-  # 2. Bootstrap the gh-pages branch (orphan + empty commit) so that
-  # chart-releaser-action has somewhere to push on a fresh repo. Runs in
-  # parallel with release-helm's setup; only writes to the branch when it
+  # 2. Bootstrap the gh-pages branch (orphan + empty commit) so that the
+  # index.yaml / site push steps have somewhere to push on a fresh repo. Runs
+  # in parallel with release-helm's setup; only writes to the branch when it
   # doesn't already exist.
   # -------------------------------------------------------------------------
   bootstrap-gh-pages:
@@ -259,18 +259,18 @@ jobs:
 
   # -------------------------------------------------------------------------
   # 3. Package and publish the helm chart
-  # Uses chart-releaser-action which:
-  #   - packages helm/stjorna/ as a .tgz
-  #   - publishes to the gh-pages branch (with index.yaml)
-  #   - creates a GitHub release with the chart attached
+  # Packages helm/stjorna/ as a .tgz and attaches it to the release the tag
+  # points at (e.g. v3.0.0-rc14) — NOT a second, auto-created `stjorna-X.Y.Z`
+  # release. Then regenerates index.yaml on gh-pages so `helm install` finds
+  # the chart.
   # -------------------------------------------------------------------------
   release-helm:
     name: Package and publish helm chart
     needs: [resolve, build-images, bootstrap-gh-pages]
     runs-on: ubuntu-latest
     permissions:
-      # chart-releaser creates the `stjorna-X.Y.Z` GitHub release (with the
-      # .tgz asset) and pushes index.yaml to gh-pages.
+      # Uploads the .tgz to the existing release and pushes index.yaml to
+      # gh-pages.
       contents: write
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -318,49 +318,60 @@ jobs:
           helm dependency build
           # Verify the dependency was built and vendored.
           ls -la charts/ 2>&1
-      - name: Configure git (chart-releaser needs it)
+      - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      # Never delete an existing GitHub release (it may hold release notes
-      # or assets someone relies on). If the chart release already exists
-      # WITH the packaged chart, this is a re-run: skip_existing lets
-      # chart-releaser move on. If it exists WITHOUT the .tgz (e.g. created
-      # by hand), stop and let a maintainer decide.
-      - name: Check for an existing chart release
+      # Package the chart ourselves (instead of chart-releaser-action) so the
+      # .tgz lands on the SAME release the tag points at (e.g. v3.0.0-rc14),
+      # not a second, auto-created `stjorna-X.Y.Z` release.
+      - name: Package chart
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CHART_VERSION: ${{ needs.resolve.outputs.chart_version }}
         run: |
-          CHART_RELEASE="stjorna-$CHART_VERSION"
-          if gh release view "$CHART_RELEASE" --json assets --jq '.assets[].name' > /tmp/assets 2>/dev/null; then
-            if grep -qx "$CHART_RELEASE.tgz" /tmp/assets; then
-              echo "::notice::$CHART_RELEASE already published with its chart package; re-run"
-            else
-              echo "::error::GitHub release $CHART_RELEASE exists without $CHART_RELEASE.tgz. Delete or fix it manually, then re-run."
-              exit 1
-            fi
-          fi
-      - uses: helm/chart-releaser-action@cae68fefc6b5f367a0275617c9f83181ba54714f # v1
+          mkdir -p .cr-release-packages
+          helm package helm/stjorna --destination .cr-release-packages
+          ls -la .cr-release-packages
+          test -f ".cr-release-packages/stjorna-${CHART_VERSION}.tgz"
+      # Attach the packaged chart to the release that triggered this run. If
+      # the release does not exist yet (a bare tag push without a release),
+      # create it first; `--clobber` makes re-runs idempotent.
+      - name: Attach chart package to release
         env:
-          CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-        with:
-          charts_dir: helm
-          skip_existing: true
-          # NB: skip_packaging is intentionally NOT set. Setting it to
-          # the literal "false" is treated as truthy by the action's
-          # bash -n check (any non-empty string passes), which makes
-          # cr.sh skip the packaging step entirely and fail with
-          # "no charts found at .cr-release-packages". Omitting the
-          # input lets cr.sh run its own helm package step.
-          # Mark this release as the latest
-          mark_as_latest: true
-          # Push the chart + index.yaml to the gh-pages branch
-          pages_branch: gh-pages
-          # NB: chart-releaser-action has no `create_release` input: it
-          # ALWAYS creates a `stjorna-X.Y.Z` GitHub release holding the
-          # .tgz, and index.yaml on gh-pages points at that release asset.
-          # site/index.html links there as well.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          CHART_VERSION: ${{ needs.resolve.outputs.chart_version }}
+        run: |
+          TGZ=".cr-release-packages/stjorna-${CHART_VERSION}.tgz"
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG does not exist yet — creating it"
+            gh release create "$TAG" --title "$TAG" --generate-notes
+          fi
+          gh release upload "$TAG" "$TGZ" --clobber
+          echo "Uploaded $TGZ to release $TAG"
+      # Regenerate index.yaml on gh-pages. Only the NEW chart is indexed (in an
+      # isolated dir) so `helm repo index --merge` adds/updates just that entry
+      # and leaves every previously released chart's URL untouched.
+      - name: Update Helm index on gh-pages
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+          CHART_VERSION: ${{ needs.resolve.outputs.chart_version }}
+        run: |
+          REPO_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          mkdir -p /tmp/newchart
+          cp ".cr-release-packages/stjorna-${CHART_VERSION}.tgz" /tmp/newchart/
+          git worktree add -B gh-pages /tmp/gh-pages-index origin/gh-pages
+          helm repo index /tmp/newchart --url "$REPO_URL" --merge /tmp/gh-pages-index/index.yaml
+          cp /tmp/newchart/index.yaml /tmp/gh-pages-index/index.yaml
+          cd /tmp/gh-pages-index
+          if ! git diff --quiet index.yaml; then
+            git add index.yaml
+            git commit -m "ci: publish chart $CHART_VERSION (release $TAG)"
+            git push origin gh-pages
+          else
+            echo "index.yaml unchanged"
+          fi
+          git worktree remove --force /tmp/gh-pages-index
 
   # -------------------------------------------------------------------------
   # 4. Publish the static site (landing + Swagger UI) to gh-pages.
@@ -466,25 +477,32 @@ jobs:
           docker cp "${CONTAINER_ID}":/tmp/openapi.json site/openapi.json
           echo "Refreshed openapi.json: $(wc -c < site/openapi.json) bytes"
       - name: Inject latest chart version into site/index.html
-        # The source page uses a placeholder so it never ships with a stale
-        # version. Substitute it with the chart version that matches this
-        # release (e.g. 3.0.0-rc3). This is more reliable than parsing the
-        # just-updated index.yaml, which may not be visible yet.
+        # The source page uses two placeholders so it never ships with a stale
+        # version: @@CHART_VERSION@@ (semver, e.g. 3.0.0-rc3) and @@TAG@@ (the
+        # release tag, e.g. v3.0.0-rc3, used in the GitHub release asset URL).
+        # Substituting here is more reliable than parsing the just-updated
+        # index.yaml, which may not be visible yet.
         env:
           CHART_VERSION: ${{ needs.resolve.outputs.chart_version }}
+          TAG: ${{ needs.resolve.outputs.tag }}
         run: |
           if [ -z "$CHART_VERSION" ]; then
             echo "::error::Could not resolve chart version from release tag."
             exit 1
           fi
-          echo "Injecting chart version: $CHART_VERSION"
+          if [ -z "$TAG" ]; then
+            echo "::error::Could not resolve release tag."
+            exit 1
+          fi
+          echo "Injecting chart version: $CHART_VERSION (tag $TAG)"
           echo "Before sed:"
           grep -n -E "(stjorna-)|--version" site/index.html || true
           sed -i "s|@@CHART_VERSION@@|$CHART_VERSION|g" site/index.html
+          sed -i "s|@@TAG@@|$TAG|g" site/index.html
           echo "After sed:"
           grep -n -E "(stjorna-)|--version" site/index.html
-          if grep -q '@@CHART_VERSION@@' site/index.html; then
-            echo "::error::site/index.html still contains unreplaced @@CHART_VERSION@@ placeholder"
+          if grep -qE '@@(CHART_VERSION|TAG)@@' site/index.html; then
+            echo "::error::site/index.html still contains an unreplaced placeholder"
             exit 1
           fi
       - name: Push site to gh-pages

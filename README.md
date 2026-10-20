@@ -329,10 +329,10 @@ Image tags produced by `build-images`:
    - `v3.0.0` (exact)
    - `3.0.0`, `3.0`, `3` (semver expansion)
    - `latest` (on the default branch only)
-2. **Package + publish the helm chart** to the `gh-pages` branch via [`helm/chart-releaser-action`](https://github.com/helm/chart-releaser-action):
+2. **Package + publish the helm chart** to the `gh-pages` branch:
    - Updates `helm/stjorna/Chart.yaml`'s `version` and `appVersion` to match the tag
    - Updates `helm/stjorna/values.yaml`'s `pocketbase.image.tag` and `frontend.image.tag` to match
-   - Creates a GitHub release with the chart `.tgz` attached
+   - Attaches the chart `.tgz` to the release the tag points at (e.g. `v3.0.0`) — no separate `stjorna-X.Y.Z` release is created
    - Maintains `index.yaml` on `gh-pages` so the chart is installable via:
      ```bash
      helm repo add stjorna https://secanis.github.io/stjorna/
@@ -370,7 +370,7 @@ git push origin v3.0.0
 #   1. Build + push images to docker.io/secanis/{stjorna-pocketbase,stjorna-frontend}:v3.0.0 (and 3.0.0, 3.0, 3)
 #   2. Package the helm chart with version=3.0.0, appVersion=v3.0.0
 #   3. Publish the chart to gh-pages
-#   4. Create a GitHub release
+#   4. Attach the chart .tgz to the GitHub release for the tag
 #   5. Trigger Artifact Hub re-index
 ```
 
