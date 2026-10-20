@@ -14,7 +14,7 @@ import { execSync } from 'node:child_process';
 //      still issues / lists / exchanges keys with the relation field
 
 const PB_IMAGE = process.env.PB_IMAGE || 'localhost/stjorna-pocketbase:test';
-const HOST_PORT = 18095;
+const HOST_PORT = 18096;
 const PB_URL = `http://127.0.0.1:${HOST_PORT}`;
 const CONTAINER_NAME = `stjorna-t22-schema-${process.pid}`;
 const VOLUME = `stjorna-t22-schema-${process.pid}`;
