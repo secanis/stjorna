@@ -1,4 +1,4 @@
-import { createSignal, Show, onMount, createEffect } from 'solid-js';
+import { createSignal, Show, createEffect, on } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
 import Table from '~/components/ui/Table';
@@ -86,37 +86,25 @@ export default function Dashboard() {
   const [recentActivity, setRecentActivity] = createSignal<ActivityEvent[] | null>(null);
   const [recentLoading, setRecentLoading] = createSignal(true);
 
-  onMount(async () => {
-    if (!authStore.isAuthenticated()) {
-      navigate('/login', { replace: true });
-      return;
-    }
+  // One load per tenant version (initial run included). A sequence
+  // number drops responses from a superseded load so a slow request for
+  // the previous tenant can never overwrite the current tenant's data.
+  let loadSeq = 0;
+  const load = async () => {
+    const seq = ++loadSeq;
     setStatsLoading(true);
     setRecentLoading(true);
     const s = await fetchStats();
+    if (seq !== loadSeq) return;
     setStats(s);
     setStatsLoading(false);
     const r = await fetchRecentActivity();
+    if (seq !== loadSeq) return;
     setRecentActivity(r);
     setRecentLoading(false);
-  });
+  };
 
-  // Stats reader is imperative (non-createResource) — re-run on any
-  // tenant change so the cards reflect the newly-active tenant.
-  createEffect(() => {
-    tenantStore.version;
-    if (!authStore.isAuthenticated()) return;
-    (async () => {
-      setStatsLoading(true);
-      setRecentLoading(true);
-      const s = await fetchStats();
-      setStats(s);
-      setStatsLoading(false);
-      const r = await fetchRecentActivity();
-      setRecentActivity(r);
-      setRecentLoading(false);
-    })();
-  });
+  createEffect(on(() => tenantStore.version, () => { void load(); }));
 
   const activityColumns = dashboardActivityColumns;
 

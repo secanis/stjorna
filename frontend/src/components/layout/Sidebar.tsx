@@ -1,4 +1,4 @@
-import { createSignal, onMount, Show, For, createEffect } from 'solid-js';
+import { createSignal, Show, For, createEffect, on } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
 import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info, Shield, ChevronRight, ChevronDown } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
@@ -56,26 +56,31 @@ export default function Sidebar() {
     const [tenantsCount, setTenantsCount] = createSignal<number | null>(null);
     const [apiKeysCount, setApiKeysCount] = createSignal<number | null>(null);
 
+    // Sequence guard: a slow response for a previous tenant must not
+    // overwrite the badges of the current one.
+    let countsSeq = 0;
     const fetchCounts = async () => {
+        const seq = ++countsSeq;
+        const ok = () => seq === countsSeq;
 
         const tenant = getCurrentTenant();
 
         if (authStore.isPBAdmin) {
             try {
                 const tenants = await pb.collection('tenants').getList(1, 1);
-                setTenantsCount(tenants.totalItems);
+                ok() && setTenantsCount(tenants.totalItems);
             } catch (e: any) {
                 console.warn('[Sidebar] tenants count:', e?.message);
             }
             try {
                 const ut = await pb.collection('user_tenants').getList(1, 1);
-                setUsersCount(ut.totalItems);
+                ok() && setUsersCount(ut.totalItems);
             } catch (e: any) {
                 console.warn('[Sidebar] users count:', e?.message);
             }
             try {
                 const products = await pb.collection('products').getList(1, 1);
-                setProductsCount(products.totalItems);
+                ok() && setProductsCount(products.totalItems);
             } catch (e: any) {
                 console.warn('[Sidebar] products count:', e?.message);
             }
@@ -83,7 +88,7 @@ export default function Sidebar() {
                 // Custom hook — totalItems in the response body, same shape as the
                 // SDK's getList result so the UI doesn't need a new component.
                 const r = await pb.send('/api/stjorna/api-keys', { method: 'GET', query: { perPage: '1' } });
-                setApiKeysCount(Number(r?.totalItems ?? 0));
+                ok() && setApiKeysCount(Number(r?.totalItems ?? 0));
             } catch (e: any) {
                 console.warn('[Sidebar] api keys count:', e?.message);
             }
@@ -92,46 +97,36 @@ export default function Sidebar() {
             if (authStore.isEditorOrAbove()) {
                 try {
                     const media = await pb.collection('media').getList(1, 1, { filter });
-                    setMediaCount(media.totalItems);
+                    ok() && setMediaCount(media.totalItems);
                 } catch (e: any) {
                     console.warn('[Sidebar] media count:', e?.message);
                 }
                 try {
                     const categories = await pb.collection('categories').getList(1, 1, { filter });
-                    setCategoriesCount(categories.totalItems);
+                    ok() && setCategoriesCount(categories.totalItems);
                 } catch (e: any) {
                     console.warn('[Sidebar] categories count:', e?.message);
                 }
                 try {
                     const products = await pb.collection('products').getList(1, 1, { filter });
-                    setProductsCount(products.totalItems);
+                    ok() && setProductsCount(products.totalItems);
                 } catch (e: any) {
                     console.warn('[Sidebar] products count:', e?.message);
                 }
             }
             try {
                 const ut = await pb.collection('user_tenants').getList(1, 1, { filter });
-                setUsersCount(ut.totalItems);
+                ok() && setUsersCount(ut.totalItems);
             } catch (e: any) {
                 console.warn('[Sidebar] users count:', e?.message);
             }
         }
     };
 
-    onMount(() => {
-        fetchCounts();
-    });
-
-    // Re-fetch counts on any tenant change. tenantStore is bumped by
-    // switchTenant, login-time tenant resolution, and CRUD operations
-    // (delete, create, update) so the badges stay in step with the
-    // page below. sidebarStore is kept for backwards-compat with
-    // existing bump() callers.
-    createEffect(() => {
-        tenantStore.version;
-        sidebarStore.version;
-        fetchCounts();
-    });
+    // Fetch counts once on mount and again on any tenant change or CRUD
+    // bump. tenantStore is bumped by switchTenant, login-time tenant
+    // resolution and logout; sidebarStore by create/update/delete.
+    createEffect(on(() => [tenantStore.version, sidebarStore.version], () => { void fetchCounts(); }));
 
     const visibleItems = () => {
         const filtered = baseNavItems.filter((item) => {
