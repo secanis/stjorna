@@ -320,15 +320,15 @@ see the follow-up table below; **open** = not started.
 | T-12 | 🟠 | nginx | 1 MB upload limit, SSE buffering, no security headers | ✅ passed, follow-up T-12.1 |
 | T-13 | 🟡 | oidc | Manual memberships hijacked/deleted; email auto-link | ✅ passed |
 | T-14 | 🟡 | auth | Superuser MFA never enabled on fresh installs | ✅ done (`mfa.pb.js` + `lib/mfa.js`, admin banner, `superuser-mfa-setup.test.ts`) |
-| T-15 | 🟡 | frontend | Pagination, custom_fields, auth store, filter injection | open |
+| T-15 | 🟡 | frontend | Pagination, custom_fields, auth store, filter injection | ✅ done, follow-ups T-15.1–T-15.3 |
 | T-16 | 🟡 | hooks | String-built handlers → modules; remove helm hook copy | open |
-| T-17 | 🟡 | frontend | Lint, lazy routes, types, runtime config, split components | open |
-| T-18 | 🟡 | image | Multi-arch, checksum, EOL base, entrypoint args | open |
-| T-19 | 🟡 | helm | securityContext, NetworkPolicy, config checksums | open |
-| T-20 | 🟡 | CI | SHA pinning, permissions, dispatch injection, release gating | open |
+| T-17 | 🟡 | frontend | Lint, lazy routes, types, runtime config, split components | ✅ done (component split + typegen deferred → T-17.1), follow-ups T-17.2, T-17.3 |
+| T-18 | 🟡 | image | Multi-arch, checksum, EOL base, entrypoint args | ✅ done, follow-up T-18.1 |
+| T-19 | 🟡 | helm | securityContext, NetworkPolicy, config checksums | ✅ done (T-06.1 already satisfied), follow-up T-19.1 |
+| T-20 | 🟡 | CI | SHA pinning, permissions, dispatch injection, release gating | ✅ done, follow-ups T-20.1–T-20.3 |
 | T-21 | 🟡 | api docs | OpenAPI spec disagrees with reality | open |
-| T-22 | 🔵 | schema | Redundant/unused fields, relation types, indexes | open |
-| T-23 | 🔵 | scripts/docs | Delete dangerous fix script; fix stale v0.22 docs | open |
+| T-22 | 🔵 | schema | Redundant/unused fields, relation types, indexes | ✅ done (`1780001000_schema_cleanup.js`; OIDC columns kept → T-22.1), follow-ups T-22.1–T-22.3 |
+| T-23 | 🔵 | scripts/docs | Delete dangerous fix script; fix stale v0.22 docs | ✅ done, follow-up T-23.1 |
 
 ### Follow-ups from the T-01…T-13 verification (ordered by criticality)
 
@@ -344,3 +344,22 @@ see the follow-up table below; **open** = not started.
 | T-11.2 | 🟠 | backup | Export still assembles the whole ZIP as a JS number array (`buildZipBytes`) and import reads the entire body into memory (`toBytes(e.request.body)`), so a large tenant export/import can exceed the 256 Mi pod limit. The import route also sets no `bodyLimit`, so PB's default may reject large bodies before the handler runs. | Stream/chunk the ZIP build and the import (or defer large instances to PB's native `/api/backups`), add an explicit body limit to the import route, and add a 200 MB round-trip test that asserts it stays under the pod memory limit. |
 | T-11.1 | 🟡 | backup | The T-11 acceptance requires a round-trip test on S3 (MinIO) storage, but only the local-filesystem round-trip is covered. The export/import code is S3-aware (`$app.newFilesystem()`, `record.baseFilesPath()`) but has never been exercised against real S3. | Stand up MinIO in the test harness (container + PB S3 settings via `/api/settings`), then run the export→import round-trip with media on S3 and assert identical counts, relations and file bytes. |
 | T-12.1 | 🟡 | nginx | The frontend proxy forwards `X-Forwarded-For`/`X-Real-IP`, but PocketBase does not trust the proxy, so PB rate limits and `PB_SUPERUSER_IPS` see the nginx pod IP instead of the real client. | Configure PB's trusted proxy settings (Settings → trusted proxy headers `X-Forwarded-For`/`X-Real-IP`) through a migration or the setup step. |
+
+### Follow-ups from the T-14…T-23 implementation (ordered by criticality)
+
+| ID | Sev | Area | Gap | Do |
+|---|---|---|---|---|
+| T-17.2 | 🟠 | frontend | Runtime `PB_URL` (`/config.js`) can point the SPA at another origin, but the nginx CSP has `connect-src 'self'`, so a cross-origin PB is blocked in the browser. | Render the CSP from a template at container start (`/etc/nginx/templates` + envsubst) adding the PB origin, in both `frontend/nginx.conf` and the helm `frontend-configmap.yaml`; expose `frontend.pbUrl` in values. |
+| T-18.1 | 🟠 | compose | `pb_data` moved from an anonymous to a named volume. Existing compose users get an empty instance on the next `up`; the old data stays in the orphaned anonymous volume. | Release note with a one-time copy (`docker run --rm -v <anon>:/from -v stjorna_pb_data:/to alpine cp -a /from/. /to/`), or detect an empty volume in `entrypoint.sh` and print the hint. |
+| T-19.1 | 🟠 | helm | `pocketbase.superuserIps` (`PB_SUPERUSER_IPS`) sees the ingress/nginx IP unless PB trusts the proxy headers (same root cause as T-12.1), so an allow-list either locks everyone out or allows everyone. | Fix T-12.1 first (trusted proxy settings via migration/setup), then document the value as usable. |
+| T-15.1 | 🟠 | frontend | Remaining truncation: ProductEdit/CategoryEdit media & category pickers load `getList(1, 200)`, MediaEdit usage 200, `activity.ts` and ApiKeys `getFullList` across all tenants. | Server-backed searchable Combobox; scope activity queries to the current tenant and paginate. |
+| T-15.2 | 🟠 | frontend | `authStore.loadTenants` falls back to one `getOne` per membership row for tenant/role when `expand` fails (N+1). | Rely on `expand`, or batch with a single `id ?= ` filter. |
+| T-22.1 | 🟠 | schema | `instance_settings.oidc_*` (client id, URLs, scopes, provider/display name) still duplicate `users.oauth2` and can drift. | Read the provider from `users.oauth2.providers` in OidcSettings + `oidc_config.pb.js`/`oidc_groups.pb.js`, then drop the columns. Also drop unused `instance_logo_url`/`instance_tagline`. |
+| T-22.2 | 🟡 | backup | Backup import matches existing media by `filename`, which isn't unique per tenant, so it can update the wrong row. | Match by the exported record id (kept in the manifest) or by file hash; add a test with two same-named media. |
+| T-20.1 | 🟡 | CI | Release is gated on `ci.yml`, but `test-e2e` is still `continue-on-error`, so a red e2e suite doesn't block a release. New/updated e2e specs from T-15 (pagination, custom_fields round-trip, confirm dialog) have not been run yet. | Run the e2e suite, fix failing specs, then remove `continue-on-error`. |
+| T-20.2 | 🟡 | CI | arm64 images build under QEMU; `npm ci` + vite build for the frontend under emulation is slow. | Build the frontend builder stage with `--platform=$BUILDPLATFORM` (output is static), or use native arm runners. |
+| T-20.3 | 🟡 | release | `artifacthub-repo.yaml` `repositoryID` is still a zero placeholder; `notify-artifacthub` posts to an endpoint that is likely not public. | Register the repo on Artifact Hub, set the real ID, drop or fix the notify job. |
+| T-15.3 | 🔵 | frontend | Pages still carry their own `if (!isAuthenticated()) navigate('/login')` checks next to the new `RequireAuth` guard; login does not return to the original page. | Remove the per-page checks; add `?redirect=` to the guard and Login. |
+| T-17.1 | 🔵 | frontend | Big components not split (Setup, MediaEdit, UserManagement, TenantSettings, OidcSettings, ProductEdit); no tenant-scoped `services/catalog.ts`; types still hand-written (no typegen). | Split per page section; generate types with `pocketbase-typegen` against the test container in CI with a diff check. |
+| T-17.3 | 🔵 | frontend | ESLint passes with ~280 warnings (217 `no-explicit-any`, 27 `solid/reactivity`); `vite.config.ts` uses `__dirname` (Vite 8 warns). | Tighten gradually and flip the rules to `error`; use `import.meta.dirname`. |
+| T-23.1 | 🔵 | docs | `ai-pedia.md` referenced at the top of this file is not in the repo (only untracked under `.claude/`); pointers in `.opencode/*` and `API_KEYS_REPORT.md` therefore go to README + hook headers. `.codacy.yml` still references `API_KEYS_REPORT.md`; unused `tsx` devDependency in `pocketbase/package.json`. | Commit `ai-pedia.md` (or drop the references) and clean the leftovers. |
