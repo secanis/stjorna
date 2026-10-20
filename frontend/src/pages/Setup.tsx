@@ -275,29 +275,9 @@ export default function Setup() {
     return raw;
   };
 
-  // T-07.1: the S3 access key / secret are written ONLY to PocketBase's
-  // own (PB_SECRET-encrypted) settings via saveS3Settings(). The
-  // instance_settings row keeps the non-secret description of the
-  // storage config; its s3_access_key / s3_secret_key columns were
-  // dropped (migration 1770001600).
-  const buildStorageConfig = () => {
-    if (storageType() !== 's3') {
-      return {
-        storage_type: 'local',
-        s3_bucket: '',
-        s3_region: '',
-        s3_endpoint: '',
-        s3_force_path_style: false,
-      };
-    }
-    return {
-      storage_type: 's3',
-      s3_bucket: s3Bucket(),
-      s3_region: s3Region(),
-      s3_endpoint: resolvedS3Endpoint(),
-      s3_force_path_style: s3ForcePathStyle(),
-    };
-  };
+  // T-07.1 / T-22: the S3 config (incl. credentials) is written ONLY to
+  // PocketBase's own (PB_SECRET-encrypted) settings via saveS3Settings().
+  // instance_settings no longer mirrors it (migration 1780001000).
 
   const handleSuperuserLogin = async () => {
     setLoading(true);
@@ -473,18 +453,13 @@ export default function Setup() {
       }
 
       const existingSettings = await setupPb.collection('instance_settings').getList(1, 1).catch(() => null);
-      const storageConfig = buildStorageConfig();
       if (existingSettings && existingSettings.items.length > 0) {
         await setupPb.collection('instance_settings').update(existingSettings.items[0].id, {
           setup_done: true,
-          instance_name: 'STJÓRNA',
-          ...storageConfig,
         });
       } else {
         await setupPb.collection('instance_settings').create({
           setup_done: true,
-          instance_name: 'STJÓRNA',
-          ...storageConfig,
         });
       }
 

@@ -111,11 +111,6 @@ export default function MediaList() {
       render: (v) => v ? `${(v / 1024).toFixed(1)} KB` : '-',
     },
     {
-      key: 'usage_count',
-      label: 'Usage',
-      sortable: true,
-    },
-    {
       key: 'created',
       label: 'Created',
       sortable: true,

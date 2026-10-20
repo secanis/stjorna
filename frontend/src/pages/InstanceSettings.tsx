@@ -35,15 +35,10 @@ export default function InstanceSettings() {
     }
 
     try {
-      const records = await pb.collection('instance_settings').getList(1, 1);
-      if (records.items.length > 0) {
-        const s = records.items[0];
-        setFormData({
-          instance_name: s.instance_name || 'STJÓRNA',
-        });
-      }
-
+      // T-22: PocketBase's meta.appName is the single source of truth for
+      // the instance name (instance_settings.instance_name was dropped).
       const settings = await pb.settings.getAll();
+      setFormData({ instance_name: settings.meta?.appName || 'STJÓRNA' });
       const ips = Array.isArray(settings.superuserIPs) ? settings.superuserIPs : [];
       setSuperuserIPs(ips.join('\n'));
     } catch (e: any) {
@@ -60,15 +55,7 @@ export default function InstanceSettings() {
     setSuccess(false);
 
     try {
-      const records = await pb.collection('instance_settings').getList(1, 1);
-      if (records.items.length > 0) {
-        await pb.collection('instance_settings').update(records.items[0].id, formData());
-      } else {
-        await pb.collection('instance_settings').create(formData());
-      }
-
-      // Keep PocketBase's app name in sync so system emails use the
-      // configured instance name instead of the default "Acme".
+      // The instance name is PocketBase's app name (used in system emails).
       const settings = await pb.settings.getAll();
       const ips = superuserIPs()
         .split(/[\s,]+/)
