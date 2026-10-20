@@ -23,10 +23,10 @@ Login, Setup (4-step wizard), Dashboard, Media (List/Edit), Categories (List/Edi
 ### Available Skills
 - **`stjorna-architecture`** — full architecture, schema, role model, S3, OpenAPI, Helm
 - **`stjorna-e2e-testing`** — Playwright E2E test patterns, schema, debugging
-- **`pocketbase-jsvm-hooks`** — PocketBase v0.22.7 JS hook gotchas (loader/executor VM split, response writing, file patterns)
+- **`pocketbase-jsvm-hooks`** — PocketBase v0.40 JS hook module pattern (loader/executor VM split, response writing, file patterns)
 
 ### Key Gotchas (load relevant skills for details)
-- **PB JS hook loader vs executor VM**: top-level `let`/`var`/`globalThis.X` are NOT visible in handler scope. Use `new Function("c", "...literal code...")` to inline values. See `pocketbase-jsvm-hooks` skill.
+- **PB JS hook loader vs executor VM**: top-level `let`/`var`/`globalThis.X` are NOT visible in handler scope. `require(`${__hooks}/lib/...`)` inside the handler instead. See `pocketbase-jsvm-hooks` skill.
 - **Vite proxy**: must use `/api/` (with trailing slash), not `/api` — otherwise `/api-docs` route gets hijacked
 - **PB v0.22.7 has no `c.send()`**: use `c.string(200, preSerializedJson)` + manual Content-Type
 - **`c.response().write()` does NOT write**: returns 200 + empty body

@@ -234,8 +234,8 @@ await pb.settings.update({
 ### Implementation
 - `pocketbase/pb_hooks/openapi.pb.js` — PB JS hook that registers the routes
 - Uses `routerAdd('GET', '/api/openapi.json', handler)`
-- Handler is created via `new Function("c", "c.response().header().set(...); c.string(200, " + JSON.stringify(JSON_SPEC) + ");")` to inline the pre-serialized spec
-- Why `new Function(...)`? See pocketbase-jsvm-hooks skill — values from loader VM don't reach handler VM
+- Spec is built at request time by `pocketbase/pb_hooks/lib/openapi.js` (collections from `$app.findAllCollections()`, custom routes from `lib/routes.js`)
+- Handlers `require()` their lib inside the handler — see pocketbase-jsvm-hooks skill (loader/executor VM split)
 
 ### Frontend
 - `frontend/src/pages/ApiDocs.tsx` — lazy-loads `swagger-ui-dist@5` via dynamic import
@@ -557,5 +557,5 @@ PB_SECRET=your-generated-secret-32-chars-min
 ---
 
 ## Related Skills
-- `pocketbase-jsvm-hooks` — PocketBase v0.22.7 JS hook gotchas (loader/executor VM, response writing, file patterns)
+- `pocketbase-jsvm-hooks` — PocketBase v0.40 JS hook module pattern (loader/executor VM, response writing, file patterns)
 - `stjorna-e2e-testing` — Playwright E2E test setup, schema, patterns, debugging
