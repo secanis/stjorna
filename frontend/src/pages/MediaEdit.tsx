@@ -186,7 +186,8 @@ export default function MediaEdit() {
     try {
       const [products, categories] = await Promise.all([
         pb.collection('products').getList<Product>(1, 200, {
-          filter: pb.filter('tenant = {:tenant} && media ?= {:mediaId}', { tenant, mediaId }),
+          // `?=` on this multi-relation matches nothing in PB 0.40; `?~` does.
+          filter: pb.filter('tenant = {:tenant} && media ?~ {:mediaId}', { tenant, mediaId }),
           sort: 'name',
         }),
         pb.collection('categories').getList<Category>(1, 200, {

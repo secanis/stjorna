@@ -17,6 +17,7 @@ async function fetchCategories(src: { page: number; sortKey: string; sortDir: 'a
   return await pb.collection('categories').getList(src.page, PER_PAGE, {
     filter: tenantFilter(),
     sort: toSortExpr(src.sortKey, src.sortDir, 'name'),
+    expand: 'media',
   });
 }
 

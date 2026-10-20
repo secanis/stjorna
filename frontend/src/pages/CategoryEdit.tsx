@@ -33,6 +33,8 @@ export default function CategoryEdit() {
   const [loading, setLoading] = createSignal(true);
   const [saving, setSaving] = createSignal(false);
   const [error, setError] = createSignal('');
+  // Only a failed load hides the form; save errors keep it editable.
+  const [loadFailed, setLoadFailed] = createSignal(false);
   const [success, setSuccess] = createSignal(false);
 
   const [media] = createResource(fetchMedia);
@@ -72,6 +74,7 @@ export default function CategoryEdit() {
         });
         setSlugManuallyEdited(true);
       } catch (e: any) {
+        setLoadFailed(true);
         setError(e.message || 'Failed to load category');
       }
     }
@@ -195,7 +198,7 @@ export default function CategoryEdit() {
         </div>
       </Show>
 
-      <Show when={!loading() && !error()}>
+      <Show when={!loading() && !loadFailed()}>
         <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-name">Name</label>
