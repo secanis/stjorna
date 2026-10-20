@@ -41,7 +41,9 @@ data:
 
         # Never cache the SPA entrypoint; always cache hashed assets.
         location = /index.html {
-            add_header Cache-Control "no-cache";
+            # `expires` (not add_header) keeps the server-level security headers:
+            # any add_header in a location drops all inherited add_header lines.
+            expires epoch;
         }
 
         # Runtime config generated at container start from PB_URL
@@ -59,7 +61,7 @@ data:
         }
 
         location /assets/ {
-            add_header Cache-Control "public, max-age=31536000, immutable";
+            expires max;
             try_files $uri =404;
         }
 
