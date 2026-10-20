@@ -52,8 +52,9 @@ The wizard walks through four steps:
 
 ## Storage
 
-STJÓRNA supports two storage backends, configured in the setup wizard
-(Admin → Storage step) or manually via environment variables.
+STJÓRNA supports two storage backends. Both are PocketBase's own file
+storage settings; the setup wizard (Storage step) or the PocketBase admin
+UI writes them, there are no storage environment variables.
 
 ### Local filesystem (default)
 
@@ -73,13 +74,15 @@ volumes:
 
 ### S3 (recommended for production)
 
-PocketBase v0.22.7 has built-in S3 support. Works with any S3-compatible
+PocketBase (v0.40) has built-in S3 support. Works with any S3-compatible
 provider: AWS S3, Cloudflare R2, Backblaze B2, MinIO, etc.
 
-**Important:** PB v0.22.7 does **not** support the `PB_STORAGE_S3_*` env vars.
-S3 is configured exclusively through the PocketBase Settings table. The
+S3 is configured exclusively through PocketBase's settings (stored
+encrypted with `PB_SECRET`); there are no S3 environment variables. The
 setup wizard saves the config via `pb.settings.update({ s3: { ... } })`,
 which immediately activates S3 for new uploads — no restart required.
+STJÓRNA keeps no copy of the storage config or credentials in its own
+collections.
 
 #### Configure via the setup wizard
 1. Run the setup wizard (`http://localhost:3000/setup`)
@@ -129,13 +132,6 @@ Use the PocketBase Admin UI:
 3. Toggle S3 enabled, fill in credentials
 4. Save
 
-Or, if you have storage config in `instance_settings.storage_type === 's3'`
-but PB doesn't have S3 active, run the fix script:
-```bash
-ADMIN_EMAIL=... ADMIN_PASSWORD=... npm run fix   # run from pocketbase/
-```
-It re-syncs the S3 config from `instance_settings` to PB's settings table.
-
 ### Migration notes
 
 Switching from local to S3 affects **new uploads only**. Existing files
@@ -147,6 +143,61 @@ to S3 is not yet provided.
 - PocketBase storage docs: https://pocketbase.io/docs/files-handling/#storage-options
 - PocketBase settings API: `PATCH /api/settings` with `{ "s3": { ... } }`
 - S3 settings fields: `enabled`, `bucket`, `region`, `endpoint`, `accessKey`, `secret`, `forcePathStyle`
+
+## Authentication & roles
+
+There are two kinds of accounts:
+
+- **PocketBase superusers** (`_superusers`) — instance operators. They
+  sign in to the STJÓRNA admin GUI (and PB's own `/_/` UI) and manage
+  tenants, users, memberships, instance settings (OIDC, SMTP, storage)
+  and API keys. Superuser logins use MFA (email OTP) once SMTP is
+  configured, and can be limited to IP ranges with `PB_SUPERUSER_IPS`.
+  The first superuser comes from `PB_SUPERUSER_EMAIL` /
+  `PB_SUPERUSER_PASSWORD` or the setup wizard (see above).
+- **Users** (`users` auth collection) — tenant members. There is no
+  public sign-up; users are created by a superuser or provisioned by OIDC.
+  Access to tenant data is granted per tenant through `user_tenants`
+  (user, tenant, role) rows:
+
+  | Role | Products / categories / media | Tenant members |
+  |---|---|---|
+  | `viewer` | read | — |
+  | `editor` | read, create, update | — |
+  | `admin` | read, create, update, delete | manage `user_tenants` |
+
+  The rules are enforced by the collection API rules (migration
+  `1770001000_lock_tenant_isolation.js`), not only by the UI.
+
+**OIDC / SSO**: configured by a superuser under Settings → OIDC. The
+provider is registered as a PocketBase OAuth2 provider on the `users`
+collection (the client secret is stored only there). On every
+OIDC login `pb_hooks/oidc_groups.pb.js` maps the configured groups claim
+to tenant memberships and roles (`oidc_group_claim`, `oidc_group_prefix`,
+`oidc_role_mapping`, `oidc_sync_mode`); password login can be disabled
+for users.
+
+### API keys (machine access)
+
+API keys give a backend/storefront **read-only** access to one tenant.
+Superusers manage them in the admin GUI (API Keys) or via the routes in
+`pocketbase/pb_hooks/api_keys.pb.js`:
+
+| Route | Auth | Purpose |
+|---|---|---|
+| `POST /api/stjorna/api-keys` | superuser | issue; the plaintext key is returned **once** |
+| `GET /api/stjorna/api-keys` | superuser | list metadata (never the key) |
+| `DELETE /api/stjorna/api-keys/{id}` | superuser | revoke (also invalidates issued tokens) |
+| `GET /api/stjorna/api-keys/me` | API key | introspect tenant / permissions |
+| `POST /api/stjorna/api-keys/exchange` | API key | mint a short-lived (1 h) PocketBase auth token |
+
+Keys look like `stjorna_<tenant6>_<key6>.<secret40>`; only a hash is
+stored. Each key is backed by a per-tenant service user that is a
+`viewer` member of its tenant. A client sends the key as
+`Authorization: Bearer <key>` to `/exchange`, then uses the returned
+token as a normal PocketBase auth token for the regular collection API
+(`/api/collections/products/records`, …) — so it sees exactly what a
+tenant viewer sees, and nothing else. The `demo/` app shows the flow.
 
 ## API documentation
 
@@ -164,13 +215,13 @@ schemas. Implements three API tiers via OpenAPI tags:
 
 | Tag | Auth | Endpoints |
 |-----|------|-----------|
-| **Public** | none | GET on `products`, `media`, `categories` |
-| **Private (User)** | user bearer token | POST/PATCH/DELETE on the same collections |
-| **Admin** | admin bearer token | All CRUD on `tenants`, `users`, `user_tenants`, `instance_settings` |
+| **Public** | tenant member or API-key token | GET on `products`, `media`, `categories` |
+| **Private (User)** | user bearer token (editor/admin of the tenant) | POST/PATCH/DELETE on the same collections |
+| **Admin** | superuser bearer token | All CRUD on `tenants`, `users`, `user_tenants`, `instance_settings` |
 
-The spec is the **intent**. Actual PB rules are set separately — to match
-the tiers, change the collection rules to allow unauthenticated reads for
-the Public collections and admin-only writes for Admin ones.
+The spec describes the endpoints; access is decided by the collection
+rules described under [Authentication & roles](#authentication--roles).
+There is no anonymous read access.
 
 ### Viewing
 
@@ -244,9 +295,7 @@ npm run dev:remote
 │   ├── pb_hooks/           # JS hooks loaded by PB at startup
 │   ├── tests/              # Vitest integration tests
 │   └── package.json
-├── scripts/                # Admin/maintenance scripts
-│   ├── fix-pocketbase.ts   # One-time fix for orphaned data + missing rules
-│   └── test-api-rules.ts   # Standalone API rules verification
+├── scripts/                # Helm/kind test rig (test-helm.sh) + CI helpers
 ├── helm/stjorna/           # Helm chart for Kubernetes deployment
 ├── .github/workflows/      # CI/CD (lint, test, build, release)
 └── docker-compose.yml
