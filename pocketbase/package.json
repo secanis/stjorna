@@ -7,9 +7,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:sequential": "for f in tests/auth.test.ts tests/multitenant.test.ts tests/webhooks.test.ts tests/collections/categories.test.ts tests/collections/media.test.ts tests/collections/products.test.ts tests/collections/tenants.test.ts; do echo \"Running $f\" && (podman ps -q --format \"{{.ID}}\" | xargs -r podman stop 2>/dev/null || docker ps -q | xargs -r docker stop 2>/dev/null || true); npx vitest run \"$f\" || exit 1; done",
-    "fix": "tsx ../scripts/fix-pocketbase.ts",
-    "test:api-rules": "tsx ../scripts/test-api-rules.ts"
+    "test:sequential": "for f in tests/auth.test.ts tests/multitenant.test.ts tests/webhooks.test.ts tests/collections/categories.test.ts tests/collections/media.test.ts tests/collections/products.test.ts tests/collections/tenants.test.ts; do echo \"Running $f\" && (podman ps -q --format \"{{.ID}}\" | xargs -r podman stop 2>/dev/null || docker ps -q | xargs -r docker stop 2>/dev/null || true); npx vitest run \"$f\" || exit 1; done"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
