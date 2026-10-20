@@ -68,7 +68,7 @@ export default function TenantSettings() {
     setUsersLoading(true);
     try {
       const result = await pb.collection('user_tenants').getList(1, 500, {
-        filter: `tenant = "${tenantId()}"`,
+        filter: pb.filter('tenant = {:tenant}', { tenant: tenantId() }),
         expand: 'user,role',
       });
       const users: TenantUser[] = result.items.map((ut: any) => ({

@@ -280,7 +280,7 @@ export const authStore = {
       const userId = user()?.id || pb.authStore.record?.id;
       if (!userId) return;
       const result = await pb.collection('user_tenants').getList(1, 50, {
-        filter: `user = "${userId}"`,
+        filter: pb.filter('user = {:userId}', { userId }),
         expand: 'tenant,role',
       });
 

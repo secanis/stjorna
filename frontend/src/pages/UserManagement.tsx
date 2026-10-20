@@ -1,6 +1,6 @@
 import { createSignal, createResource, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
@@ -112,7 +112,7 @@ async function fetchUsers(): Promise<AggregatedUser[]> {
       });
       raw = r.items as unknown as RawUserTenant[];
     } else {
-      const filter = tenant ? `tenant = "${tenant}"` : '';
+      const filter = tenantFilter(tenant);
       const r = await pb.collection('user_tenants').getList(1, 500, {
         filter,
         expand: 'user,tenant,role',

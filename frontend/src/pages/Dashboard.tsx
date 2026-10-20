@@ -2,7 +2,7 @@ import { createSignal, Show, onMount, createEffect } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
 import Table from '~/components/ui/Table';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { tenantStore } from '~/stores/tenant';
 import { fetchRecentActivity, type ActivityEvent, type ActivityType } from '~/utils/activity';
@@ -58,7 +58,7 @@ async function fetchStats() {
       };
     }
 
-    const filter = tenant ? `tenant = "${tenant}"` : '';
+    const filter = tenantFilter(tenant);
     const [categories, products, media, userTenants] = await Promise.all([
       pb.collection('categories').getList(1, 1, { filter }),
       pb.collection('products').getList(1, 1, { filter }),

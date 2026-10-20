@@ -4,7 +4,7 @@ import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, Bo
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
-import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 
 type NavItem = {
     path?: string;
@@ -88,7 +88,7 @@ export default function Sidebar() {
                 console.warn('[Sidebar] api keys count:', e?.message);
             }
         } else {
-            const filter = tenant ? `tenant = "${tenant}"` : '';
+            const filter = tenantFilter(tenant);
             if (authStore.isEditorOrAbove()) {
                 try {
                     const media = await pb.collection('media').getList(1, 1, { filter });
