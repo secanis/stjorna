@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # kind cluster config for the STJÓRNA helm chart test rig.
 # 1 control-plane + 3 workers; the 3 workers exist so a future garage
 # subchart test (replicaCount: 3) has somewhere to land.

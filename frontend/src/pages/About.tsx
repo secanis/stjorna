@@ -223,7 +223,7 @@ export default function About() {
             {/* OSS deps */}
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Open-source dependencies</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">STJÓRNA is MIT-licensed and built on top of the following libraries. Full transitive license information ships with the source tree.</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">STJÓRNA is AGPL-3.0-licensed and built on top of the following libraries. Full transitive license information ships with the source tree.</p>
                 <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                     {DEPENDENCIES.map((d) => (
                         <li class="py-3 flex items-start gap-3">
@@ -240,7 +240,7 @@ export default function About() {
                 </ul>
             </div>
 
-            <p class="text-xs text-gray-400 dark:text-gray-500 text-center pt-2">STJÓRNA — open source under MIT.</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 text-center pt-2">STJÓRNA — open source under AGPL-3.0.</p>
         </div>
     );
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: AGPL-3.0-or-later
 # test-helm.lib.sh — assertion and wait helpers for scripts/test-helm.sh
 # Source-only library; do not execute directly.
 

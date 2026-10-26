@@ -1,0 +1,315 @@
+---
+import '../styles/landing.css';
+
+const features = [
+  {
+    title: 'Multi-tenant isolation',
+    body: 'Tenants are first-class. Users, products and media are scoped per tenant and enforced by the API rules — not just the UI.',
+    icon: 'layers',
+  },
+  {
+    title: 'Granular roles',
+    body: 'Viewer, editor and admin roles per tenant. Read-only members can never mutate products or media.',
+    icon: 'shield',
+  },
+  {
+    title: 'Read-only API keys',
+    body: 'Issue scoped keys for storefronts and backends. Each key mints a short-lived viewer token — read-only, single tenant.',
+    icon: 'key',
+  },
+  {
+    title: 'OIDC / SSO',
+    body: 'Map your identity provider\u2019s groups to tenants and roles on every login. Optional password-less users.',
+    icon: 'fingerprint',
+  },
+  {
+    title: 'S3 storage',
+    body: 'AWS S3, Cloudflare R2, Backblaze B2 or MinIO. Settings are encrypted with your own secret — no credentials in your data.',
+    icon: 'cloud',
+  },
+  {
+    title: 'Auto-generated OpenAPI',
+    body: 'A live OpenAPI 3.0 spec for every instance, with a Swagger UI ready to go. Three tiers: Public, Private, Admin.',
+    icon: 'code',
+  },
+  {
+    title: 'One-shot setup wizard',
+    body: 'Four steps from empty to first tenant and admin account. Storage, tenant and link handled in one pass.',
+    icon: 'wand',
+  },
+  {
+    title: 'Helm + Docker',
+    body: 'Production-ready Helm chart for Kubernetes, or a two-service Docker Compose for a single box.',
+    icon: 'rocket',
+  },
+];
+
+const tiers = [
+  {
+    name: 'Public',
+    badge: 'viewer / API key',
+    desc: 'Read products, media and categories for a storefront.',
+  },
+  {
+    name: 'Private',
+    badge: 'editor / admin token',
+    desc: 'Create and update products, media and categories.',
+  },
+  {
+    name: 'Admin',
+    badge: 'superuser token',
+    desc: 'Manage tenants, users, memberships and instance settings.',
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>STJÓRNA — multi-tenant product management</title>
+    <meta
+      name="description"
+      content="STJÓRNA is an open-source, multi-tenant product management platform with a read-only REST API, granular roles, SSO and S3 storage."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <style>
+      :root { color-scheme: dark; }
+      .glow {
+        background:
+          radial-gradient(60rem 30rem at 15% -10%, rgba(56, 189, 248, 0.14), transparent 60%),
+          radial-gradient(50rem 26rem at 90% 0%, rgba(14, 165, 233, 0.12), transparent 55%);
+      }
+      .grid-bg {
+        background-image:
+          linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
+        background-size: 44px 44px;
+        mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 75%);
+      }
+    </style>
+  </head>
+  <body class="bg-slate-950 text-slate-200 antialiased">
+    <!-- Nav -->
+    <header class="sticky top-0 z-50 border-b border-slate-800/70 bg-slate-950/80 backdrop-blur">
+      <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <a href="/" class="flex items-center">
+          <img src="/logo-small.png" alt="STJÓRNA" class="h-7 w-auto" />
+        </a>
+        <nav class="hidden items-center gap-8 text-sm text-slate-300 md:flex">
+          <a href="#features" class="transition hover:text-white">Features</a>
+          <a href="/docs/" class="transition hover:text-white">Docs</a>
+          <a href="/api/" class="transition hover:text-white">API</a>
+        </nav>
+        <div class="flex items-center gap-3">
+          <a
+            href="https://github.com/secanis/stjorna"
+            class="hidden items-center gap-2 rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-200 transition hover:border-slate-500 sm:inline-flex"
+          >
+            <svg viewBox="0 0 16 16" class="h-4 w-4 fill-current" aria-hidden="true">
+              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.5 7.5 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+            </svg>
+            GitHub
+          </a>
+          <a
+            href="/docs/getting-started/"
+            class="rounded-lg bg-sky-500 px-3.5 py-1.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+          >
+            Get started
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="glow relative overflow-hidden">
+      <div class="grid-bg absolute inset-0" aria-hidden="true"></div>
+      <div class="relative mx-auto max-w-6xl px-4 pb-20 pt-20 sm:px-6 sm:pt-28">
+        <div class="mx-auto max-w-3xl text-center">
+          <img src="/logo.png" alt="STJÓRNA" class="mx-auto h-16 w-auto" />
+          <span class="mt-8 inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-sm text-sky-300">
+            <span class="h-1.5 w-1.5 rounded-full bg-sky-400"></span>
+            Open source · AGPL-3.0
+          </span>
+          <h1 class="mt-6 text-4xl font-bold tracking-tight text-white sm:text-6xl">
+            Product management,
+            <span class="bg-gradient-to-r from-sky-400 to-cyan-300 bg-clip-text text-transparent">
+              multi-tenant by design
+            </span>
+          </h1>
+          <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-400">
+            STJÓRNA keeps products, media and categories cleanly separated per tenant, with granular
+            roles, single sign-on and a read-only REST API your storefront can trust.
+          </p>
+          <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a
+              href="/docs/getting-started/"
+              class="w-full rounded-lg bg-sky-500 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-400 sm:w-auto"
+            >
+              Get started
+            </a>
+            <a
+              href="/docs/installation/"
+              class="w-full rounded-lg border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500 hover:text-white sm:w-auto"
+            >
+              Install with Helm
+            </a>
+          </div>
+        </div>
+
+        <!-- Install snippet -->
+        <div class="mx-auto mt-14 max-w-2xl">
+          <div class="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70 shadow-2xl shadow-sky-500/5">
+            <div class="flex items-center gap-2 border-b border-slate-800 px-4 py-3">
+              <span class="h-3 w-3 rounded-full bg-red-500/70"></span>
+              <span class="h-3 w-3 rounded-full bg-amber-500/70"></span>
+              <span class="h-3 w-3 rounded-full bg-emerald-500/70"></span>
+              <span class="ml-2 text-xs text-slate-500">terminal</span>
+            </div>
+            <pre class="overflow-x-auto p-5 text-sm leading-relaxed"><code class="font-mono text-slate-300"><span class="text-slate-500"># add the repo</span>
+helm repo add stjorna https://secanis.github.io/stjorna
+helm repo update
+
+<span class="text-slate-500"># install (replace the host)</span>
+helm install my-stjorna stjorna/stjorna \
+  --version @@CHART_VERSION@@ \
+  --set ingress.hosts[0].host=stjorna.yourdomain.com</code></pre>
+          </div>
+          <p class="mt-3 text-center text-sm text-slate-500">
+            Or run the two-service
+            <a href="/docs/installation/#docker-compose" class="text-sky-400 hover:underline">Docker Compose</a>
+            stack on a single box.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Features -->
+    <section id="features" class="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+      <div class="mx-auto max-w-2xl text-center">
+        <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+          Everything you need to run product data
+        </h2>
+        <p class="mt-4 text-lg text-slate-400">
+          Built on PocketBase, served with SolidJS, shipped as a Helm chart.
+        </p>
+      </div>
+      <div class="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {features.map((f) => (
+          <div
+            class="group rounded-xl border border-slate-800 bg-slate-900/50 p-6 transition hover:border-sky-500/40 hover:bg-slate-900"
+          >
+            <div class="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-700 bg-slate-800/60 text-sky-400 transition group-hover:border-sky-500/50">
+              {f.icon === 'layers' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5" /><path d="m3 17 9 5 9-5" /></svg>
+              )}
+              {f.icon === 'shield' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></svg>
+              )}
+              {f.icon === 'key' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5" /><path d="m11 12 9-9" /><path d="M17 6l3 3" /><path d="M14 9l2 2" /></svg>
+              )}
+              {f.icon === 'fingerprint' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 11a4 4 0 0 0-4 4c0 1.5.5 2.5 1 3.5" /><path d="M8 8a6 6 0 0 1 12 0c0 2-.8 3.5-1.5 5" /><path d="M5 11a9 9 0 0 1 18 0" /><path d="M7.5 17c.3 1.5 1 3 2 4" /><path d="M16.5 17c-.3 1.5-1 3-2 4" /></svg>
+              )}
+              {f.icon === 'cloud' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 .4-9A7 7 0 0 0 4.5 8.5 4.5 4.5 0 0 0 6 19h11.5Z" /></svg>
+              )}
+              {f.icon === 'code' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4" /><path d="m16 8 4 4-4 4" /><path d="m14 4-4 16" /></svg>
+              )}
+              {f.icon === 'wand' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m15 4 5 5L8 21l-5-5L15 4Z" /><path d="m12 7 5 5" /><path d="M4 20l1-1" /><path d="M18 6l1-1" /></svg>
+              )}
+              {f.icon === 'rocket' && (
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2" /><path d="M14.5 4.5C13 3 8 3 6.5 5.5 5 8 5 13 5 13s5 0 7.5-1.5C15 9 15 6 14.5 4.5Z" /><path d="M15 9c1 1 1 3 0 4" /><circle cx="12" cy="9" r="1.2" /></svg>
+              )}
+            </div>
+            <h3 class="mt-5 text-base font-semibold text-white">{f.title}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-slate-400">{f.body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- API tiers -->
+    <section class="border-y border-slate-800 bg-slate-900/40">
+      <div class="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+        <div class="grid items-start gap-12 lg:grid-cols-2">
+          <div>
+            <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+              A REST API with three clean tiers
+            </h2>
+            <p class="mt-4 text-lg leading-relaxed text-slate-400">
+              Every instance serves a live OpenAPI 3.0 spec and a Swagger UI. Access is decided by
+              the same rules that guard the app — there is no anonymous read access.
+            </p>
+            <div class="mt-8 flex flex-wrap gap-3">
+              <a href="/api/" class="rounded-lg bg-sky-500 px-5 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-400">
+                Open the API reference
+              </a>
+              <a href="/docs/api-keys/" class="rounded-lg border border-slate-700 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-slate-500">
+                Learn about API keys
+              </a>
+            </div>
+          </div>
+          <div class="grid gap-4">
+            {tiers.map((t) => (
+              <div class="flex items-start gap-4 rounded-xl border border-slate-800 bg-slate-900/70 p-5">
+                <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 text-sm font-bold text-sky-400">
+                  {t.name[0]}
+                </div>
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="font-semibold text-white">{t.name}</h3>
+                    <span class="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-400">{t.badge}</span>
+                  </div>
+                  <p class="mt-1.5 text-sm text-slate-400">{t.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="mx-auto max-w-6xl px-4 py-20 sm:px-6">
+      <div class="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-900/40 px-8 py-14 text-center">
+        <div class="glow absolute inset-0" aria-hidden="true"></div>
+        <div class="relative">
+          <h2 class="text-3xl font-bold tracking-tight text-white sm:text-4xl">Run your product data your way</h2>
+          <p class="mx-auto mt-4 max-w-xl text-lg text-slate-400">
+            A single compose file for your laptop, a hardened Helm chart for the cluster. Same
+            multi-tenant model everywhere.
+          </p>
+          <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+            <a href="/docs/getting-started/" class="rounded-lg bg-sky-500 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-400">
+              Read the docs
+            </a>
+            <a href="https://github.com/secanis/stjorna" class="rounded-lg border border-slate-700 px-6 py-3 text-base font-semibold text-slate-200 transition hover:border-slate-500">
+              View on GitHub
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800">
+      <div class="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-slate-500 sm:flex-row sm:px-6">
+        <div class="flex items-center gap-3">
+          <img src="/logo-small.png" alt="STJÓRNA" class="h-6 w-auto" />
+          <span>Open source under AGPL-3.0</span>
+        </div>
+        <div class="flex items-center gap-6">
+          <a href="/docs/" class="transition hover:text-slate-300">Docs</a>
+          <a href="/api/" class="transition hover:text-slate-300">API</a>
+          <a href="https://github.com/secanis/stjorna" class="transition hover:text-slate-300">GitHub</a>
+          <a href="https://artifacthub.io/packages/helm/stjorna/stjorna" class="transition hover:text-slate-300">Artifact Hub</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
