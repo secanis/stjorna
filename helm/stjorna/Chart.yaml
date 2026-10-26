@@ -16,7 +16,7 @@ maintainers:
     email: support@secanis.ch
 annotations:
   category: CMS
-  licenses: MIT
+  licenses: AGPL-3.0-or-later
 dependencies:
   - name: garage
     # Chart version (matches the garage chart's Chart.yaml).

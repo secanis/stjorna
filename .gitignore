@@ -39,7 +39,7 @@ server/apidoc*
 todo.md
 reports/
 stjorna.iml
-docs/REWRITE_PLAN.md
+/docs/REWRITE_PLAN.md
 
 # Env files — example templates are tracked, real values are not
 **/.env
@@ -55,9 +55,14 @@ docs/REWRITE_PLAN.md
 # (e.g. a stale git clone, a leftover symlink, a venv with
 # github-pages installed), delete it — anything matching these
 # patterns is dead infrastructure.
-docs/
-docs/**
+# Root-scoped (leading slash) so the v3 docs site content under
+# site/src/content/docs/ is NOT ignored.
+/docs/
+/docs/**
 _site/
 _site/**
 .jekyll-cache/
 .jekyll-metadata
+
+# Astro build cache
+**/.astro/

@@ -1,0 +1,4 @@
+/* Tailwind v4 — full build (with preflight) for the custom landing page and
+ * other non-Starlight pages. Imported only by those pages, so Starlight docs
+ * keep their own base styles. */
+@import 'tailwindcss';
