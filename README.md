@@ -1,5 +1,10 @@
 # STJÓRNA v3
 
+[![CI](https://github.com/secanis/stjorna/actions/workflows/ci.yml/badge.svg)](https://github.com/secanis/stjorna/actions/workflows/ci.yml)
+[![stjorna-pocketbase](https://img.shields.io/docker/v/secanis/stjorna-pocketbase?sort=semver&label=pocketbase)](https://hub.docker.com/r/secanis/stjorna-pocketbase)
+[![stjorna-frontend](https://img.shields.io/docker/v/secanis/stjorna-frontend?sort=semver&label=frontend)](https://hub.docker.com/r/secanis/stjorna-frontend)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/stjorna)](https://artifacthub.io/packages/helm/stjorna/stjorna)
+
 Multi-tenant product management built with SolidJS + PocketBase.
 
 ## Quick Start (Docker)
