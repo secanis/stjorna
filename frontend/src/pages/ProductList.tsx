@@ -9,17 +9,29 @@ import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
-import type { Product } from '~/types';
+import type { Product, Category } from '~/types';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 const PER_PAGE = 50;
 
-async function fetchProducts(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc' }) {
+async function fetchProducts(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc'; search: string; category: string; active: string }) {
+  const parts: string[] = [];
+  const tf = tenantFilter();
+  if (tf) parts.push(tf);
+  const q = src.search.trim();
+  if (q) parts.push(pb.filter('(name ?~ {:q} || slug ?~ {:q} || description ?~ {:q})', { q }));
+  if (src.category) parts.push(pb.filter('category = {:category}', { category: src.category }));
+  if (src.active === 'active') parts.push('active = true');
+  if (src.active === 'inactive') parts.push('active = false');
   return await pb.collection('products').getList<Product>(src.page, PER_PAGE, {
-    filter: tenantFilter(),
+    filter: parts.join(' && '),
     sort: toSortExpr(src.sortKey, src.sortDir, 'name'),
     expand: 'media',
   });
+}
+
+async function fetchCategories() {
+  return await pb.collection('categories').getList<Category>(1, 200, { filter: tenantFilter(), sort: 'name' });
 }
 
 export default function ProductList() {
@@ -39,6 +51,13 @@ export default function ProductList() {
   const [page, setPage] = createSignal(1);
   const [sortKey, setSortKey] = createSignal('sort_order');
   const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('asc');
+  const [search, setSearch] = createSignal('');
+  const [categoryFilter, setCategoryFilter] = createSignal('');
+  const [activeFilter, setActiveFilter] = createSignal('');
+
+  // Categories populate the filter dropdown; refetch them whenever the
+  // active tenant changes so the options stay in sync with the product rows.
+  const [categories] = createResource(() => tenantStore.version, fetchCategories);
 
   // tenantStore.version inside the source accessor ensures the table
   // refetches when the active tenant changes — without this, the
@@ -46,7 +65,7 @@ export default function ProductList() {
   // stale value and no refetch would ever fire after a tenant
   // switch.
   const [data, { refetch }] = createResource(
-    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), tenantVersion: tenantStore.version }),
+    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), search: search(), category: categoryFilter(), active: activeFilter(), tenantVersion: tenantStore.version }),
     fetchProducts
   );
 
@@ -185,6 +204,50 @@ export default function ProductList() {
             + Add Product
           </A>
         </Show>
+      </div>
+
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <label for="product-search" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+          <input
+            id="product-search"
+            data-testid="product-search"
+            type="text"
+            value={search()}
+            onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
+            placeholder="Search name, slug or description…"
+            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label for="product-category" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+          <select
+            id="product-category"
+            data-testid="product-category"
+            value={categoryFilter()}
+            onChange={(e) => { setCategoryFilter(e.currentTarget.value); setPage(1); }}
+            class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
+          >
+            <option value="">All categories</option>
+            <For each={categories()?.items || []}>
+              {(c) => <option value={c.id}>{c.name}</option>}
+            </For>
+          </select>
+        </div>
+        <div>
+          <label for="product-status" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+          <select
+            id="product-status"
+            data-testid="product-status"
+            value={activeFilter()}
+            onChange={(e) => { setActiveFilter(e.currentTarget.value); setPage(1); }}
+            class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
+          >
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
       </div>
 
       <Show
