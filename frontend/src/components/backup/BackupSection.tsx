@@ -21,8 +21,8 @@ export default function BackupSection(props: Props) {
     setDownloadError('');
     try {
       await downloadTenantBackup(props.tenantId);
-    } catch (err: any) {
-      setDownloadError(err.message || 'Download failed');
+    } catch (err: unknown) {
+      setDownloadError(err instanceof Error ? err.message : 'Download failed');
     } finally {
       setDownloading(false);
     }
@@ -50,8 +50,8 @@ export default function BackupSection(props: Props) {
       const r = await importBackup({ file: f, tenantId: props.tenantId });
       if (!r.success) setError(r.error || 'Import failed');
       setResult(r);
-    } catch (err: any) {
-      setError(err.message || 'Network error');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Network error');
     } finally {
       setImporting(false);
     }

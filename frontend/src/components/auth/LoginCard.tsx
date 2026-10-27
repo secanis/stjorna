@@ -1,22 +1,29 @@
 import { createSignal, Show, For, onMount } from 'solid-js';
+import { ClientResponseError } from 'pocketbase';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
-function describeError(err: any): string {
+function describeError(err: unknown): string {
   if (!err) return 'Login failed';
-  if (err.status === 0 || err.isAbort) {
-    return 'Cannot reach PocketBase server. Check that it is running and reachable.';
+  if (err instanceof ClientResponseError) {
+    if (err.status === 0 || err.isAbort) {
+      return 'Cannot reach PocketBase server. Check that it is running and reachable.';
+    }
+    const status = err.status;
+    const msg = err.response?.message || err.originalError?.message || err.message;
+    if (status && status >= 500) {
+      return `Server error (${status}): ${msg || 'check PB logs for the underlying cause.'}`;
+    }
+    if (status === 404 && /Failed to authenticate/i.test(msg || '')) {
+      return 'User not found or password incorrect.';
+    }
+    return msg || `Login failed (${status || 'unknown'})`;
   }
-  const status = err.status ?? err.response?.status;
-  const msg = err.response?.message || err.originalError?.message || err.message;
-  if (status && status >= 500) {
-    return `Server error (${status}): ${msg || 'check PB logs for the underlying cause.'}`;
+  if (err instanceof Error) {
+    return err.message || 'Login failed';
   }
-  if (status === 404 && /Failed to authenticate/i.test(msg || '')) {
-    return 'User not found or password incorrect.';
-  }
-  return msg || `Login failed (${status || 'unknown'})`;
+  return String(err);
 }
 
 interface AuthMethodProvider {
@@ -68,8 +75,8 @@ export default function LoginCard(props: LoginCardProps) {
         authURL: String(p.authURL || ''),
       }));
       setOidcProviders(providers);
-    } catch (e: any) {
-      console.warn('[LoginCard] failed to load auth methods:', e?.message);
+    } catch (e: unknown) {
+      console.warn('[LoginCard] failed to load auth methods:', e instanceof Error ? e.message : String(e));
     }
   });
 
@@ -81,7 +88,7 @@ export default function LoginCard(props: LoginCardProps) {
         : await authStore.requestOTP(email());
       setOtpId(newOtpId);
       setOtpSent(true);
-    } catch (otpErr: any) {
+    } catch (otpErr: unknown) {
       setError(describeError(otpErr));
     }
   };
@@ -98,33 +105,33 @@ export default function LoginCard(props: LoginCardProps) {
           await authStore.loginAsAdmin(email(), password());
           props.onSuccess();
           return;
-        } catch (err: any) {
-          const id = err?.response?.mfaId || err?.data?.mfaId;
+        } catch (err: unknown) {
+          const id = err instanceof ClientResponseError ? (err.response?.mfaId || err.data?.mfaId) : undefined;
           if (id) {
             await handleMFAChallenge(id);
             return;
           }
           setError(describeError(err));
-          if (err?.status >= 500) setLocalHint(props.errorHint || null);
+          if (err instanceof ClientResponseError && err.status >= 500) setLocalHint(props.errorHint || null);
         }
       } else {
         try {
           await authStore.login(email(), password());
           props.onSuccess();
           return;
-        } catch (err: any) {
-          const id = err?.response?.mfaId || err?.data?.mfaId;
+        } catch (err: unknown) {
+          const id = err instanceof ClientResponseError ? (err.response?.mfaId || err.data?.mfaId) : undefined;
           if (id) {
             await handleMFAChallenge(id);
             return;
           }
           setError(describeError(err));
-          if (err?.status >= 500) setLocalHint(props.errorHint || null);
+          if (err instanceof ClientResponseError && err.status >= 500) setLocalHint(props.errorHint || null);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(describeError(err));
-      if (err?.status >= 500) setLocalHint(props.errorHint || null);
+      if (err instanceof ClientResponseError && err.status >= 500) setLocalHint(props.errorHint || null);
     } finally {
       setLoading(false);
     }
@@ -143,7 +150,7 @@ export default function LoginCard(props: LoginCardProps) {
         await authStore.verifyOTP(otpId()!, otpCode(), mfaId()!);
       }
       props.onSuccess();
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(describeError(err));
     } finally {
       setLoading(false);
@@ -157,7 +164,7 @@ export default function LoginCard(props: LoginCardProps) {
     authStore
       .loginWithOAuth2(providerName)
       .then(() => props.onSuccess())
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         setError(describeError(err));
       })
       .finally(() => setLoading(false));

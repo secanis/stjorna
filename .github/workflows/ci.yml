@@ -54,7 +54,7 @@ jobs:
   # -------------------------------------------------------------------------
   test-frontend:
     name: Frontend (build + unit tests)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -85,7 +85,7 @@ jobs:
   # -------------------------------------------------------------------------
   test-pb:
     name: PocketBase (vitest)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -139,7 +139,7 @@ jobs:
   # -------------------------------------------------------------------------
   test-e2e:
     name: Frontend (Playwright e2e)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Only for ordering / fail-fast: no point running e2e when the
     # backend suite is red.
     needs: test-pb
@@ -204,7 +204,7 @@ jobs:
   # -------------------------------------------------------------------------
   lint-helm:
     name: Helm chart (lint + render)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
@@ -221,7 +221,7 @@ jobs:
   # -------------------------------------------------------------------------
   test-helm:
     name: Helm chart (kind integration test)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -251,7 +251,7 @@ jobs:
   # -------------------------------------------------------------------------
   build-images:
     name: Build image (${{ matrix.name }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
     strategy:
       fail-fast: false
