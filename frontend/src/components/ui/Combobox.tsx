@@ -163,7 +163,7 @@ export default function Combobox(props: ComboboxProps) {
           onFocus={onFocus}
           onKeyDown={onKeyDown}
           onClick={openDropdown}
-          class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded pl-3 pr-16 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded pl-3 pr-16 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
         />
         <div class="absolute inset-y-0 right-1 flex items-center gap-1">
           <Show when={showClear()}>
