@@ -9,13 +9,21 @@ import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
+import Combobox from '~/components/ui/Combobox';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 const PER_PAGE = 50;
 
-async function fetchCategories(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc' }) {
+async function fetchCategories(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc'; search: string; active: string }) {
+  const parts: string[] = [];
+  const tf = tenantFilter();
+  if (tf) parts.push(tf);
+  const q = src.search.trim();
+  if (q) parts.push(pb.filter('(name ?~ {:q} || slug ?~ {:q} || description ?~ {:q})', { q }));
+  if (src.active === 'active') parts.push('active = true');
+  if (src.active === 'inactive') parts.push('active = false');
   return await pb.collection('categories').getList(src.page, PER_PAGE, {
-    filter: tenantFilter(),
+    filter: parts.join(' && '),
     sort: toSortExpr(src.sortKey, src.sortDir, 'name'),
     expand: 'media',
   });
@@ -35,16 +43,21 @@ export default function CategoryList() {
     }
   });
 
+  let searchInputRef: HTMLInputElement | undefined;
+  onMount(() => searchInputRef?.focus());
+
   const [page, setPage] = createSignal(1);
   const [sortKey, setSortKey] = createSignal('sort_order');
   const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('asc');
+  const [search, setSearch] = createSignal('');
+  const [activeFilter, setActiveFilter] = createSignal('');
 
   // tenantStore.version inside the source accessor ensures data
   // refetches when the active tenant changes — the imperative
   // getCurrentTenant() inside fetchCategories would otherwise
   // read a stale value for a refetch that never fires.
   const [data, { refetch }] = createResource(
-    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), tenantVersion: tenantStore.version }),
+    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), search: search(), active: activeFilter(), tenantVersion: tenantStore.version }),
     fetchCategories
   );
 
@@ -155,6 +168,37 @@ export default function CategoryList() {
             + Add Category
           </A>
         </Show>
+      </div>
+
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <label for="category-search" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+          <input
+            id="category-search"
+            data-testid="category-search"
+            ref={searchInputRef}
+            type="text"
+            value={search()}
+            onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
+            placeholder="Search name, slug or description…"
+            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div class="w-56">
+          <label for="category-status" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+          <Combobox
+            id="category-status"
+            testId="category-status"
+            value={activeFilter()}
+            onChange={(v) => { setActiveFilter(v); setPage(1); }}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+            placeholder="All statuses"
+            clearLabel="All statuses"
+          />
+        </div>
       </div>
 
       <Show

@@ -8,17 +8,20 @@ import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
 import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
+import Combobox from '~/components/ui/Combobox';
 import type { Media } from '~/types';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 const PER_PAGE = 50;
 
-async function fetchMedia(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc'; filterType: string }) {
+async function fetchMedia(src: { page: number; sortKey: string; sortDir: 'asc' | 'desc'; filterType: string; search: string }) {
   const parts: string[] = [];
   const tf = tenantFilter();
   if (tf) parts.push(tf);
   if (src.filterType === 'image') parts.push(`mime_type ?~ "image/"`);
   if (src.filterType === 'video') parts.push(`mime_type ?~ "video/"`);
+  const q = src.search.trim();
+  if (q) parts.push(pb.filter('(filename ?~ {:q} || original_name ?~ {:q})', { q }));
   return await pb.collection('media').getList<Media>(src.page, PER_PAGE, {
     filter: parts.join(' && '),
     sort: toSortExpr(src.sortKey, src.sortDir, 'id'),
@@ -39,10 +42,14 @@ export default function MediaList() {
     }
   });
 
+  let searchInputRef: HTMLInputElement | undefined;
+  onMount(() => searchInputRef?.focus());
+
   const [page, setPage] = createSignal(1);
   const [sortKey, setSortKey] = createSignal('created');
   const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('desc');
   const [filterType, setFilterType] = createSignal('');
+  const [search, setSearch] = createSignal('');
 
   // tenantStore.version inside the source accessor makes the resource
   // re-fire whenever the active tenant changes — without this, the
@@ -50,7 +57,7 @@ export default function MediaList() {
   // trigger a refetch and the page would still show the previous
   // tenant's records after the user switched tenant via the header.
   const [data, { refetch }] = createResource(
-    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), filterType: filterType(), tenantVersion: tenantStore.version }),
+    () => ({ page: page(), sortKey: sortKey(), sortDir: sortDir(), filterType: filterType(), search: search(), tenantVersion: tenantStore.version }),
     fetchMedia
   );
 
@@ -153,16 +160,35 @@ export default function MediaList() {
         </Show>
       </div>
 
-      <div class="flex gap-4 items-center">
-        <select
-          value={filterType()}
-          onChange={(e) => { setFilterType(e.currentTarget.value); setPage(1); }}
-          class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
-        >
-          <option value="">All types</option>
-          <option value="image">Images</option>
-          <option value="video">Videos</option>
-        </select>
+      <div class="flex flex-wrap items-end gap-3">
+        <div class="flex-1 min-w-[200px]">
+          <label for="media-search" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+          <input
+            id="media-search"
+            data-testid="media-search"
+            ref={searchInputRef}
+            type="text"
+            value={search()}
+            onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
+            placeholder="Search filename…"
+            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+        <div class="w-56">
+          <label for="media-type" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+          <Combobox
+            id="media-type"
+            testId="media-type"
+            value={filterType()}
+            onChange={(v) => { setFilterType(v); setPage(1); }}
+            options={[
+              { value: 'image', label: 'Images' },
+              { value: 'video', label: 'Videos' },
+            ]}
+            placeholder="All types"
+            clearLabel="All types"
+          />
+        </div>
       </div>
 
       <Show

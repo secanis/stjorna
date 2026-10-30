@@ -1,9 +1,10 @@
-import { createSignal, createResource, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { KeyRound, Copy, Trash2, Plus, AlertTriangle, CheckCircle2 } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import Table, { Column } from '~/components/ui/Table';
+import Combobox from '~/components/ui/Combobox';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
@@ -218,16 +219,13 @@ export default function ApiKeys() {
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
-                            <select value={newTenant()} onChange={(e) => setNewTenant(e.currentTarget.value)} required class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 text-sm">
-                                <option value="">— pick tenant —</option>
-                                <For each={tenants()}>
-                                    {(t) => (
-                                        <option value={t.id}>
-                                            {t.name} ({t.slug})
-                                        </option>
-                                    )}
-                                </For>
-                            </select>
+                            <Combobox
+                                value={newTenant()}
+                                onChange={(v) => setNewTenant(v)}
+                                options={(tenants() || []).map((t) => ({ value: t.id, label: `${t.name} (${t.slug})` }))}
+                                placeholder="— pick tenant —"
+                                allowClear={false}
+                            />
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Name (label)</label>

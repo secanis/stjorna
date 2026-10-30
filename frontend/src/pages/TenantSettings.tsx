@@ -9,6 +9,7 @@ import { parseThemeConfig, buildThemeConfig, asTrimmedString } from '~/utils/the
 import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeConfigFields';
 import { ArrowLeft, Save, UserPlus, X, BarChart3 } from 'lucide-solid';
 import BackupSection from '~/components/backup/BackupSection';
+import Combobox from '~/components/ui/Combobox';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
@@ -357,16 +358,18 @@ export default function TenantSettings() {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
-            <select
+            <Combobox
               value={formData().plan}
-              onChange={(e) => setFormData(d => ({ ...d, plan: e.currentTarget.value }))}
-              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-            >
-              <option value="free">Free</option>
-              <option value="starter">Starter</option>
-              <option value="professional">Professional</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
+              onChange={(v) => setFormData(d => ({ ...d, plan: v }))}
+              options={[
+                { value: 'free', label: 'Free' },
+                { value: 'starter', label: 'Starter' },
+                { value: 'professional', label: 'Professional' },
+                { value: 'enterprise', label: 'Enterprise' },
+              ]}
+              placeholder="Select plan"
+              allowClear={false}
+            />
           </div>
 
           <div>
@@ -441,23 +444,19 @@ export default function TenantSettings() {
                   onInput={(e) => onUserSearchInput(e.currentTarget.value)}
                   class="w-full mb-2 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
                 />
-                <select
+                <Combobox
                   id="ts-existing-user"
+                  testId="ts-existing-user"
                   value={selectedUserId()}
-                  onChange={(e) => setSelectedUserId(e.currentTarget.value)}
+                  onChange={(v) => setSelectedUserId(v)}
+                  options={availableUsers().map((u) => ({
+                    value: u.id,
+                    label: u.name ? `${u.name} <${u.email}>` : u.email,
+                  }))}
+                  placeholder="— Select a user —"
+                  allowClear={false}
                   disabled={availableLoading()}
-                  required
-                  class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="" disabled>— Select a user —</option>
-                  <For each={availableUsers()}>
-                    {(u) => (
-                      <option value={u.id}>
-                        {u.name ? `${u.name} <${u.email}>` : u.email}
-                      </option>
-                    )}
-                  </For>
-                </select>
+                />
                 <Show when={!userSearch() && availableTruncated()}>
                   <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">
                     Showing the first {AVAILABLE_LIMIT} users. Search by email to find others.
@@ -480,16 +479,19 @@ export default function TenantSettings() {
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-role">
                   Role
                 </label>
-                <select
+                <Combobox
                   id="ts-existing-role"
+                  testId="ts-existing-role"
                   value={newUserRole()}
-                  onChange={(e) => setNewUserRole(e.currentTarget.value)}
-                  class="w-full bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                  <option value="admin">Admin</option>
-                </select>
+                  onChange={(v) => setNewUserRole(v)}
+                  options={[
+                    { value: 'viewer', label: 'Viewer' },
+                    { value: 'editor', label: 'Editor' },
+                    { value: 'admin', label: 'Admin' },
+                  ]}
+                  placeholder="Select role"
+                  allowClear={false}
+                />
               </div>
               <Show when={error()}>
                 <p class="text-red-600 dark:text-red-400 text-sm">{error()}</p>
@@ -545,15 +547,18 @@ export default function TenantSettings() {
                           </>
                         }
                       >
-                        <select
+                        <Combobox
                           value={editingRole()}
-                          onChange={(e) => setEditingRole(e.currentTarget.value)}
-                          class="bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-2 py-0.5 text-gray-900 dark:text-white text-xs"
-                        >
-                          <option value="viewer">Viewer</option>
-                          <option value="editor">Editor</option>
-                          <option value="admin">Admin</option>
-                        </select>
+                          onChange={(v) => setEditingRole(v)}
+                          options={[
+                            { value: 'viewer', label: 'Viewer' },
+                            { value: 'editor', label: 'Editor' },
+                            { value: 'admin', label: 'Admin' },
+                          ]}
+                          placeholder="Select role"
+                          allowClear={false}
+                          class="w-32"
+                        />
                         <button
                           onClick={() => handleRoleChange(user.userTenantId, editingRole())}
                           class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-xs"

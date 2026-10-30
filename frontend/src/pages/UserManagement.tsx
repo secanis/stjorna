@@ -6,9 +6,16 @@ import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
 import type { Role } from '~/types';
 import Table, { Column } from '~/components/ui/Table';
+import Combobox from '~/components/ui/Combobox';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { X, ExternalLink, Search, UserPlus } from 'lucide-solid';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
+
+const ROLE_OPTIONS = [
+  { value: 'viewer', label: 'Viewer' },
+  { value: 'editor', label: 'Editor' },
+  { value: 'admin', label: 'Admin' },
+];
 
 // One row per tenant membership of a given user.
 interface UserMembership {
@@ -330,17 +337,16 @@ export default function UserManagement() {
                 <ExternalLink size={12} />
               </a>
             </Show>
-            <select
-              value={m.role}
-              onChange={(e) => handleRoleChange(m.userTenantId, e.currentTarget.value as Role)}
-              onClick={(e) => e.stopPropagation()}
-              disabled={!authStore.isAdminOrAbove()}
-              class="ml-auto bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-0.5 text-gray-900 dark:text-white text-xs"
-            >
-              <option value="viewer">Viewer</option>
-              <option value="editor">Editor</option>
-              <option value="admin">Admin</option>
-            </select>
+            <div class="ml-auto" onClick={(e) => e.stopPropagation()}>
+              <Combobox
+                value={m.role}
+                onChange={(v) => handleRoleChange(m.userTenantId, v as Role)}
+                options={ROLE_OPTIONS}
+                disabled={!authStore.isAdminOrAbove()}
+                allowClear={false}
+                class="w-32"
+              />
+            </div>
             <Show when={authStore.isAdminOrAbove()}>
               <button
                 onClick={(e) => { e.stopPropagation(); handleRemove(m.userTenantId, m.tenantName); }}
@@ -464,30 +470,24 @@ export default function UserManagement() {
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-                <select
+                <Combobox
                   value={inviteRole()}
-                  onChange={(e) => setInviteRole(e.currentTarget.value as Role)}
-                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                  <option value="admin">Admin</option>
-                </select>
+                  onChange={(v) => setInviteRole(v as Role)}
+                  options={ROLE_OPTIONS}
+                  placeholder="Select role"
+                  allowClear={false}
+                />
               </div>
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
-                <select
+                <Combobox
                   value={inviteTenant()}
-                  onChange={(e) => setInviteTenant(e.currentTarget.value)}
-                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-                  required
-                >
-                  <option value="" disabled>Select a tenant</option>
-                  <For each={authStore.tenants}>
-                    {(t) => <option value={t.tenant}>{t.tenantName}</option>}
-                  </For>
-                </select>
+                  onChange={(v) => setInviteTenant(v)}
+                  options={authStore.tenants.map((t) => ({ value: t.tenant, label: t.tenantName || t.tenant }))}
+                  placeholder="Select a tenant"
+                  allowClear={false}
+                />
               </div>
 
               <Show when={error()}>
@@ -567,15 +567,13 @@ export default function UserManagement() {
               <Show when={selectedUser()}>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-                  <select
+                  <Combobox
                     value={addRole()}
-                    onChange={(e) => setAddRole(e.currentTarget.value as Role)}
-                    class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-                  >
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
-                  </select>
+                    onChange={(v) => setAddRole(v as Role)}
+                    options={ROLE_OPTIONS}
+                    placeholder="Select role"
+                    allowClear={false}
+                  />
                 </div>
               </Show>
 

@@ -65,7 +65,7 @@ test.describe('Media list filter', () => {
     // Open the media list and verify each filter state.
     await page.goto(ctx.frontendUrl + '/media');
     await page.waitForSelector('h1:has-text("Media")');
-    const select = page.locator('select');
+    const select = page.getByTestId('media-type');
 
     const rowCount = async () => page.locator('tbody tr').count();
 
@@ -75,18 +75,21 @@ test.describe('Media list filter', () => {
     expect(allCount).toBeGreaterThanOrEqual(2);
 
     // Switch to Images: only the image row remains.
-    await select.selectOption('image');
+    await select.click();
+    await page.locator('[data-testid="media-type-option-image"]').click();
     // Wait for the video row to disappear.
     await expect(page.locator(`tbody tr:has-text("${videoFilename}")`)).toHaveCount(0, { timeout: 10000 });
     await expect(page.locator(`tbody tr:has-text("${imgFilename}")`)).toHaveCount(1);
 
     // Switch to Videos: only the video row remains.
-    await select.selectOption('video');
+    await select.click();
+    await page.locator('[data-testid="media-type-option-video"]').click();
     await expect(page.locator(`tbody tr:has-text("${imgFilename}")`)).toHaveCount(0, { timeout: 10000 });
     await expect(page.locator(`tbody tr:has-text("${videoFilename}")`)).toHaveCount(1);
 
     // Back to All: both rows return.
-    await select.selectOption('');
+    await select.click();
+    await page.locator('[data-testid="media-type-option-none"]').click();
     await expect(page.locator(`tbody tr:has-text("${imgFilename}")`)).toHaveCount(1, { timeout: 10000 });
     await expect(page.locator(`tbody tr:has-text("${videoFilename}")`)).toHaveCount(1);
 

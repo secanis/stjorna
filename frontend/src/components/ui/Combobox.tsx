@@ -1,5 +1,6 @@
 import { createSignal, createMemo, For, Show, onMount, onCleanup, JSX } from 'solid-js';
 import { ChevronDown, X } from 'lucide-solid';
+import { fuzzyScore } from '~/utils/fuzzy';
 
 export interface ComboboxOption {
   value: string;
@@ -20,6 +21,7 @@ interface ComboboxProps {
   class?: string;
   id?: string;
   testId?: string;
+  disabled?: boolean;
 }
 
 const defaultHighlight = (label: string, query: string): JSX.Element => {
@@ -51,12 +53,16 @@ export default function Combobox(props: ComboboxProps) {
   const selectedLabel = () =>
     props.options.find((o) => o.value === props.value)?.label ?? '';
 
-  const showClear = () => props.allowClear !== false && !!props.value;
+  const showClear = () => !props.disabled && props.allowClear !== false && !!props.value;
 
   const items = createMemo<ComboboxOption[]>(() => {
     const q = query().trim().toLowerCase();
     if (!q) return props.options;
-    return props.options.filter((o) => o.label.toLowerCase().includes(q));
+    return props.options
+      .map((o) => ({ o, s: fuzzyScore(o.label, q) }))
+      .filter((x) => x.s >= 0)
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.o);
   });
 
   const allItems = (): ComboboxOption[] => {
@@ -73,7 +79,7 @@ export default function Combobox(props: ComboboxProps) {
   };
 
   const openDropdown = () => {
-    if (open()) return;
+    if (props.disabled || open()) return;
     setOpen(true);
     setActiveIdx(0);
   };
@@ -85,18 +91,21 @@ export default function Combobox(props: ComboboxProps) {
   };
 
   const pick = (val: string) => {
+    if (props.disabled) return;
     props.onChange(val);
     closeDropdown();
     focusInput();
   };
 
   const onInput = (e: InputEvent & { currentTarget: HTMLInputElement }) => {
+    if (props.disabled) return;
     setQuery(e.currentTarget.value);
     setActiveIdx(0);
     openDropdown();
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    if (props.disabled) return;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       if (!open()) openDropdown();
@@ -147,13 +156,14 @@ export default function Combobox(props: ComboboxProps) {
           type="text"
           autocomplete="off"
           spellcheck={false}
+          disabled={props.disabled}
           placeholder={props.placeholder ?? 'Type to search…'}
           value={open() ? query() : (query() || selectedLabel())}
           onInput={onInput}
           onFocus={onFocus}
           onKeyDown={onKeyDown}
           onClick={openDropdown}
-          class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded pl-3 pr-16 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
+          class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded pl-3 pr-16 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
         />
         <div class="absolute inset-y-0 right-1 flex items-center gap-1">
           <Show when={showClear()}>
@@ -171,8 +181,9 @@ export default function Combobox(props: ComboboxProps) {
           <button
             type="button"
             tabIndex={-1}
+            disabled={props.disabled}
             onClick={(e) => { e.stopPropagation(); open() ? closeDropdown() : openDropdown(); focusInput(); }}
-            class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1"
+            class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1 disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Toggle options"
           >
             <ChevronDown size={14} />

@@ -42,8 +42,9 @@ test.describe('User Management table — aggregate by user', () => {
     await page.waitForTimeout(800);
 
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
-    await page.locator('select#ts-existing-user').selectOption({ index: 1 });
+    await page.waitForSelector('input#ts-existing-user');
+    await page.locator('input#ts-existing-user').click();
+    await page.locator('[data-testid^="ts-existing-user-option-"]').first().click();
     await page.locator('button[type="submit"]:has-text("Add to tenant")').click();
     await page.waitForTimeout(1500);
 
@@ -110,8 +111,9 @@ test.describe('User Management table — aggregate by user', () => {
     await page.waitForURL(/\/tenants\/[a-z0-9]{8,}$/, { timeout: 8000 });
     await page.waitForTimeout(800);
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
-    await page.locator('select#ts-existing-user').selectOption({ index: 1 });
+    await page.waitForSelector('input#ts-existing-user');
+    await page.locator('input#ts-existing-user').click();
+    await page.locator('[data-testid^="ts-existing-user-option-"]').first().click();
     await page.locator('button[type="submit"]:has-text("Add to tenant")').click();
     await page.waitForTimeout(1500);
 
@@ -192,8 +194,9 @@ test.describe('User Management table — aggregate by user', () => {
     await page.waitForURL(/\/tenants\/[a-z0-9]{8,}$/, { timeout: 8000 });
     await page.waitForTimeout(800);
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
-    await page.locator('select#ts-existing-user').selectOption({ index: 1 });
+    await page.waitForSelector('input#ts-existing-user');
+    await page.locator('input#ts-existing-user').click();
+    await page.locator('[data-testid^="ts-existing-user-option-"]').first().click();
     await page.locator('button[type="submit"]:has-text("Add to tenant")').click();
     await page.waitForTimeout(1500);
 
