@@ -8,6 +8,7 @@ import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
 import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
+import Combobox from '~/components/ui/Combobox';
 import type { Media } from '~/types';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
@@ -173,19 +174,20 @@ export default function MediaList() {
             class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
-        <div>
+        <div class="w-56">
           <label for="media-type" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
-          <select
+          <Combobox
             id="media-type"
-            data-testid="media-type"
+            testId="media-type"
             value={filterType()}
-            onChange={(e) => { setFilterType(e.currentTarget.value); setPage(1); }}
-            class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
-          >
-            <option value="">All types</option>
-            <option value="image">Images</option>
-            <option value="video">Videos</option>
-          </select>
+            onChange={(v) => { setFilterType(v); setPage(1); }}
+            options={[
+              { value: 'image', label: 'Images' },
+              { value: 'video', label: 'Videos' },
+            ]}
+            placeholder="All types"
+            clearLabel="All types"
+          />
         </div>
       </div>
 

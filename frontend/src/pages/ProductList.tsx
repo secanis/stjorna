@@ -237,19 +237,20 @@ export default function ProductList() {
             emptyMessage="No matching category"
           />
         </div>
-        <div>
+        <div class="w-56">
           <label for="product-status" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-          <select
+          <Combobox
             id="product-status"
-            data-testid="product-status"
+            testId="product-status"
             value={activeFilter()}
-            onChange={(e) => { setActiveFilter(e.currentTarget.value); setPage(1); }}
-            class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
-          >
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+            onChange={(v) => { setActiveFilter(v); setPage(1); }}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+            placeholder="All statuses"
+            clearLabel="All statuses"
+          />
         </div>
       </div>
 

@@ -10,8 +10,8 @@ import { test, expect, getContext } from './helpers/test-context';
  *  - No email/password/name inputs inside the Add User form
  *    (those would create a NEW user record, which is the wrong
  *     responsibility for this page).
- *  - Existing users are listed in a dropdown, with the
- *    <option value="">— Select a user —</option> placeholder.
+ *  - Existing users are listed in a searchable combobox, with a
+ *    "— Select a user —" placeholder.
  *  - Submitting creates only the user_tenants link — no
  *    secondary draft user record is created on the users collection.
  *  - After assigning, the user disappears from the dropdown.
@@ -35,7 +35,7 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
     await page.waitForURL(/\/tenants\/[a-z0-9]{8,}$/, { timeout: 8000 });
 
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
+    await page.waitForSelector('input#ts-existing-user');
 
     // CRITICAL: the create-user form must not be reachable from here.
     const emailInForm    = await page.locator('form input[type="email"]').count();
@@ -44,8 +44,8 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
     expect(passwordInForm, 'password input inside Add User form').toBe(0);
 
     // CRITICAL: the dropdown is present.
-    await expect(page.locator('select#ts-existing-user')).toBeVisible();
-    await expect(page.locator('select#ts-existing-role')).toBeVisible();
+    await expect(page.locator('input#ts-existing-user')).toBeVisible();
+    await expect(page.locator('input#ts-existing-role')).toBeVisible();
   });
 
   test('Dropdown lists existing users with email', async ({ page }) => {
@@ -67,12 +67,13 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
     await page.waitForTimeout(800);
 
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
+    await page.waitForSelector('input#ts-existing-user');
 
-    const dropdown = page.locator('select#ts-existing-user');
-    const allOpts = await dropdown.locator('option').allTextContents();
-    // Placeholder disabled option is always present.
-    expect(allOpts[0]).toContain('Select a user');
+    const dropdown = page.locator('input#ts-existing-user');
+    // Placeholder is on the input (no option selected initially).
+    await expect(dropdown).toHaveAttribute('placeholder', /Select a user/);
+    await dropdown.click();
+    const allOpts = await page.locator('[data-testid^="ts-existing-user-option-"]').allTextContents();
     // The seeded regular user is NOT in testTenant, so they ARE available.
     // Their label is "Test User <user@test.stjorna.local>".
     const hasSeededUser = allOpts.some((t) => t.includes('user@test.stjorna.local'));
@@ -108,10 +109,12 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
     await page.waitForTimeout(800);
 
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
+    await page.waitForSelector('input#ts-existing-user');
 
-    await page.locator('select#ts-existing-user').selectOption({ index: 1 });
-    await page.locator('select#ts-existing-role').selectOption('editor');
+    await page.locator('input#ts-existing-user').click();
+    await page.locator('[data-testid^="ts-existing-user-option-"]').first().click();
+    await page.locator('input#ts-existing-role').click();
+    await page.locator('[data-testid="ts-existing-role-option-editor"]').click();
     await page.locator('button[type="submit"]:has-text("Add to tenant")').click();
     await page.waitForTimeout(1500);
 
@@ -150,19 +153,21 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
     await page.waitForTimeout(800);
 
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
+    await page.waitForSelector('input#ts-existing-user');
 
-    const before = await page.locator('select#ts-existing-user option:not([disabled])').count();
+    await page.locator('input#ts-existing-user').click();
+    const before = await page.locator('[data-testid^="ts-existing-user-option-"]').count();
     expect(before).toBeGreaterThan(0);
 
-    await page.locator('select#ts-existing-user').selectOption({ index: 1 });
+    await page.locator('[data-testid^="ts-existing-user-option-"]').first().click();
     await page.locator('button[type="submit"]:has-text("Add to tenant")').click();
     await page.waitForTimeout(1500);
 
     // Re-open the panel — the assigned user must be gone.
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
-    const after = await page.locator('select#ts-existing-user option:not([disabled])').count();
+    await page.waitForSelector('input#ts-existing-user');
+    await page.locator('input#ts-existing-user').click();
+    const after = await page.locator('[data-testid^="ts-existing-user-option-"]').count();
     expect(after).toBe(before - 1);
 
     // And the assigned user is now in the rendered tenant users list.
@@ -188,19 +193,21 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
 
     // Assign the only available user.
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
-    const before = await page.locator('select#ts-existing-user option:not([disabled])').count();
+    await page.waitForSelector('input#ts-existing-user');
+    await page.locator('input#ts-existing-user').click();
+    const before = await page.locator('[data-testid^="ts-existing-user-option-"]').count();
     expect(before).toBe(1);
-    await page.locator('select#ts-existing-user').selectOption({ index: 1 });
+    await page.locator('[data-testid^="ts-existing-user-option-"]').first().click();
     await page.locator('button[type="submit"]:has-text("Add to tenant")').click();
     await page.waitForTimeout(1500);
 
     // Re-open.
     await page.locator('button:has-text("Add User")').click();
-    await page.waitForSelector('select#ts-existing-user');
+    await page.waitForSelector('input#ts-existing-user');
 
     // Now empty — the hint must show with a link to /users.
-    const after = await page.locator('select#ts-existing-user option:not([disabled])').count();
+    await page.locator('input#ts-existing-user').click();
+    const after = await page.locator('[data-testid^="ts-existing-user-option-"]').count();
     expect(after).toBe(0);
     const hint = page.locator('text=/No users available/');
     await expect(hint).toBeVisible();

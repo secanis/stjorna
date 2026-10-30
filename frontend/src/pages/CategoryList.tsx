@@ -9,6 +9,7 @@ import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
+import Combobox from '~/components/ui/Combobox';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 
 const PER_PAGE = 50;
@@ -183,19 +184,20 @@ export default function CategoryList() {
             class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
-        <div>
+        <div class="w-56">
           <label for="category-status" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
-          <select
+          <Combobox
             id="category-status"
-            data-testid="category-status"
+            testId="category-status"
             value={activeFilter()}
-            onChange={(e) => { setActiveFilter(e.currentTarget.value); setPage(1); }}
-            class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
-          >
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+            onChange={(v) => { setActiveFilter(v); setPage(1); }}
+            options={[
+              { value: 'active', label: 'Active' },
+              { value: 'inactive', label: 'Inactive' },
+            ]}
+            placeholder="All statuses"
+            clearLabel="All statuses"
+          />
         </div>
       </div>
 

@@ -99,7 +99,8 @@ test.describe('List filtering', () => {
       await page.locator('[data-testid="product-category-option-none"]').click();
 
       // Status filter keeps only inactive products.
-      await page.getByTestId('product-status').selectOption('inactive');
+      await page.getByTestId('product-status').click();
+      await page.locator('[data-testid="product-status-option-inactive"]').click();
       await expect(page.getByText(`Filter Book ${stamp}`)).toBeVisible();
       await expect(page.getByText(`Filter Mouse ${stamp}`)).toHaveCount(0);
     } finally {
@@ -145,7 +146,8 @@ test.describe('List filtering', () => {
       await page.getByTestId('category-search').fill('');
 
       // Status filter keeps only inactive categories.
-      await page.getByTestId('category-status').selectOption('inactive');
+      await page.getByTestId('category-status').click();
+      await page.locator('[data-testid="category-status-option-inactive"]').click();
       await expect(page.getByText(`Haystack Cat ${stamp}`)).toBeVisible();
       await expect(page.getByText(`Needle Cat ${stamp}`)).toHaveCount(0);
     } finally {
@@ -177,7 +179,8 @@ test.describe('List filtering', () => {
       await page.getByTestId('media-search').fill('');
 
       // Type filter: neither fixture is a video, so "Videos" yields nothing.
-      await page.getByTestId('media-type').selectOption('video');
+      await page.getByTestId('media-type').click();
+      await page.locator('[data-testid="media-type-option-video"]').click();
       await expect(page.getByText(`needle-${stamp}.png`)).toHaveCount(0);
       await expect(page.getByText(`haystack-${stamp}.png`)).toHaveCount(0);
     } finally {

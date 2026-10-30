@@ -7,6 +7,7 @@ import type { Tenant, TenantThemeConfig } from '~/types';
 import { parseThemeConfig, buildThemeConfig, asTrimmedString } from '~/utils/themeConfig';
 import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeConfigFields';
 import BackupSection from '~/components/backup/BackupSection';
+import Combobox from '~/components/ui/Combobox';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 export default function Settings() {
@@ -156,16 +157,18 @@ export default function Settings() {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
-            <select
+            <Combobox
               value={formData().plan}
-              onChange={(e) => setFormData(d => ({ ...d, plan: e.currentTarget.value }))}
-              class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-            >
-              <option value="free">Free</option>
-              <option value="starter">Starter</option>
-              <option value="professional">Professional</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
+              onChange={(v) => setFormData(d => ({ ...d, plan: v }))}
+              options={[
+                { value: 'free', label: 'Free' },
+                { value: 'starter', label: 'Starter' },
+                { value: 'professional', label: 'Professional' },
+                { value: 'enterprise', label: 'Enterprise' },
+              ]}
+              placeholder="Select plan"
+              allowClear={false}
+            />
           </div>
 
           <div>

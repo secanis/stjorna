@@ -5,6 +5,7 @@ import { authStore } from '~/stores/auth';
 import { Save, Copy, Check, Info } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
+import Combobox from '~/components/ui/Combobox';
 import { getConfiguredPbUrl } from '~/services/config';
 
 interface OidcFormData {
@@ -506,15 +507,17 @@ export default function OidcSettings() {
 
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default role</label>
-                <select
+                <Combobox
                   value={form().defaultRole}
-                  onChange={(e) => setForm((f) => ({ ...f, defaultRole: e.currentTarget.value }))}
-                  class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="editor">Editor</option>
-                  <option value="admin">Admin</option>
-                </select>
+                  onChange={(v) => setForm((f) => ({ ...f, defaultRole: v }))}
+                  options={[
+                    { value: 'viewer', label: 'Viewer' },
+                    { value: 'editor', label: 'Editor' },
+                    { value: 'admin', label: 'Admin' },
+                  ]}
+                  placeholder="Select role"
+                  allowClear={false}
+                />
               </div>
             </div>
 
@@ -595,14 +598,16 @@ export default function OidcSettings() {
 
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Membership sync mode</label>
-              <select
+              <Combobox
                 value={form().syncMode}
-                onChange={(e) => setForm((f) => ({ ...f, syncMode: e.currentTarget.value }))}
-                class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
-              >
-                <option value="replace-oidc">Replace — remove memberships for groups the user left</option>
-                <option value="additive">Additive — only add/update, never remove</option>
-              </select>
+                onChange={(v) => setForm((f) => ({ ...f, syncMode: v }))}
+                options={[
+                  { value: 'replace-oidc', label: 'Replace — remove memberships for groups the user left' },
+                  { value: 'additive', label: 'Additive — only add/update, never remove' },
+                ]}
+                placeholder="Select sync mode"
+                allowClear={false}
+              />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Manual memberships are never touched either way. "Replace" also removes OIDC-sourced
                 memberships whose group no longer appears in the IdP.
