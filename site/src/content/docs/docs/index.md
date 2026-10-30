@@ -26,6 +26,14 @@ backends, and ships as a single Helm chart or a two-service Docker Compose stack
 - **Roles per tenant** — `viewer`, `editor`, `admin` — decide what a member can read and write.
 - **Read-only API keys** give a backend or storefront machine access to exactly one tenant.
 
+## Screenshots
+
+![Dashboard overview with tenant selector](/screenshot-1.png)
+
+![Statistics information for each tenant](/screenshot-2.png)
+
+![STJÓRNA settings and tenant configuration](/screenshot-3.png)
+
 ## Where to go next
 
 - [Getting started](/docs/getting-started/) — spin it up and run the setup wizard.
