@@ -235,4 +235,104 @@ export const dict: RawDictionary = {
     roleDeployment: 'Deployment',
     footer: 'STJÓRNA — Open Source unter AGPL-3.0.',
   },
+
+  setup: {
+    subtitle: 'Ersteinrichtung',
+    stepSuperuser: '1. Superuser',
+    stepStorage: '2. Speicher',
+    stepTenant: '3. Mandant',
+    stepLink: '4. Verknüpfung',
+    bootstrapIntro:
+      'Es existiert noch kein PocketBase-Superuser. Legen Sie den ersten an — er kann jeden Mandanten dieser Instanz verwalten, wählen Sie also etwas Einprägsames. Sie benötigen außerdem das einmalige Setup-Token vom Server.',
+    loginIntro:
+      'Melden Sie sich mit dem bereits vorhandenen PocketBase-Superuser an. (Helm- und Docker-Compose-Installationen erstellen ihn aus PB_SUPERUSER_EMAIL / PB_SUPERUSER_PASSWORD.)',
+    superuserEmail: 'Superuser-E-Mail',
+    password: 'Passwort',
+    confirmPassword: 'Passwort bestätigen',
+    setupToken: 'Setup-Token',
+    tokenHintEnv:
+      'Der Wert der Umgebungsvariable STJORNA_SETUP_TOKEN auf dem PocketBase-Server.',
+    tokenHintLog:
+      'Wird beim Start im PocketBase-Serverprotokoll als STJORNA_SETUP_TOKEN=… ausgegeben (z. B. docker compose logs pocketbase / kubectl logs).',
+    creating: 'Wird erstellt...',
+    loggingIn: 'Anmeldung läuft...',
+    createSuperuser: 'Superuser erstellen & fortfahren',
+    continue: 'Weiter',
+    storageIntro: 'Wählen Sie, wie STJÓRNA hochgeladene Dateien speichern soll:',
+    storageLocalTitle: 'Lokales Dateisystem (Standard)',
+    storageLocalDesc:
+      'Dateien werden im PocketBase-Container unter pb_data/storage/ gespeichert. Am besten für die Entwicklung. Mounten Sie in Produktion unbedingt ein Volume, um Daten dauerhaft zu sichern.',
+    storageS3Title: 'S3 (oder S3-kompatibel)',
+    storageS3Desc:
+      'Dateien werden in einem S3-Bucket gespeichert. Funktioniert mit AWS S3, Cloudflare R2, Backblaze B2, MinIO usw. Erfordert einen Neustart von PocketBase nach der Einrichtung.',
+    bucket: 'Bucket *',
+    region: 'Region *',
+    endpoint: 'Endpoint *',
+    accessKey: 'Access Key *',
+    secretKey: 'Secret Key *',
+    endpointHint: 'Für AWS automatisch aus der Region übernommen, für R2 / B2 / MinIO überschreiben',
+    forcePathStyle: 'Path-Style-Adressierung erzwingen (MinIO, lokales S3)',
+    testing: 'Wird getestet…',
+    verifyS3: 'S3-Einstellungen prüfen',
+    testRecordNote:
+      'Falls ein Testdatensatz erstellt wurde, erscheint er in der Medienliste mit dem Dateinamen __stjorna_s3_test__. Sie können ihn bedenkenlos löschen.',
+    clickVerify: 'Klicken Sie vor dem Fortfahren auf „S3-Einstellungen prüfen“.',
+    tenantIntro:
+      'Erstellen Sie Ihren ersten Mandanten (ein vorhandener Mandant mit demselben Slug wird wiederverwendet):',
+    companyName: 'Firmenname',
+    slug: 'Slug',
+    saving: 'Wird gespeichert...',
+    linkIntro:
+      'Ein Mandanten-Admin-Konto ({{email}}) wird in {{where}} {{slug}} erstellt. Es ist vom Superuser getrennt und erhält ein eigenes Passwort. Existiert bereits ein Benutzer mit dieser E-Mail, wird er unverändert verknüpft und die folgenden Felder werden ignoriert.',
+    linkWhereNew: 'dem neuen Mandanten',
+    linkWhereExisting: 'dem vorhandenen Mandanten',
+    tenantAdminPassword: 'Mandanten-Admin-Passwort',
+    tenantAdminPasswordHint:
+      'Mindestens 10 Zeichen, abweichend vom Superuser-Passwort.',
+    confirmTenantAdminPassword: 'Mandanten-Admin-Passwort bestätigen',
+    linking: 'Wird verknüpft...',
+    completeSetup: 'Einrichtung abschließen',
+    doneTitle: 'Einrichtung abgeschlossen!',
+    s3Active: 'S3-Speicher aktiv',
+    s3ActiveDesc: 'Neue Uploads werden im Bucket {{bucket}} gespeichert.',
+    localStorageDesc: 'Es wird lokaler Dateisystem-Speicher verwendet.',
+    redirecting: 'Weiterleitung zur Anmeldung...',
+    sessionExpired: 'Superuser-Sitzung abgelaufen — bitte melden Sie sich erneut an.',
+    passwordMismatch: 'Passwort und Bestätigung stimmen nicht überein',
+    tokenRequired: 'Setup-Token ist erforderlich',
+    loginFailed: 'Superuser-Anmeldung fehlgeschlagen',
+    s3FieldsRequired: 'Bitte füllen Sie alle erforderlichen S3-Felder aus',
+    couldNotSaveS3: 'S3-Einstellungen konnten nicht gespeichert werden: {{msg}}',
+    createTenantFailed: 'Mandant konnte nicht erstellt werden',
+    tenantNotFound: 'Mandant nicht gefunden — gehen Sie einen Schritt zurück',
+    adminPasswordMin: 'Das Mandanten-Admin-Passwort muss mindestens 10 Zeichen lang sein',
+    adminPasswordMismatch:
+      'Mandanten-Admin-Passwort und Bestätigung stimmen nicht überein',
+    adminPasswordSameAsSuperuser:
+      'Das Mandanten-Admin-Passwort muss sich vom Superuser-Passwort unterscheiden',
+    linkAdminFailed: 'Admin konnte nicht mit dem Mandanten verknüpft werden',
+    s3MimeType:
+      'Testdatei-MIME-Typ wird von der Medien-Sammlung nicht zugelassen. (Dies ist ein Assistenten-Fehler, nicht Ihr S3.)',
+    s3MissingFile: 'Testdatei fehlt. (Dies ist ein Assistenten-Fehler.)',
+    s3ValidationFailed: 'Dateivalidierung fehlgeschlagen: {{msg}}',
+    s3TestFailed: 'S3-Test fehlgeschlagen',
+    s3AuthFailed: 'Authentifizierung fehlgeschlagen. Prüfen Sie Access Key und Secret Key.',
+    s3BucketMissing: 'Bucket existiert nicht. Prüfen Sie den Bucket-Namen.',
+    s3AccessDenied:
+      'Zugriff verweigert. Prüfen Sie die IAM-Berechtigungen des Access Keys (benötigt s3:PutObject, s3:GetObject, s3:DeleteObject).',
+    s3EndpointInvalid:
+      'Endpoint-URL ist ungültig oder nicht erreichbar. Prüfen Sie Endpoint und Region.',
+    s3GenericError:
+      'S3-Anfrage fehlgeschlagen (PocketBase gab einen generischen Fehler zurück). Prüfen Sie Zugangsdaten, Bucket, Region, Endpoint und IAM-Berechtigungen. ({{raw}})',
+    s3HttpError:
+      'S3 gab einen Fehler zurück. Prüfen Sie Zugangsdaten, Bucket, Region, Endpoint und IAM-Berechtigungen. ({{raw}})',
+    s3UploadFailed: 'Upload zu S3 fehlgeschlagen: {{msg}}',
+    s3FileTokenFailed: 'Datei-Token konnte nicht abgerufen werden: {{msg}}',
+    s3FileUrlUnreachable: 'S3-Datei-URL nicht erreichbar: {{msg}}',
+    s3FileNotAccessible: 'S3-Datei nicht zugänglich: HTTP {{status}}',
+    s3VerifiedButNotDeleted:
+      'S3-Verbindung verifiziert. Der Testdatensatz (id: {{id}}) wurde erstellt, konnte aber nicht automatisch gelöscht werden — bitte löschen Sie ihn aus der Medienliste.',
+    s3Verified:
+      'S3-Verbindung verifiziert (Bucket: {{bucket}}, Region: {{region}}, Endpoint: {{endpoint}}). Fahren Sie fort, um die Einrichtung abzuschließen.',
+  },
 };
