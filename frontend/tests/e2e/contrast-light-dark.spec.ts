@@ -81,8 +81,10 @@ test.describe('Color contrast (light mode)', () => {
     await page.locator('button').filter({ hasText: /^created$/ }).first().click();
     await page.waitForTimeout(300);
 
-    // first bg-blue-600 button (the active created chip)
-    const activeChip = page.locator('button.bg-blue-600').first();
+    // first bg-blue-600 button inside the action chips container (the active
+    // created chip). Scoped because the header language switcher also uses
+    // bg-blue-600 for its active locale.
+    const activeChip = page.locator('div.flex.gap-1\\.5:not(.flex-wrap) button.bg-blue-600').first();
     await expect(activeChip).toHaveText(/created/);
     const color = await activeChip.evaluate(el => getComputedStyle(el).color);
     expect(color).toBe(WHITE);

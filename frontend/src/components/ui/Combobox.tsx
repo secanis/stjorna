@@ -255,7 +255,8 @@ export default function Combobox(props: ComboboxProps) {
                     'text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700': i() !== activeIdx(),
                     'font-medium': props.value === opt.value && opt.value !== '',
                   }}
-                  onMouseDown={(e) => { e.preventDefault(); pick(opt.value); }}
+                  onMouseDown={(e) => { e.preventDefault(); }}
+                  onClick={() => pick(opt.value)}
                   onMouseEnter={() => setActiveIdx(i())}
                 >
                   {opt.value === '' ? opt.label : renderOption(opt.label, query())}
