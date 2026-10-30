@@ -1,4 +1,5 @@
 import { createSignal, createMemo, For, Show, onMount, onCleanup, JSX } from 'solid-js';
+import { Portal } from 'solid-js/web';
 import { ChevronDown, X } from 'lucide-solid';
 import { fuzzyScore } from '~/utils/fuzzy';
 
@@ -45,8 +46,10 @@ export default function Combobox(props: ComboboxProps) {
   const [open, setOpen] = createSignal(false);
   const [query, setQuery] = createSignal('');
   const [activeIdx, setActiveIdx] = createSignal(0);
+  const [pos, setPos] = createSignal({ top: 0, left: 0, width: 0 });
   let rootRef: HTMLDivElement | undefined;
   let inputRef: HTMLInputElement | undefined;
+  let dropdownRef: HTMLUListElement | undefined;
 
   // If the selected value is cleared (e.g. form reset), also clear the
   // text in the input. When the user picks an option, we set both.
@@ -78,8 +81,22 @@ export default function Combobox(props: ComboboxProps) {
     setTimeout(() => inputRef?.focus(), 0);
   };
 
+  const updatePosition = () => {
+    const rect = inputRef?.getBoundingClientRect();
+    if (!rect) return;
+    const maxHeight = 240; // matches max-h-60
+    const gap = 4; // matches mt-1
+    const openUp = window.innerHeight - rect.bottom < maxHeight && rect.top > maxHeight + gap;
+    setPos({
+      top: openUp ? rect.top - maxHeight - gap : rect.bottom + gap,
+      left: rect.left,
+      width: rect.width,
+    });
+  };
+
   const openDropdown = () => {
     if (props.disabled || open()) return;
+    updatePosition();
     setOpen(true);
     setActiveIdx(0);
   };
@@ -134,14 +151,27 @@ export default function Combobox(props: ComboboxProps) {
 
   const onDocumentClick = (e: MouseEvent) => {
     if (!rootRef) return;
-    if (!rootRef.contains(e.target as Node)) closeDropdown();
+    if (rootRef.contains(e.target as Node)) return;
+    if (dropdownRef && dropdownRef.contains(e.target as Node)) return;
+    closeDropdown();
+  };
+
+  const onScrollOrResize = (e: Event) => {
+    if (!open()) return;
+    const target = e.target;
+    if (target instanceof Node && dropdownRef?.contains(target)) return;
+    closeDropdown();
   };
 
   onMount(() => {
     document.addEventListener('mousedown', onDocumentClick);
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
   });
   onCleanup(() => {
     document.removeEventListener('mousedown', onDocumentClick);
+    window.removeEventListener('scroll', onScrollOrResize, true);
+    window.removeEventListener('resize', onScrollOrResize);
   });
 
   const renderOption = props.renderOption ?? defaultHighlight;
@@ -192,10 +222,17 @@ export default function Combobox(props: ComboboxProps) {
       </div>
 
       <Show when={open()}>
-        <ul
-          class="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg"
-          role="listbox"
-        >
+        <Portal>
+          <ul
+            ref={dropdownRef}
+            class="fixed z-50 max-h-60 overflow-y-auto bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-lg"
+            role="listbox"
+            style={{
+              top: `${pos().top}px`,
+              left: `${pos().left}px`,
+              width: `${pos().width}px`,
+            }}
+          >
           <Show
             when={allItems().length > 0}
             fallback={
@@ -224,7 +261,8 @@ export default function Combobox(props: ComboboxProps) {
               )}
             </For>
           </Show>
-        </ul>
+          </ul>
+        </Portal>
       </Show>
     </div>
   );
