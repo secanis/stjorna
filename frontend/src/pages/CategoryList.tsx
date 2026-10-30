@@ -42,6 +42,9 @@ export default function CategoryList() {
     }
   });
 
+  let searchInputRef: HTMLInputElement | undefined;
+  onMount(() => searchInputRef?.focus());
+
   const [page, setPage] = createSignal(1);
   const [sortKey, setSortKey] = createSignal('sort_order');
   const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('asc');
@@ -172,6 +175,7 @@ export default function CategoryList() {
           <input
             id="category-search"
             data-testid="category-search"
+            ref={searchInputRef}
             type="text"
             value={search()}
             onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}

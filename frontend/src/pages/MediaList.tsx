@@ -41,6 +41,9 @@ export default function MediaList() {
     }
   });
 
+  let searchInputRef: HTMLInputElement | undefined;
+  onMount(() => searchInputRef?.focus());
+
   const [page, setPage] = createSignal(1);
   const [sortKey, setSortKey] = createSignal('created');
   const [sortDir, setSortDir] = createSignal<'asc' | 'desc'>('desc');
@@ -162,6 +165,7 @@ export default function MediaList() {
           <input
             id="media-search"
             data-testid="media-search"
+            ref={searchInputRef}
             type="text"
             value={search()}
             onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}

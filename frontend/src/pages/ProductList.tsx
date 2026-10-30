@@ -7,6 +7,7 @@ import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
 import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
+import Combobox from '~/components/ui/Combobox';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Product, Category } from '~/types';
@@ -47,6 +48,9 @@ export default function ProductList() {
       return;
     }
   });
+
+  let searchInputRef: HTMLInputElement | undefined;
+  onMount(() => searchInputRef?.focus());
 
   const [page, setPage] = createSignal(1);
   const [sortKey, setSortKey] = createSignal('sort_order');
@@ -212,6 +216,7 @@ export default function ProductList() {
           <input
             id="product-search"
             data-testid="product-search"
+            ref={searchInputRef}
             type="text"
             value={search()}
             onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
@@ -219,20 +224,18 @@ export default function ProductList() {
             class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
-        <div>
+        <div class="w-64">
           <label for="product-category" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
-          <select
+          <Combobox
             id="product-category"
-            data-testid="product-category"
+            testId="product-category"
             value={categoryFilter()}
-            onChange={(e) => { setCategoryFilter(e.currentTarget.value); setPage(1); }}
-            class="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm"
-          >
-            <option value="">All categories</option>
-            <For each={categories()?.items || []}>
-              {(c) => <option value={c.id}>{c.name}</option>}
-            </For>
-          </select>
+            onChange={(v) => { setCategoryFilter(v); setPage(1); }}
+            options={(categories()?.items || []).map((c) => ({ value: c.id, label: c.name }))}
+            placeholder="All categories"
+            clearLabel="All categories"
+            emptyMessage="No matching category"
+          />
         </div>
         <div>
           <label for="product-status" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>

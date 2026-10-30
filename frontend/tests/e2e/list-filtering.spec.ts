@@ -89,10 +89,14 @@ test.describe('List filtering', () => {
       await page.getByTestId('product-search').fill('');
 
       // Category filter keeps only products in the selected category.
-      await page.getByTestId('product-category').selectOption(catA.id);
+      await page.getByTestId('product-category').fill(`Filter Cat A ${stamp}`);
+      await page.locator(`[data-testid="product-category-option-${catA.id}"]`).click();
       await expect(page.getByText(`Filter Mouse ${stamp}`)).toBeVisible();
       await expect(page.getByText(`Filter Book ${stamp}`)).toHaveCount(0);
-      await page.getByTestId('product-category').selectOption('');
+
+      // Clear the category filter via the dropdown's "All categories" option.
+      await page.getByTestId('product-category').click();
+      await page.locator('[data-testid="product-category-option-none"]').click();
 
       // Status filter keeps only inactive products.
       await page.getByTestId('product-status').selectOption('inactive');

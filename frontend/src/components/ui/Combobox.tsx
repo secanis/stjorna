@@ -1,5 +1,6 @@
 import { createSignal, createMemo, For, Show, onMount, onCleanup, JSX } from 'solid-js';
 import { ChevronDown, X } from 'lucide-solid';
+import { fuzzyScore } from '~/utils/fuzzy';
 
 export interface ComboboxOption {
   value: string;
@@ -56,7 +57,11 @@ export default function Combobox(props: ComboboxProps) {
   const items = createMemo<ComboboxOption[]>(() => {
     const q = query().trim().toLowerCase();
     if (!q) return props.options;
-    return props.options.filter((o) => o.label.toLowerCase().includes(q));
+    return props.options
+      .map((o) => ({ o, s: fuzzyScore(o.label, q) }))
+      .filter((x) => x.s >= 0)
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.o);
   });
 
   const allItems = (): ComboboxOption[] => {
