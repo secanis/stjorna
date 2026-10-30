@@ -1,5 +1,7 @@
 import { useNavigate } from '@solidjs/router';
 import LoginCard from '~/components/auth/LoginCard';
+import LanguageSwitcher from '~/components/ui/LanguageSwitcher';
+import { i18nStore } from '~/i18n';
 
 export default function SuperuserLogin() {
   const navigate = useNavigate();
@@ -9,27 +11,28 @@ export default function SuperuserLogin() {
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
         <div class="text-center mb-8">
           <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">STJÓRNA</h1>
-          <p class="text-gray-500 dark:text-gray-400">Superuser sign in</p>
+          <p class="text-gray-500 dark:text-gray-400">{i18nStore.t('auth.superuserSignIn')}</p>
         </div>
 
         <LoginCard
           mode="admin"
           onSuccess={() => navigate('/')}
-          errorHint="If no superuser exists yet, click 'First-time setup?' below to create one."
+          errorHint={i18nStore.t('auth.superuserErrorHint')}
         />
 
         <div class="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3 text-center">
+          <LanguageSwitcher />
           <button
             onClick={() => navigate('/setup?mode=admin')}
             class="block w-full text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-sm"
           >
-            First-time setup?
+            {i18nStore.t('auth.firstTimeSetup')}
           </button>
           <button
             onClick={() => navigate('/login')}
             class="block w-full text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-sm"
           >
-            Back to user login
+            {i18nStore.t('auth.backToUserLogin')}
           </button>
         </div>
       </div>

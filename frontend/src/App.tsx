@@ -3,6 +3,7 @@ import { Router, Route } from '@solidjs/router';
 import type { ParentProps } from 'solid-js';
 import Layout from '~/components/layout/Layout';
 import RequireAuth from '~/components/auth/RequireAuth';
+import { i18nStore } from '~/i18n';
 const Setup = lazy(() => import('~/pages/Setup'));
 const Login = lazy(() => import('~/pages/Login'));
 const Dashboard = lazy(() => import('~/pages/Dashboard'));
@@ -78,7 +79,7 @@ export default function App() {
                 path="*"
                 component={() => (
                     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                        <div class="text-gray-900 dark:text-white text-2xl">404 — Page not found</div>
+                        <div class="text-gray-900 dark:text-white text-2xl">{i18nStore.t('notFound.title')}</div>
                     </div>
                 )}
             />

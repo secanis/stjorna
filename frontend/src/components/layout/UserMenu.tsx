@@ -1,7 +1,8 @@
-import { Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { LogOut, User } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
+import LanguageSwitcher from '~/components/ui/LanguageSwitcher';
 
 function getInitials(email: string): string {
   if (!email) return '?';
@@ -13,9 +14,9 @@ function getInitials(email: string): string {
 }
 
 function getRoleLabel(): string {
-  if (authStore.isPBAdmin) return 'PB Admin';
+  if (authStore.isPBAdmin) return i18nStore.t('common.pbAdmin');
   const role = authStore.role;
-  if (!role) return 'No role';
+  if (!role) return i18nStore.t('common.noRole');
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
 
@@ -45,21 +46,27 @@ export default function UserMenu() {
           <div class="text-gray-900 dark:text-white text-sm font-medium truncate">{email()}</div>
           <div class="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{roleLabel()}</div>
         </div>
-<button
+
+        <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <div class="text-xs text-gray-500 dark:text-gray-400 uppercase mb-2">{i18nStore.t('language.label')}</div>
+          <LanguageSwitcher />
+        </div>
+
+        <button
           type="button"
           onClick={() => navigate('/profile')}
           data-testid="user-menu-profile"
           class="w-full text-left px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white text-sm flex items-center gap-2"
         >
           <User size={16} />
-          Profile
+          {i18nStore.t('userMenu.profile')}
         </button>
         <button
           onClick={async () => { await authStore.logout(); window.location.href = '/login'; }}
           class="w-full text-left px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white text-sm flex items-center gap-2"
         >
           <LogOut size={16} />
-          Logout
+          {i18nStore.t('userMenu.logout')}
         </button>
       </div>
     </div>

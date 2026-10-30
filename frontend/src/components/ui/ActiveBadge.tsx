@@ -21,6 +21,7 @@
 
 import { JSX, Show } from 'solid-js';
 import { Check, X } from 'lucide-solid';
+import { i18nStore } from '~/i18n';
 
 export interface ActiveBadgeProps {
   active: boolean;
@@ -36,8 +37,9 @@ const ICON_SIZE = { sm: 12, md: 14 } as const;
 
 export function ActiveBadge(props: ActiveBadgeProps): JSX.Element {
   const size = () => props.size ?? 'sm';
-  const on = props.labelOn ?? 'Yes';
-  const off = props.labelOff ?? 'No';
+  const on = props.labelOn ?? i18nStore.t('common.yes');
+  const off = props.labelOff ?? i18nStore.t('common.no');
+  const ariaLabel = () => props.ariaLabel ?? i18nStore.t('common.activeLabel', { state: props.active ? on : off });
   // The shape is identical for button vs span — only the wrapper tag differs.
   // We split into two components so the disabled / aria behavior is right.
   if (props.onClick) {
@@ -46,7 +48,7 @@ export function ActiveBadge(props: ActiveBadgeProps): JSX.Element {
         type="button"
         onClick={() => { if (!props.disabled) props.onClick!(); }}
         aria-pressed={props.active}
-        aria-label={props.ariaLabel ?? `Active: ${props.active ? on : off}`}
+        aria-label={ariaLabel()}
         disabled={props.disabled}
         classList={{
           'inline-flex items-center gap-1 rounded font-medium transition-colors': true,
@@ -67,7 +69,7 @@ export function ActiveBadge(props: ActiveBadgeProps): JSX.Element {
   return (
     <span
       role="status"
-      aria-label={props.ariaLabel ?? `Active: ${props.active ? on : off}`}
+      aria-label={ariaLabel()}
       classList={{
         'inline-flex items-center gap-1 rounded font-medium': true,
         'px-2 py-1 text-xs': size() === 'sm',

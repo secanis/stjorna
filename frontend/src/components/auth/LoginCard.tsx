@@ -2,26 +2,27 @@ import { createSignal, Show, For, onMount } from 'solid-js';
 import { ClientResponseError } from 'pocketbase';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 function describeError(err: unknown): string {
-  if (!err) return 'Login failed';
+  if (!err) return i18nStore.t('auth.loginFailed');
   if (err instanceof ClientResponseError) {
     if (err.status === 0 || err.isAbort) {
-      return 'Cannot reach PocketBase server. Check that it is running and reachable.';
+      return i18nStore.t('auth.cannotReachServer');
     }
     const status = err.status;
     const msg = err.response?.message || err.originalError?.message || err.message;
     if (status && status >= 500) {
-      return `Server error (${status}): ${msg || 'check PB logs for the underlying cause.'}`;
+      return i18nStore.t('auth.serverError', { status, msg: msg || i18nStore.t('auth.checkPbLogs') });
     }
     if (status === 404 && /Failed to authenticate/i.test(msg || '')) {
-      return 'User not found or password incorrect.';
+      return i18nStore.t('auth.userNotFound');
     }
-    return msg || `Login failed (${status || 'unknown'})`;
+    return msg || i18nStore.t('auth.loginFailedStatus', { status: status || 'unknown' });
   }
   if (err instanceof Error) {
-    return err.message || 'Login failed';
+    return err.message || i18nStore.t('auth.loginFailed');
   }
   return String(err);
 }
@@ -194,7 +195,7 @@ export default function LoginCard(props: LoginCardProps) {
               <div class="w-full border-t border-gray-200 dark:border-gray-700" />
             </div>
             <div class="relative flex justify-center text-sm">
-              <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">or</span>
+              <span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">{i18nStore.t('auth.or')}</span>
             </div>
           </div>
         </Show>
@@ -207,7 +208,7 @@ export default function LoginCard(props: LoginCardProps) {
             <form onSubmit={handleLogin} class="space-y-4">
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="email">
-                  Email
+                  {i18nStore.t('auth.email')}
                 </label>
                 <input
                   id="email"
@@ -225,7 +226,7 @@ export default function LoginCard(props: LoginCardProps) {
                   class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   for="password"
                 >
-                  Password
+                  {i18nStore.t('auth.password')}
                 </label>
                 <input
                   id="password"
@@ -243,18 +244,18 @@ export default function LoginCard(props: LoginCardProps) {
                 disabled={loading()}
                 class={`w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
               >
-                {loading() ? 'Signing in...' : 'Sign In'}
+                {loading() ? i18nStore.t('auth.signingIn') : i18nStore.t('auth.signIn')}
               </button>
             </form>
           }
         >
           <form onSubmit={handleOtpSubmit} class="space-y-4">
             <div class="text-sm text-gray-600 dark:text-gray-300">
-              Two-factor authentication is enabled. Enter the one-time password sent to your email.
+              {i18nStore.t('auth.otpPrompt')}
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="otp">
-                OTP code
+                {i18nStore.t('auth.otpCode')}
               </label>
               <input
                 id="otp"
@@ -273,7 +274,7 @@ export default function LoginCard(props: LoginCardProps) {
               disabled={loading()}
               class={`w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
             >
-              {loading() ? 'Verifying...' : 'Verify'}
+              {loading() ? i18nStore.t('auth.verifying') : i18nStore.t('auth.verify')}
             </button>
 
             <button
@@ -287,7 +288,7 @@ export default function LoginCard(props: LoginCardProps) {
               }}
               class="w-full text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50"
             >
-              Back to password
+              {i18nStore.t('auth.backToPassword')}
             </button>
           </form>
         </Show>
@@ -295,7 +296,7 @@ export default function LoginCard(props: LoginCardProps) {
 
       <Show when={!isAdmin() && !passwordEnabled() && oidcProviders().length === 0}>
         <div class="text-sm text-red-600 dark:text-red-400">
-          No authentication method is enabled. Please contact an administrator.
+          {i18nStore.t('auth.noAuthMethod')}
         </div>
       </Show>
 

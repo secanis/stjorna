@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { tenantTheme } from '~/stores/tenantTheme';
+import { i18nStore } from '~/i18n';
 import type { Tenant, TenantThemeConfig } from '~/types';
 import { parseThemeConfig, buildThemeConfig, asTrimmedString } from '~/utils/themeConfig';
 import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeConfigFields';
@@ -47,7 +48,7 @@ export default function Settings() {
       });
       setThemeExtra(cfg);
     } catch (e: any) {
-      setError(e.message || 'Failed to load tenant settings');
+      setError(e.message || i18nStore.t('settings.failedToLoad'));
     }
   };
 
@@ -65,7 +66,7 @@ export default function Settings() {
     const tenantId = authStore.currentTenant;
 
     if (!tenantId) {
-      setError('No tenant selected. Please use the tenant selector in the header.');
+      setError(i18nStore.t('settings.noTenantSelected'));
       setLoading(false);
       return;
     }
@@ -98,7 +99,7 @@ export default function Settings() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e: any) {
-      setError(e.message || 'Failed to save');
+      setError(e.message || i18nStore.t('settings.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -106,10 +107,10 @@ export default function Settings() {
 
   return (
     <div class="space-y-8 max-w-3xl">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('settings.title')}</h1>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error() && !loading()}>
@@ -118,23 +119,23 @@ export default function Settings() {
         </div>
         <Show when={!authStore.isPBAdmin && !authStore.currentTenant}>
           <p class="text-gray-500 dark:text-gray-400 text-sm">
-            Use the tenant selector in the header to select a tenant.
+            {i18nStore.t('settings.useTenantSelector')}
           </p>
         </Show>
       </Show>
 
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
-          Settings saved successfully!
+          {i18nStore.t('settings.savedSuccessfully')}
         </div>
       </Show>
 
       <Show when={!loading() && !error() && authStore.currentTenant}>
         <section>
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tenant Settings</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('settings.tenantSettings')}</h2>
           <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('settings.companyName')}</label>
             <input
               type="text"
               value={formData().name}
@@ -145,7 +146,7 @@ export default function Settings() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('settings.slug')}</label>
             <input
               type="text"
               value={formData().slug}
@@ -156,23 +157,23 @@ export default function Settings() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('settings.plan')}</label>
             <Combobox
               value={formData().plan}
               onChange={(v) => setFormData(d => ({ ...d, plan: v }))}
               options={[
-                { value: 'free', label: 'Free' },
-                { value: 'starter', label: 'Starter' },
-                { value: 'professional', label: 'Professional' },
-                { value: 'enterprise', label: 'Enterprise' },
+                { value: 'free', label: i18nStore.t('settings.planFree') },
+                { value: 'starter', label: i18nStore.t('settings.planStarter') },
+                { value: 'professional', label: i18nStore.t('settings.planProfessional') },
+                { value: 'enterprise', label: i18nStore.t('settings.planEnterprise') },
               ]}
-              placeholder="Select plan"
+              placeholder={i18nStore.t('settings.selectPlan')}
               allowClear={false}
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom Domain</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('settings.customDomain')}</label>
             <input
               type="text"
               value={formData().custom_domain}
@@ -189,7 +190,7 @@ export default function Settings() {
             disabled={saving()}
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
           >
-            {saving() ? 'Saving...' : 'Save Settings'}
+            {saving() ? i18nStore.t('settings.saving') : i18nStore.t('settings.saveSettings')}
           </button>
         </form>
         </section>

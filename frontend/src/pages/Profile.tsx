@@ -4,15 +4,16 @@ import { User, Lock, Sun, Moon, Monitor, Shield, Mail, KeyRound } from 'lucide-s
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { themeStore, type ThemeMode } from '~/stores/theme';
+import { i18nStore } from '~/i18n';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
 function describeApiError(err: any): string {
-  if (!err) return 'Operation failed';
+  if (!err) return i18nStore.t('profile.operationFailed');
   if (err.status === 0 || err.isAbort) {
-    return 'Cannot reach PocketBase server.';
+    return i18nStore.t('profile.cannotReachServer');
   }
   const status = err.status ?? err.response?.status;
-  const msg = err.response?.message || err.message || 'Operation failed';
+  const msg = err.response?.message || err.message || i18nStore.t('profile.operationFailed');
   if (err.response?.data) {
     const fields = Object.keys(err.response.data).join(', ');
     if (fields) return `${msg} (${fields})`;
@@ -21,10 +22,16 @@ function describeApiError(err: any): string {
 }
 
 function getRoleLabel(): string {
-  if (authStore.isPBAdmin) return 'PB Admin';
+  if (authStore.isPBAdmin) return i18nStore.t('common.pbAdmin');
   const role = authStore.role;
-  if (!role) return 'No role';
+  if (!role) return i18nStore.t('common.noRole');
   return role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+function themeModeKey(m: ThemeMode): string {
+  if (m === 'light') return 'profile.themeLight';
+  if (m === 'dark') return 'profile.themeDark';
+  return 'profile.themeSystem';
 }
 
 export default function Profile() {
@@ -94,7 +101,7 @@ export default function Profile() {
           rule: col.mfa?.rule ?? '',
         },
       });
-      setSecSuccess('Security settings saved.');
+      setSecSuccess(i18nStore.t('profile.securitySettingsSaved'));
       setTimeout(() => setSecSuccess(''), 3000);
       await loadSecurity();
     } catch (e: any) {
@@ -110,19 +117,19 @@ export default function Profile() {
     setPwSuccess('');
 
     if (!currentPw() || !newPw() || !confirmPw()) {
-      setPwError('All password fields are required.');
+      setPwError(i18nStore.t('profile.allFieldsRequired'));
       return;
     }
     if (newPw().length < 8) {
-      setPwError('New password must be at least 8 characters.');
+      setPwError(i18nStore.t('profile.min8Chars'));
       return;
     }
     if (newPw() !== confirmPw()) {
-      setPwError('New password and confirmation do not match.');
+      setPwError(i18nStore.t('profile.mismatch'));
       return;
     }
     if (newPw() === currentPw()) {
-      setPwError('New password must be different from the current one.');
+      setPwError(i18nStore.t('profile.mustDiffer'));
       return;
     }
 
@@ -145,7 +152,7 @@ export default function Profile() {
       } catch {
         // best-effort
       }
-      setPwSuccess('Password updated. You remain signed in.');
+      setPwSuccess(i18nStore.t('profile.passwordUpdated'));
       setCurrentPw('');
       setNewPw('');
       setConfirmPw('');
@@ -161,8 +168,11 @@ export default function Profile() {
   const updateEffectiveLabel = () => {
     const m = themeStore.mode;
     const eff = themeStore.effective;
-    if (m === 'system') setEffectiveLabel(`System (currently ${eff})`);
-    else setEffectiveLabel(eff);
+    if (m === 'system') {
+      setEffectiveLabel(i18nStore.t('profile.systemCurrently', { mode: i18nStore.t(themeModeKey(eff)) }));
+    } else {
+      setEffectiveLabel(i18nStore.t(themeModeKey(m)));
+    }
   };
   onMount(() => {
     updateEffectiveLabel();
@@ -181,7 +191,7 @@ export default function Profile() {
 
   return (
     <div class="space-y-6 max-w-2xl">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Profile</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('profile.title')}</h1>
 
       <Show when={!authStore.isAuthenticated()}>
         {(() => {
@@ -194,26 +204,26 @@ export default function Profile() {
       <section class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-2 mb-4">
           <User size={18} class="text-gray-500 dark:text-gray-400" />
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Account</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('profile.account')}</h2>
         </div>
         <dl class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           <div>
-            <dt class="text-gray-500 dark:text-gray-400">Email</dt>
+            <dt class="text-gray-500 dark:text-gray-400">{i18nStore.t('profile.email')}</dt>
             <dd class="text-gray-900 dark:text-white font-medium break-all">{email() || '—'}</dd>
           </div>
           <div>
-            <dt class="text-gray-500 dark:text-gray-400">Role</dt>
+            <dt class="text-gray-500 dark:text-gray-400">{i18nStore.t('profile.role')}</dt>
             <dd class="text-gray-900 dark:text-white font-medium">{roleLabel()}</dd>
           </div>
           <Show when={tenantLabel()}>
             <div>
-              <dt class="text-gray-500 dark:text-gray-400">Current tenant</dt>
+              <dt class="text-gray-500 dark:text-gray-400">{i18nStore.t('profile.currentTenant')}</dt>
               <dd class="text-gray-900 dark:text-white font-medium">{tenantLabel()}</dd>
             </div>
           </Show>
           <Show when={created()}>
             <div>
-              <dt class="text-gray-500 dark:text-gray-400">Created</dt>
+              <dt class="text-gray-500 dark:text-gray-400">{i18nStore.t('profile.created')}</dt>
               <dd class="text-gray-900 dark:text-white font-medium">
                 {new Date(created()!).toLocaleDateString()}
               </dd>
@@ -221,8 +231,8 @@ export default function Profile() {
           </Show>
           <Show when={verified !== undefined}>
             <div>
-              <dt class="text-gray-500 dark:text-gray-400">Email verified</dt>
-              <dd class="text-gray-900 dark:text-white font-medium">{verified() ? 'Yes' : 'No'}</dd>
+              <dt class="text-gray-500 dark:text-gray-400">{i18nStore.t('profile.emailVerified')}</dt>
+              <dd class="text-gray-900 dark:text-white font-medium">{verified() ? i18nStore.t('common.yes') : i18nStore.t('common.no')}</dd>
             </div>
           </Show>
         </dl>
@@ -232,13 +242,13 @@ export default function Profile() {
       <section class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-2 mb-4">
           <Lock size={18} class="text-gray-500 dark:text-gray-400" />
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Change password</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('profile.changePassword')}</h2>
         </div>
 
         <form onSubmit={handleChangePassword} class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="pw-current">
-              Current password
+              {i18nStore.t('profile.currentPassword')}
             </label>
             <input
               id="pw-current"
@@ -252,7 +262,7 @@ export default function Profile() {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="pw-new">
-                New password
+                {i18nStore.t('profile.newPassword')}
               </label>
               <input
                 id="pw-new"
@@ -265,7 +275,7 @@ export default function Profile() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="pw-confirm">
-                Confirm new password
+                {i18nStore.t('profile.confirmNewPassword')}
               </label>
               <input
                 id="pw-confirm"
@@ -295,7 +305,7 @@ export default function Profile() {
               disabled={pwSaving()}
               class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
             >
-              {pwSaving() ? 'Updating...' : 'Update password'}
+              {pwSaving() ? i18nStore.t('profile.updating') : i18nStore.t('profile.updatePassword')}
             </button>
           </div>
         </form>
@@ -305,11 +315,11 @@ export default function Profile() {
       <section class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-2 mb-4">
           <Shield size={18} class="text-gray-500 dark:text-gray-400" />
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Security</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('profile.security')}</h2>
         </div>
 
         <Show when={secLoading()}>
-          <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+          <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
         </Show>
 
         <Show when={!secLoading() && authMethods()}>
@@ -317,29 +327,29 @@ export default function Profile() {
             <div class="flex flex-wrap gap-2">
               <Show when={authMethods().password?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                  <Lock size={12} /> Password
+                  <Lock size={12} /> {i18nStore.t('profile.passwordBadge')}
                 </span>
               </Show>
               <Show when={authMethods().otp?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-                  <Mail size={12} /> Email OTP
+                  <Mail size={12} /> {i18nStore.t('profile.emailOtpBadge')}
                 </span>
               </Show>
               <Show when={authMethods().oauth2?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                  <KeyRound size={12} /> SSO / OIDC
+                  <KeyRound size={12} /> {i18nStore.t('profile.ssoBadge')}
                 </span>
               </Show>
               <Show when={authMethods().mfa?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                  <Shield size={12} /> MFA enforced
+                  <Shield size={12} /> {i18nStore.t('profile.mfaBadge')}
                 </span>
               </Show>
             </div>
 
             <Show when={!authMethods().password?.enabled && !authMethods().oauth2?.enabled}>
               <p class="text-sm text-red-600 dark:text-red-400">
-                No login method is enabled for this account type. Contact an administrator.
+                {i18nStore.t('profile.noLoginMethod')}
               </p>
             </Show>
 
@@ -371,10 +381,10 @@ export default function Profile() {
                   />
                   <div>
                     <label for="profile-otp" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Enable email OTP
+                      {i18nStore.t('profile.enableEmailOtp')}
                     </label>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                      Applies to all superusers. Requires SMTP.
+                      {i18nStore.t('profile.enableEmailOtpHint')}
                     </p>
                   </div>
                 </div>
@@ -395,10 +405,10 @@ export default function Profile() {
                   />
                   <div>
                     <label for="profile-mfa" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Enforce MFA
+                      {i18nStore.t('profile.enforceMfa')}
                     </label>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
-                      Requires password + OTP to be enabled. Applies to all superusers.
+                      {i18nStore.t('profile.enforceMfaHint')}
                     </p>
                   </div>
                 </div>
@@ -408,14 +418,14 @@ export default function Profile() {
                   disabled={secSaving()}
                   class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
                 >
-                  {secSaving() ? 'Saving...' : 'Save Security Settings'}
+                  {secSaving() ? i18nStore.t('profile.saving') : i18nStore.t('profile.saveSecuritySettings')}
                 </button>
               </form>
             </Show>
 
             <Show when={!authStore.isPBAdmin}>
               <p class="text-sm text-gray-600 dark:text-gray-400">
-                Multi-factor authentication is managed by your administrator.
+                {i18nStore.t('profile.mfaManagedByAdmin')}
               </p>
             </Show>
           </div>
@@ -426,18 +436,17 @@ export default function Profile() {
       <section class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
         <div class="flex items-center gap-2 mb-4">
           <Sun size={18} class="text-gray-500 dark:text-gray-400" />
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Appearance</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('profile.appearance')}</h2>
         </div>
 
         <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
-          Choose how the app should look. <strong>System</strong> follows your operating system
-          preference and reacts to changes live.
+          {i18nStore.t('profile.appearanceHint')}
         </p>
 
-        <div role="radiogroup" aria-label="Theme" class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+        <div role="radiogroup" aria-label={i18nStore.t('profile.theme')} class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
           {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => {
             const isActive = () => themeStore.mode === m;
-            const label = m.charAt(0).toUpperCase() + m.slice(1);
+            const label = i18nStore.t(themeModeKey(m));
             const Icon = m === 'light' ? Sun : m === 'dark' ? Moon : Monitor;
             return (
               <button
@@ -461,7 +470,7 @@ export default function Profile() {
         </div>
 
         <p class="text-xs text-gray-600 dark:text-gray-400 mt-3">
-          Currently: <span data-testid="theme-effective">{effectiveLabel()}</span>
+          {i18nStore.t('profile.currently')} <span data-testid="theme-effective">{effectiveLabel()}</span>
         </p>
       </section>
     </div>
