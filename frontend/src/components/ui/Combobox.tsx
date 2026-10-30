@@ -153,6 +153,7 @@ export default function Combobox(props: ComboboxProps) {
           ref={inputRef}
           id={props.id}
           data-testid={props.testId}
+          data-value={props.value}
           type="text"
           autocomplete="off"
           spellcheck={false}

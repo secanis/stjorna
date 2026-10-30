@@ -96,7 +96,7 @@ test.describe('User Management table — aggregate by user', () => {
     ).toEqual(['Name', 'Email', 'Auth', 'Tenants']);
   });
 
-  test('admin: inline role select changes role of just that one membership, leaves others untouched', async ({ page }) => {
+  test('admin: inline role dropdown changes role of just that one membership, leaves others untouched', async ({ page }) => {
     const ctx = getContext(page);
     await ctx.loginAsAdmin();
     await page.emulateMedia({ colorScheme: 'light' });
@@ -123,15 +123,15 @@ test.describe('User Management table — aggregate by user', () => {
 
     const row = page.locator('tbody tr').filter({ hasText: 'user@test.stjorna.local' });
 
-    // Capture all membership ids + their current role select values
+    // Capture all membership ids + their current role values
     // BEFORE we change anything.
     const beforeStates = await row.evaluate((tr) => {
       const out: { id: string; role: string }[] = [];
       tr.querySelectorAll('[data-membership-tenant-id]').forEach((d) => {
-        const sel = d.querySelector('select') as HTMLSelectElement | null;
+        const input = d.querySelector('input') as HTMLInputElement | null;
         out.push({
           id: d.getAttribute('data-membership-tenant-id') || '',
-          role: sel ? sel.value : '',
+          role: input?.dataset.value || '',
         });
       });
       return out;
@@ -141,8 +141,9 @@ test.describe('User Management table — aggregate by user', () => {
     // Pick any membership, capture its id, flip its role to 'viewer'.
     const target = beforeStates[0];
     const targetDiv = row.locator(`[data-membership-tenant-id="${target.id}"]`);
-    const targetSelect = targetDiv.locator('select');
-    await targetSelect.selectOption('viewer');
+    const targetInput = targetDiv.locator('input');
+    await targetInput.click();
+    await page.locator('li[role="option"]', { hasText: 'Viewer' }).click();
     await page.waitForTimeout(800);
 
     // Reload (so the refetch paints cleanly).
@@ -152,18 +153,18 @@ test.describe('User Management table — aggregate by user', () => {
 
     const reloadedRow = page.locator('tbody tr').filter({ hasText: 'user@test.stjorna.local' });
     const reloadedSelectValue = await reloadedRow
-      .locator(`[data-membership-tenant-id="${target.id}"] select`)
-      .inputValue();
+      .locator(`[data-membership-tenant-id="${target.id}"] input`)
+      .getAttribute('data-value');
     expect(reloadedSelectValue, 'target membership role updated to viewer').toBe('viewer');
 
     // CRITICAL: every OTHER membership role is unchanged.
     const reloadedStates = await reloadedRow.evaluate((tr) => {
       const out: { id: string; role: string }[] = [];
       tr.querySelectorAll('[data-membership-tenant-id]').forEach((d) => {
-        const sel = d.querySelector('select') as HTMLSelectElement | null;
+        const input = d.querySelector('input') as HTMLInputElement | null;
         out.push({
           id: d.getAttribute('data-membership-tenant-id') || '',
-          role: sel ? sel.value : '',
+          role: input?.dataset.value || '',
         });
       });
       return out;
