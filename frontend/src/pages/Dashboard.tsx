@@ -1,4 +1,4 @@
-import { createSignal, Show, createEffect, on } from 'solid-js';
+import { createSignal, Show, createEffect, on, type Component } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
 import Table from '~/components/ui/Table';
@@ -178,7 +178,7 @@ export default function Dashboard() {
   );
 }
 
-function StatCard(props: { label: string; value: number; icon: any; type?: ActivityType }) {
+function StatCard(props: { label: string; value: number; icon: Component<{ size?: number; class?: string }>; type?: ActivityType }) {
   const Icon = props.icon;
   // The entity type is passed explicitly now (the label is translated), so
   // the icon picks up the matching entity color. Unknown types fall back to gray.

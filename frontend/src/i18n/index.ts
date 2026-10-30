@@ -112,5 +112,5 @@ export const i18nStore = {
 
 // Debug handle for local development only; never exposed in production.
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  (window as any).__i18nStore = i18nStore;
+  (window as unknown as { __i18nStore?: typeof i18nStore }).__i18nStore = i18nStore;
 }
