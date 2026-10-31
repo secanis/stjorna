@@ -1,7 +1,8 @@
-import { createSignal, Show, onMount } from 'solid-js';
+import { createSignal, Show, onMount, createEffect, on } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { tenantStore } from '~/stores/tenant';
 import { tenantTheme } from '~/stores/tenantTheme';
 import { i18nStore } from '~/i18n';
 import type { Tenant, TenantThemeConfig } from '~/types';
@@ -30,7 +31,15 @@ export default function Settings() {
 
   const loadTenantSettings = async () => {
     const tenantId = authStore.currentTenant;
-    if (!tenantId) return;
+    if (!tenantId) {
+      setError(i18nStore.t('settings.noTenantSelected'));
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setSuccess(false);
 
     try {
       const tenant = await pb.collection('tenants').getOne<Tenant>(tenantId);
@@ -49,10 +58,12 @@ export default function Settings() {
       setThemeExtra(cfg);
     } catch (e: any) {
       setError(e.message || i18nStore.t('settings.failedToLoad'));
+    } finally {
+      setLoading(false);
     }
   };
 
-  onMount(async () => {
+  onMount(() => {
     if (!authStore.isAuthenticated()) {
       navigate('/login', { replace: true });
       return;
@@ -63,19 +74,13 @@ export default function Settings() {
       return;
     }
 
-    const tenantId = authStore.currentTenant;
-
-    if (!tenantId) {
-      setError(i18nStore.t('settings.noTenantSelected'));
-      setLoading(false);
-      return;
-    }
-
-    if (tenantId) {
-      await loadTenantSettings();
-    }
-    setLoading(false);
+    void loadTenantSettings();
   });
+
+  // Re-load settings whenever the active tenant changes (switchTenant
+  // bumps tenantStore.version), so the form never shows a previous
+  // tenant's stale data.
+  createEffect(on(() => tenantStore.version, () => { void loadTenantSettings(); }, { defer: true }));
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
