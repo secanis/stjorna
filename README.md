@@ -11,10 +11,6 @@ Multi-tenant product management built with SolidJS + PocketBase.
 
 ![Dashboard overview with tenant selector](site/public/screenshot-1.png)
 
-![Statistics information for each tenant](site/public/screenshot-2.png)
-
-![STJÓRNA settings and tenant configuration](site/public/screenshot-3.png)
-
 ## Quick Start (Docker)
 
 ```bash
