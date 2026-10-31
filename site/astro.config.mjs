@@ -56,7 +56,7 @@ export default defineConfig({
         {
           label: 'Reference',
           items: [
-            { label: 'API reference (Swagger)', link: '/api/' },
+            { label: 'API reference (Swagger)', link: '/docs/api/' },
             { slug: 'docs/development', label: 'Development' },
             {
               label: 'Helm chart',

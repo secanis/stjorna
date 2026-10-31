@@ -1,0 +1,21 @@
+---
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+---
+
+<StarlightPage frontmatter={{ title: 'API reference', description: 'Interactive OpenAPI 3.0 reference for the STJÓRNA REST API.' }}>
+  <div id="swagger-ui"></div>
+  <link rel="stylesheet" href="/swagger-ui/swagger-ui.css" />
+  <script src="/swagger-ui/swagger-ui-bundle.js" is:inline></script>
+  <script is:inline>
+    (function () {
+      if (typeof window.SwaggerUIBundle === 'undefined') return;
+      window.ui = window.SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [window.SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout',
+      });
+    })();
+  </script>
+</StarlightPage>

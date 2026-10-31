@@ -39,4 +39,4 @@ backends, and ships as a single Helm chart or a two-service Docker Compose stack
 - [Getting started](/docs/getting-started/) — spin it up and run the setup wizard.
 - [Installation](/docs/installation/) — Docker Compose or Helm, in detail.
 - [Authentication & roles](/docs/auth-roles/) — accounts, roles and the access model.
-- [API reference](/api/) — the live OpenAPI spec in Swagger UI.
+- [API reference](/docs/api/) — the live OpenAPI spec in Swagger UI.
