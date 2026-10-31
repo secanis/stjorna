@@ -373,7 +373,11 @@ export default function MediaEdit() {
                   <AlertTriangle size={24} class="text-yellow-600 dark:text-yellow-400 shrink-0 mt-1" />
                   <div>
                     <h3 class="text-gray-900 dark:text-white font-semibold mb-1">{i18nStore.t('media.fileMissing')}</h3>
-                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-3" innerHTML={i18nStore.t('media.fileMissingHint')} />
+                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-3">
+                      {i18nStore.t('media.fileMissingHintBefore')}{' '}
+                      <code class="text-yellow-700 dark:text-yellow-300">file</code>{' '}
+                      {i18nStore.t('media.fileMissingHintAfter')}
+                    </p>
                     <p class="text-gray-500 dark:text-gray-400 text-sm">
                       {i18nStore.t('media.dropReplacement')}
                     </p>

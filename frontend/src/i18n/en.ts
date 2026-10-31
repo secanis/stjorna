@@ -406,8 +406,9 @@ export const dict = {
     saved: 'Media saved successfully!',
     recordNotFound: 'Media record not found',
     fileMissing: 'File missing',
-    fileMissingHint:
-      'This media record exists but has no file attached (the <code>file</code> field is empty). This can happen if the file was deleted on the server, or if the record was created without uploading a file.',
+    fileMissingHintBefore: 'This media record exists but has no file attached (the',
+    fileMissingHintAfter:
+      'field is empty). This can happen if the file was deleted on the server, or if the record was created without uploading a file.',
     dropReplacement: 'Drop a file below to upload a replacement.',
     dropFileHere: 'Drop file here or click to browse',
     dropAnotherFile: 'Drop another file to replace',

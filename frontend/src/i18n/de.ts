@@ -423,8 +423,9 @@ export const dict: RawDictionary = {
     saved: 'Medium erfolgreich gespeichert!',
     recordNotFound: 'Mediendatensatz nicht gefunden',
     fileMissing: 'Datei fehlt',
-    fileMissingHint:
-      'Dieser Mediendatensatz existiert, aber es ist keine Datei angehängt (das Feld <code>file</code> ist leer). Dies kann passieren, wenn die Datei auf dem Server gelöscht wurde oder der Datensatz ohne Datei-Upload erstellt wurde.',
+    fileMissingHintBefore: 'Dieser Mediendatensatz existiert, aber es ist keine Datei angehängt (das Feld',
+    fileMissingHintAfter:
+      'ist leer). Dies kann passieren, wenn die Datei auf dem Server gelöscht wurde oder der Datensatz ohne Datei-Upload erstellt wurde.',
     dropReplacement: 'Legen Sie unten eine Datei ab, um einen Ersatz hochzuladen.',
     dropFileHere: 'Datei hier ablegen oder zum Durchsuchen klicken',
     dropAnotherFile: 'Weitere Datei zum Ersetzen ablegen',

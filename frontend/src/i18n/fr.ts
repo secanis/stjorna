@@ -423,8 +423,9 @@ export const dict: RawDictionary = {
     saved: 'Média enregistré avec succès !',
     recordNotFound: 'Enregistrement de média introuvable',
     fileMissing: 'Fichier manquant',
-    fileMissingHint:
-      "Cet enregistrement de média existe mais n'a aucun fichier joint (le champ <code>file</code> est vide). Cela peut arriver si le fichier a été supprimé sur le serveur ou si l'enregistrement a été créé sans importer de fichier.",
+    fileMissingHintBefore: "Cet enregistrement de média existe mais n'a aucun fichier joint (le champ",
+    fileMissingHintAfter:
+      "est vide). Cela peut arriver si le fichier a été supprimé sur le serveur ou si l'enregistrement a été créé sans importer de fichier.",
     dropReplacement: 'Déposez un fichier ci-dessous pour importer un remplacement.',
     dropFileHere: 'Déposez le fichier ici ou cliquez pour parcourir',
     dropAnotherFile: 'Déposez un autre fichier pour remplacer',
