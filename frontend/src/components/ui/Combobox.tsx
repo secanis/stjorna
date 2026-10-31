@@ -160,8 +160,12 @@ export default function Combobox(props: ComboboxProps) {
   const onScrollOrResize = (e: Event) => {
     if (!open()) return;
     const target = e.target;
+    // Ignore scrolls that originate inside the dropdown itself (its own
+    // overflow-y-auto scrolling). Reposition on outside scroll/resize so the
+    // fixed-positioned dropdown stays anchored to the input instead of
+    // closing (which broke Playwright clicks that scroll the option into view).
     if (target instanceof Node && dropdownRef?.contains(target)) return;
-    closeDropdown();
+    updatePosition();
   };
 
   onMount(() => {
