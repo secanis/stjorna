@@ -33,12 +33,22 @@ function buildSpecUrl(pbUrl: string): string {
   return `${pbUrl}/api/openapi.json`;
 }
 
+// swagger-ui 5.x renders its dark theme only when `html.dark-mode` is set, and
+// its own lightbulb toggle only consults `prefers-color-scheme` once on mount —
+// it never follows the app theme. Sync the class from the app's `.dark`
+// (toggled by stores/theme.ts) so the reference matches the rest of the UI.
+function syncSwaggerDark(): void {
+  const dark = document.documentElement.classList.contains('dark');
+  document.documentElement.classList.toggle('dark-mode', dark);
+}
+
 export default function ApiDocs() {
   const navigate = useNavigate();
   let containerRef: HTMLDivElement | undefined;
   const [loading, setLoading] = createSignal(true);
   const [error, setError] = createSignal('');
   let cleanup: (() => void) | null = null;
+  let darkObserver: MutationObserver | null = null;
 
   onMount(async () => {
     if (!authStore.isAuthenticated()) {
@@ -60,6 +70,17 @@ export default function ApiDocs() {
         document.head.appendChild(link);
       }
 
+      // The app theme drives dark mode, so hide swagger's redundant toggle.
+      if (!document.querySelector(`style[data-swagger-dark]`)) {
+        const style = document.createElement('style');
+        style.textContent = '.swagger-ui .topbar .dark-mode-toggle { display: none; }';
+        style.setAttribute('data-swagger-dark', '');
+        document.head.appendChild(style);
+      }
+
+      // Apply the current theme before swagger renders to avoid a light flash.
+      syncSwaggerDark();
+
       const pbUrl = getConfiguredPbUrl();
       const specUrl = buildSpecUrl(pbUrl);
       const ui = SwaggerUIBundle({
@@ -80,6 +101,12 @@ export default function ApiDocs() {
         try { ui?.shutdown?.(); } catch {}
       };
 
+      // swagger's mount may add `dark-mode` from prefers-color-scheme; re-assert
+      // so the app theme wins, then keep it in sync while this page is mounted.
+      syncSwaggerDark();
+      darkObserver = new MutationObserver(syncSwaggerDark);
+      darkObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
       setLoading(false);
     } catch (e: any) {
       setError(e?.message || 'Failed to load API docs');
@@ -88,6 +115,8 @@ export default function ApiDocs() {
   });
 
   onCleanup(() => {
+    darkObserver?.disconnect();
+    darkObserver = null;
     cleanup?.();
     if (containerRef) containerRef.innerHTML = '';
   });

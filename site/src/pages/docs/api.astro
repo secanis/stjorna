@@ -5,16 +5,44 @@ import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 <StarlightPage frontmatter={{ title: 'API reference', description: 'Interactive OpenAPI 3.0 reference for the STJÓRNA REST API.' }}>
   <div id="swagger-ui"></div>
   <link rel="stylesheet" href="/swagger-ui/swagger-ui.css" />
+  <style>
+    /* The site theme is the single source of truth for dark mode, so hide
+       swagger-ui's own (redundant) lightbulb toggle. */
+    .swagger-ui .topbar .dark-mode-toggle { display: none; }
+  </style>
   <script src="/swagger-ui/swagger-ui-bundle.js" is:inline></script>
   <script is:inline>
     (function () {
-      if (typeof window.SwaggerUIBundle === 'undefined') return;
-      window.ui = window.SwaggerUIBundle({
-        url: '/openapi.json',
-        dom_id: '#swagger-ui',
-        deepLinking: true,
-        presets: [window.SwaggerUIBundle.presets.apis],
-        layout: 'BaseLayout',
+      // swagger-ui 5.x renders dark only when `html.dark-mode` is set, and its
+      // own toggle only consults `prefers-color-scheme` once on mount. Sync the
+      // class from Starlight's `data-theme` so the reference follows the docs.
+      function siteIsDark() {
+        var t = document.documentElement.getAttribute('data-theme');
+        if (t === 'dark') return true;
+        if (t === 'light') return false;
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+      function sync() {
+        document.documentElement.classList.toggle('dark-mode', siteIsDark());
+      }
+      sync();
+
+      if (typeof window.SwaggerUIBundle !== 'undefined') {
+        window.ui = window.SwaggerUIBundle({
+          url: '/openapi.json',
+          dom_id: '#swagger-ui',
+          deepLinking: true,
+          presets: [window.SwaggerUIBundle.presets.apis],
+          layout: 'BaseLayout',
+        });
+        // swagger's mount may add `dark-mode` from prefers-color-scheme;
+        // re-assert so the site theme wins.
+        sync();
+      }
+
+      new MutationObserver(sync).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme'],
       });
     })();
   </script>
