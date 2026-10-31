@@ -1,5 +1,6 @@
 import { Show, createEffect, createSignal, onCleanup } from 'solid-js';
 import { Portal } from 'solid-js/web';
+import { i18nStore } from '~/i18n';
 
 /**
  * Accessible replacement for window.confirm()/window.alert().
@@ -49,10 +50,10 @@ export function confirmDialog(opts: ConfirmOptions | string): Promise<boolean> {
   const o = typeof opts === 'string' ? { message: opts } : opts;
   return new Promise((resolve) =>
     enqueue({
-      title: o.title ?? 'Please confirm',
+      title: o.title ?? i18nStore.t('common.pleaseConfirm'),
       message: o.message,
-      confirmLabel: o.confirmLabel ?? 'Confirm',
-      cancelLabel: o.cancelLabel ?? 'Cancel',
+      confirmLabel: o.confirmLabel ?? i18nStore.t('common.confirm'),
+      cancelLabel: o.cancelLabel ?? i18nStore.t('common.cancel'),
       danger: o.danger ?? false,
       alertOnly: false,
       resolve,
@@ -60,12 +61,12 @@ export function confirmDialog(opts: ConfirmOptions | string): Promise<boolean> {
   );
 }
 
-export function alertDialog(message: string, title = 'Something went wrong'): Promise<void> {
+export function alertDialog(message: string, title = i18nStore.t('common.somethingWentWrong')): Promise<void> {
   return new Promise((resolve) =>
     enqueue({
       title,
       message,
-      confirmLabel: 'OK',
+      confirmLabel: i18nStore.t('common.ok'),
       cancelLabel: '',
       danger: false,
       alertOnly: true,

@@ -14,6 +14,7 @@ import { ENTITY_TYPE_COLORS, ENTITY_TYPE_LABELS, ACTION_COLORS, ENTITY_TYPE_TEXT
 import type { Column } from '~/components/ui/Table';
 import type { ActivityType, ActivityAction, ActivityEvent } from '~/utils/activity';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 
 // ─────────────────────────────────────────
 // Single source for the badge renderers
@@ -94,20 +95,20 @@ function TenantCell(props: { value: unknown; row: ActivityEvent }): JSX.Element 
 // non-admin viewers already only see their own tenant so the column is omitted.
 function getActivityColumns(): Column[] {
   const cols: Column[] = [
-    { key: 'type',   label: 'Type',   render: (v) => <TypeBadge value={v} /> },
-    { key: 'action', label: 'Action', render: (v) => <ActionBadge value={v} /> },
-    { key: 'name',   label: 'Name' },
+    { key: 'type',   label: i18nStore.t('activity.type'),   render: (v) => <TypeBadge value={v} /> },
+    { key: 'action', label: i18nStore.t('activity.action'), render: (v) => <ActionBadge value={v} /> },
+    { key: 'name',   label: i18nStore.t('activity.name') },
   ];
   if (authStore.isPBAdmin) {
     cols.push({
       key: 'tenantName',
-      label: 'Tenant',
+      label: i18nStore.t('activity.tenant'),
       render: (v, row) => <TenantCell value={v} row={row as ActivityEvent} />,
     });
   }
   cols.push({
     key: 'id',
-    label: 'Record',
+    label: i18nStore.t('activity.record'),
     render: (v, row) => {
       const e = row as ActivityEvent;
       const href = recordHref(e);
@@ -119,7 +120,7 @@ function getActivityColumns(): Column[] {
       );
     },
   });
-  cols.push({ key: 'at', label: 'When', render: (v) => v ? new Date(v as string).toLocaleString() : '-' });
+  cols.push({ key: 'at', label: i18nStore.t('activity.when'), render: (v) => v ? new Date(v as string).toLocaleString() : '-' });
   return cols;
 }
 
@@ -132,11 +133,15 @@ export function activityColumns(): Column[] {
 }
 
 // Dashboard "Recent Activity" card: no Record column, no extra metadata.
-export const dashboardActivityColumns: Column[] = [
-  { key: 'type',   label: 'Type',   render: (v) => <TypeBadge value={v} /> },
-  { key: 'action', label: 'Action', render: (v) => <ActionBadge value={v} /> },
-  { key: 'name',   label: 'Name' },
-  { key: 'at',     label: 'When',   render: (v) => v ? new Date(v as string).toLocaleString() : '-' },
-];
+// A function (rather than a module const) so column labels re-translate
+// reactively when the locale changes.
+export function dashboardActivityColumns(): Column[] {
+  return [
+    { key: 'type',   label: i18nStore.t('activity.type'),   render: (v) => <TypeBadge value={v} /> },
+    { key: 'action', label: i18nStore.t('activity.action'), render: (v) => <ActionBadge value={v} /> },
+    { key: 'name',   label: i18nStore.t('activity.name') },
+    { key: 'at',     label: i18nStore.t('activity.when'),   render: (v) => v ? new Date(v as string).toLocaleString() : '-' },
+  ];
+}
 
 export { ENTITY_TYPE_TEXT_COLORS };

@@ -1,6 +1,7 @@
 import { ParentProps, Show, createEffect, createSignal, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 
 /**
  * Route guard for everything behind the app shell.
@@ -33,7 +34,7 @@ export default function RequireAuth(props: ParentProps) {
       when={ready() && authStore.isAuthenticated()}
       fallback={
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center" role="status" aria-live="polite">
-          <span class="text-gray-500 dark:text-gray-400">Loading...</span>
+          <span class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</span>
         </div>
       }
     >

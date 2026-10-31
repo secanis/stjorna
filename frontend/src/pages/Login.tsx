@@ -1,15 +1,18 @@
 import { useNavigate } from '@solidjs/router';
 import LoginCard from '~/components/auth/LoginCard';
+import CornerLanguageSwitcher from '~/components/ui/CornerLanguageSwitcher';
+import { i18nStore } from '~/i18n';
 
 export default function Login() {
   const navigate = useNavigate();
 
   return (
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <CornerLanguageSwitcher />
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
         <div class="text-center mb-8">
           <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">STJÓRNA</h1>
-          <p class="text-gray-500 dark:text-gray-400">Sign in to your account</p>
+          <p class="text-gray-500 dark:text-gray-400">{i18nStore.t('auth.signInToAccount')}</p>
         </div>
 
         <LoginCard mode="user" onSuccess={() => navigate('/')} />
@@ -19,10 +22,11 @@ export default function Login() {
             onClick={() => navigate('/superlogin')}
             class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-sm"
           >
-            Superuser login
+            {i18nStore.t('auth.superuserLogin')}
           </button>
         </div>
       </div>
     </div>
   );
 }
+

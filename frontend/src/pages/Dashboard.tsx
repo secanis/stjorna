@@ -1,10 +1,11 @@
-import { createSignal, Show, createEffect, on } from 'solid-js';
+import { createSignal, Show, createEffect, on, type Component } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
 import Table from '~/components/ui/Table';
 import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { tenantStore } from '~/stores/tenant';
+import { i18nStore } from '~/i18n';
 import { fetchRecentActivity, type ActivityEvent, type ActivityType } from '~/utils/activity';
 import {
   ENTITY_TYPE_TEXT_COLORS,
@@ -106,61 +107,61 @@ export default function Dashboard() {
 
   createEffect(on(() => tenantStore.version, () => { void load(); }));
 
-  const activityColumns = dashboardActivityColumns;
+  const activityColumns = () => dashboardActivityColumns();
 
   return (
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('dashboard.title')}</h1>
 
       <Show when={statsLoading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading stats...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('dashboard.loadingStats')}</div>
       </Show>
 
       <Show when={stats()}>
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <StatCard label="Products" value={stats()!.products} icon={Package} />
-          <StatCard label="Categories" value={stats()!.categories} icon={Folder} />
-          <StatCard label="Media" value={stats()!.media} icon={Image} />
-          <StatCard label="Users" value={stats()!.users} icon={Users} />
+          <StatCard label={i18nStore.t('dashboard.products')} value={stats()!.products} icon={Package} type="product" />
+          <StatCard label={i18nStore.t('dashboard.categories')} value={stats()!.categories} icon={Folder} type="category" />
+          <StatCard label={i18nStore.t('dashboard.media')} value={stats()!.media} icon={Image} type="media" />
+          <StatCard label={i18nStore.t('dashboard.users')} value={stats()!.users} icon={Users} type="user" />
           <Show when={authStore.isPBAdmin}>
-            <StatCard label="Tenants" value={stats()!.tenants} icon={Building2} />
+            <StatCard label={i18nStore.t('dashboard.tenants')} value={stats()!.tenants} icon={Building2} type="tenant" />
           </Show>
         </div>
       </Show>
 
       <div>
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Quick Actions</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('dashboard.quickActions')}</h2>
         </div>
         <div class="flex gap-3">
           <Show when={authStore.isPBAdmin}>
             <A href="/tenants/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}>
-              + Add Tenant
+              {i18nStore.t('dashboard.addTenant')}
             </A>
           </Show>
           <Show when={!authStore.isPBAdmin && authStore.isEditorOrAbove()}>
             <A href="/categories/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.category} px-4 py-2 rounded font-medium transition-colors`}>
-              + Add Category
+              {i18nStore.t('dashboard.addCategory')}
             </A>
             <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} px-4 py-2 rounded font-medium transition-colors`}>
-              + Add Media
+              {i18nStore.t('dashboard.addMedia')}
             </A>
             <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} px-4 py-2 rounded font-medium transition-colors`}>
-              + Add Product
+              {i18nStore.t('dashboard.addProduct')}
             </A>
           </Show>
         </div>
       </div>
 
       <div>
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('dashboard.recentActivity')}</h2>
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Show
             when={!recentLoading()}
-            fallback={<div class="p-4 text-gray-500 dark:text-gray-400">Loading...</div>}
+            fallback={<div class="p-4 text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>}
           >
             <Table
-              columns={activityColumns}
+              columns={activityColumns()}
               data={recentActivity() || []}
               onRowClick={(row) => {
                 if (row.type === 'media') navigate(`/media/${row.id}`);
@@ -168,7 +169,7 @@ export default function Dashboard() {
                 else if (row.type === 'category') navigate(`/categories/${row.id}`);
                 else if (row.type === 'tenant') navigate(`/tenants/${row.id}`);
               }}
-              emptyMessage="No recent activity"
+              emptyMessage={i18nStore.t('dashboard.noRecentActivity')}
             />
           </Show>
         </div>
@@ -177,13 +178,12 @@ export default function Dashboard() {
   );
 }
 
-function StatCard(props: { label: string; value: number; icon: any }) {
+function StatCard(props: { label: string; value: number; icon: Component<{ size?: number; class?: string }>; type?: ActivityType }) {
   const Icon = props.icon;
-  // Auto-color the icon to match the entity whose name is in the label.
-  // Falls back to gray for any stat card whose label isn't a known entity.
-  const typeFromLabel = labelToEntityType(props.label);
-  const iconClass = typeFromLabel
-    ? ENTITY_TYPE_TEXT_COLORS[typeFromLabel]
+  // The entity type is passed explicitly now (the label is translated), so
+  // the icon picks up the matching entity color. Unknown types fall back to gray.
+  const iconClass = props.type
+    ? ENTITY_TYPE_TEXT_COLORS[props.type]
     : 'text-gray-500 dark:text-gray-400';
   return (
     <div class="bg-white dark:bg-gray-800 rounded-lg p-4 flex items-center gap-4">
@@ -194,17 +194,4 @@ function StatCard(props: { label: string; value: number; icon: any }) {
       </div>
     </div>
   );
-}
-
-// Maps a stat-card label to its entity type so the icon can pick up the
-// matching color. Returns undefined for labels that aren't entities.
-function labelToEntityType(label: string): ActivityType | undefined {
-  const map: Record<string, ActivityType> = {
-    Products: 'product',
-    Categories: 'category',
-    Media: 'media',
-    Users: 'user',
-    Tenants: 'tenant',
-  };
-  return map[label];
 }

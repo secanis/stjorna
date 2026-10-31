@@ -2,6 +2,7 @@ import { createSignal, createMemo, For, Show, onMount, onCleanup, JSX } from 'so
 import { Portal } from 'solid-js/web';
 import { ChevronDown, X } from 'lucide-solid';
 import { fuzzyScore } from '~/utils/fuzzy';
+import { i18nStore } from '~/i18n';
 
 export interface ComboboxOption {
   value: string;
@@ -71,7 +72,7 @@ export default function Combobox(props: ComboboxProps) {
   const allItems = (): ComboboxOption[] => {
     const out: ComboboxOption[] = [];
     if (props.allowClear !== false) {
-      out.push({ value: '', label: props.clearLabel ?? '— None —' });
+      out.push({ value: '', label: props.clearLabel ?? i18nStore.t('common.none') });
     }
     out.push(...items());
     return out;
@@ -159,8 +160,12 @@ export default function Combobox(props: ComboboxProps) {
   const onScrollOrResize = (e: Event) => {
     if (!open()) return;
     const target = e.target;
+    // Ignore scrolls that originate inside the dropdown itself (its own
+    // overflow-y-auto scrolling). Reposition on outside scroll/resize so the
+    // fixed-positioned dropdown stays anchored to the input instead of
+    // closing (which broke Playwright clicks that scroll the option into view).
     if (target instanceof Node && dropdownRef?.contains(target)) return;
-    closeDropdown();
+    updatePosition();
   };
 
   onMount(() => {
@@ -188,7 +193,7 @@ export default function Combobox(props: ComboboxProps) {
           autocomplete="off"
           spellcheck={false}
           disabled={props.disabled}
-          placeholder={props.placeholder ?? 'Type to search…'}
+          placeholder={props.placeholder ?? i18nStore.t('common.typeToSearch')}
           value={open() ? query() : (query() || selectedLabel())}
           onInput={onInput}
           onFocus={onFocus}
@@ -203,8 +208,8 @@ export default function Combobox(props: ComboboxProps) {
               tabIndex={-1}
               onClick={(e) => { e.stopPropagation(); pick(''); }}
               class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1"
-              title="Clear selection"
-              aria-label="Clear selection"
+              title={i18nStore.t('common.clearSelection')}
+              aria-label={i18nStore.t('common.clearSelection')}
             >
               <X size={14} />
             </button>
@@ -215,7 +220,7 @@ export default function Combobox(props: ComboboxProps) {
             disabled={props.disabled}
             onClick={(e) => { e.stopPropagation(); open() ? closeDropdown() : openDropdown(); focusInput(); }}
             class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1 disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Toggle options"
+            aria-label={i18nStore.t('common.toggleOptions')}
           >
             <ChevronDown size={14} />
           </button>
@@ -238,7 +243,7 @@ export default function Combobox(props: ComboboxProps) {
             when={allItems().length > 0}
             fallback={
               <li class="px-3 py-2 text-gray-500 dark:text-gray-400 text-sm">
-                {props.emptyMessage ?? 'No matches'}
+                {props.emptyMessage ?? i18nStore.t('common.noMatches')}
               </li>
             }
           >
@@ -254,7 +259,8 @@ export default function Combobox(props: ComboboxProps) {
                     'text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700': i() !== activeIdx(),
                     'font-medium': props.value === opt.value && opt.value !== '',
                   }}
-                  onMouseDown={(e) => { e.preventDefault(); pick(opt.value); }}
+                  onMouseDown={(e) => { e.preventDefault(); }}
+                  onClick={() => pick(opt.value)}
                   onMouseEnter={() => setActiveIdx(i())}
                 >
                   {opt.value === '' ? opt.label : renderOption(opt.label, query())}

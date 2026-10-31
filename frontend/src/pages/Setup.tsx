@@ -3,6 +3,8 @@ import { useNavigate } from '@solidjs/router';
 import PocketBase, { BaseAuthStore } from 'pocketbase';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { getConfiguredPbUrl } from '~/services/config';
+import { i18nStore } from '~/i18n';
+import CornerLanguageSwitcher from '~/components/ui/CornerLanguageSwitcher';
 
 type Step = 'admin' | 'storage' | 'tenant' | 'link' | 'done';
 
@@ -93,7 +95,7 @@ export default function Setup() {
     if (setupPb.authStore.isValid && setupPb.authStore.isSuperuser) return true;
     setupPb.authStore.clear();
     setStep('admin');
-    setError('Superuser session expired — please sign in again.');
+    setError(i18nStore.t('setup.sessionExpired'));
     return false;
   };
 
@@ -177,7 +179,7 @@ export default function Setup() {
         testRecord = await setupPb.collection('media').create(formData);
         testRecordId = testRecord.id;
       } catch (e: any) {
-        throw new Error(`Upload to S3 failed: ${categorizeS3Error(e)}`);
+        throw new Error(i18nStore.t('setup.s3UploadFailed', { msg: categorizeS3Error(e) }));
       }
 
       // T-08: media.file is protected, so file requests need a short-lived
@@ -186,17 +188,17 @@ export default function Setup() {
       try {
         fileToken = await setupPb.files.getToken();
       } catch (e: any) {
-        throw new Error(`Could not get file token: ${e?.message || e}`);
+        throw new Error(i18nStore.t('setup.s3FileTokenFailed', { msg: e?.message || e }));
       }
       const fileUrl = setupPb.files.getURL(testRecord, testRecord.file, { token: fileToken });
       let fileRes: Response;
       try {
         fileRes = await fetch(fileUrl);
       } catch (e: any) {
-        throw new Error(`Could not reach S3 file URL: ${e?.message || e}`);
+        throw new Error(i18nStore.t('setup.s3FileUrlUnreachable', { msg: e?.message || e }));
       }
       if (!fileRes.ok) {
-        throw new Error(`S3 file not accessible: HTTP ${fileRes.status}`);
+        throw new Error(i18nStore.t('setup.s3FileNotAccessible', { status: fileRes.status }));
       }
 
       try {
@@ -205,7 +207,7 @@ export default function Setup() {
       } catch (e: any) {
         setS3TestStatus('success');
         setS3TestMessage(
-          `S3 connection verified. Test record (id: ${testRecord.id}) was created but could not be auto-deleted — please delete it from the media list.`
+          i18nStore.t('setup.s3VerifiedButNotDeleted', { id: testRecord.id })
         );
         setS3TestPassed(true);
         return;
@@ -213,7 +215,11 @@ export default function Setup() {
 
       setS3TestStatus('success');
       setS3TestMessage(
-        `S3 connection verified (bucket: ${s3Bucket()}, region: ${s3Region()}, endpoint: ${resolvedS3Endpoint()}). Continue to finish setup.`
+        i18nStore.t('setup.s3Verified', {
+          bucket: s3Bucket(),
+          region: s3Region(),
+          endpoint: resolvedS3Endpoint(),
+        })
       );
       setS3TestPassed(true);
     } catch (e: any) {
@@ -236,13 +242,13 @@ export default function Setup() {
       const fileErr = data.file;
       if (fileErr && typeof fileErr === 'object') {
         if (fileErr.code === 'validation_invalid_mime_type') {
-          return 'Test file mime type not allowed by the media collection. (This is a wizard bug, not your S3.)';
+          return i18nStore.t('setup.s3MimeType');
         }
         if (fileErr.code === 'validation_required') {
-          return 'Test file is missing. (This is a wizard bug.)';
+          return i18nStore.t('setup.s3MissingFile');
         }
         if (fileErr.message) {
-          return `File validation failed: ${fileErr.message}`;
+          return i18nStore.t('setup.s3ValidationFailed', { msg: fileErr.message });
         }
       }
       for (const key of Object.keys(data)) {
@@ -253,25 +259,25 @@ export default function Setup() {
       }
     }
 
-    const raw = e?.message || 'S3 test failed';
+    const raw = e?.message || i18nStore.t('setup.s3TestFailed');
     const lower = raw.toLowerCase();
     if (lower.includes('failed to authenticate') || lower.includes('invalidaccesskeyid') || lower.includes('signaturedoesnotmatch')) {
-      return 'Could not authenticate. Check your access key and secret key.';
+      return i18nStore.t('setup.s3AuthFailed');
     }
     if (lower.includes('no such bucket') || lower.includes('nosuchbucket')) {
-      return 'Bucket does not exist. Check the bucket name.';
+      return i18nStore.t('setup.s3BucketMissing');
     }
     if (lower.includes('access denied') || lower.includes('accessdenied')) {
-      return 'Access denied. Check the IAM permissions for the access key (needs s3:PutObject, s3:GetObject, s3:DeleteObject).';
+      return i18nStore.t('setup.s3AccessDenied');
     }
     if (lower.includes('no such endpoint') || lower.includes('nosuchendpoint') || lower.includes('could not resolve')) {
-      return 'Endpoint URL is invalid or unreachable. Check the endpoint and region.';
+      return i18nStore.t('setup.s3EndpointInvalid');
     }
     if (lower.includes('something went wrong')) {
-      return `S3 request failed (PocketBase returned a generic error). Check credentials, bucket, region, endpoint, and IAM permissions. (${raw})`;
+      return i18nStore.t('setup.s3GenericError', { raw });
     }
     if (lower.includes('http 4') || lower.includes('http 5')) {
-      return `S3 returned an error. Check credentials, bucket, region, endpoint, and IAM permissions. (${raw})`;
+      return i18nStore.t('setup.s3HttpError', { raw });
     }
     return raw;
   };
@@ -290,12 +296,12 @@ export default function Setup() {
         // token and refuses (HTTP 409) once any superuser exists or once
         // setup_done is set, so this branch can never mint an extra admin.
         if (adminPassword() !== adminPasswordConfirm()) {
-          setError('Password and confirmation do not match');
+          setError(i18nStore.t('setup.passwordMismatch'));
           setLoading(false);
           return;
         }
         if (!setupToken().trim()) {
-          setError('Setup token is required');
+          setError(i18nStore.t('setup.tokenRequired'));
           setLoading(false);
           return;
         }
@@ -334,7 +340,7 @@ export default function Setup() {
       await setupPb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
       setStep('storage');
     } catch (e: any) {
-      setError(e.message || 'Superuser login failed');
+      setError(e.message || i18nStore.t('setup.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -343,7 +349,7 @@ export default function Setup() {
   const handleConfigureStorage = async () => {
     setError('');
     if (!isS3Valid()) {
-      setError('Please fill in all required S3 fields');
+      setError(i18nStore.t('setup.s3FieldsRequired'));
       return;
     }
     if (!requireSession()) return;
@@ -351,7 +357,7 @@ export default function Setup() {
       try {
         await saveS3Settings(setupPb);
       } catch (e: any) {
-        setError(`Could not save S3 settings: ${e?.message || e}`);
+        setError(i18nStore.t('setup.couldNotSaveS3', { msg: e?.message || e }));
         return;
       }
     }
@@ -389,7 +395,7 @@ export default function Setup() {
       setTenantId(tenant.id);
       setStep('link');
     } catch (e: any) {
-      setError(e.message || 'Failed to create tenant');
+      setError(e.message || i18nStore.t('setup.createTenantFailed'));
     } finally {
       setLoading(false);
     }
@@ -400,7 +406,7 @@ export default function Setup() {
     setError('');
     try {
       if (!requireSession()) return;
-      if (!tenantId()) throw new Error('Tenant not found — go back one step');
+      if (!tenantId()) throw new Error(i18nStore.t('setup.tenantNotFound'));
 
       // Tenant-admin `users` account. Reused if it already exists (e.g. the
       // wizard is being re-run); otherwise it gets its own password —
@@ -416,13 +422,13 @@ export default function Setup() {
 
       if (!adminUser) {
         if (userPassword().length < 10) {
-          throw new Error('Tenant admin password must be at least 10 characters');
+          throw new Error(i18nStore.t('setup.adminPasswordMin'));
         }
         if (userPassword() !== userPasswordConfirm()) {
-          throw new Error('Tenant admin password and confirmation do not match');
+          throw new Error(i18nStore.t('setup.adminPasswordMismatch'));
         }
         if (userPassword() === adminPassword()) {
-          throw new Error('Tenant admin password must differ from the superuser password');
+          throw new Error(i18nStore.t('setup.adminPasswordSameAsSuperuser'));
         }
         adminUser = await setupPb.collection('users').create({
           email: adminEmail(),
@@ -480,7 +486,7 @@ export default function Setup() {
       setStep('done');
       setTimeout(() => navigate('/login'), 1500);
     } catch (e: any) {
-      setError(e.message || 'Failed to link admin to tenant');
+      setError(e.message || i18nStore.t('setup.linkAdminFailed'));
     } finally {
       setLoading(false);
     }
@@ -488,18 +494,19 @@ export default function Setup() {
 
   return (
     <div class="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <CornerLanguageSwitcher />
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 w-full max-w-md">
         <div class="text-center mb-8">
           <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-2">STJÓRNA</h1>
-          <p class="text-gray-500 dark:text-gray-400">First-time setup</p>
+          <p class="text-gray-500 dark:text-gray-400">{i18nStore.t('setup.subtitle')}</p>
         </div>
 
         <div class="mb-6">
           <div class="flex justify-between text-xs text-gray-600 dark:text-gray-500 mb-2">
-            <span class={['admin', 'storage', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>1. Superuser</span>
-            <span class={['storage', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>2. Storage</span>
-            <span class={['tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>3. Tenant</span>
-            <span class={step() === 'link' ? 'text-blue-600 dark:text-blue-400' : ''}>4. Link</span>
+            <span class={['admin', 'storage', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>{i18nStore.t('setup.stepSuperuser')}</span>
+            <span class={['storage', 'tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>{i18nStore.t('setup.stepStorage')}</span>
+            <span class={['tenant', 'link'].includes(step()) ? 'text-blue-600 dark:text-blue-400' : ''}>{i18nStore.t('setup.stepTenant')}</span>
+            <span class={step() === 'link' ? 'text-blue-600 dark:text-blue-400' : ''}>{i18nStore.t('setup.stepLink')}</span>
           </div>
           <div class="h-1 bg-gray-50 dark:bg-gray-700 rounded">
             <div
@@ -525,16 +532,13 @@ export default function Setup() {
             <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">
               <Show
                 when={bootstrapMode()}
-                fallback={<>Log in with the PocketBase superuser that already exists. (Helm and Docker Compose installs create it from <code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_EMAIL</code> / <code class="text-gray-700 dark:text-gray-300">PB_SUPERUSER_PASSWORD</code>.)</>}
+                fallback={<>{i18nStore.t('setup.loginIntro')}</>}
               >
-                No PocketBase superuser exists yet. Create the first one — it
-                can administer every tenant in this instance, so pick something
-                you'll remember. You also need the one-time setup token from
-                the server.
+                {i18nStore.t('setup.bootstrapIntro')}
               </Show>
             </p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Superuser Email</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('setup.superuserEmail')}</label>
               <input
                 type="email"
                 value={adminEmail()}
@@ -543,7 +547,7 @@ export default function Setup() {
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('setup.password')}</label>
               <input
                 type="password"
                 value={adminPassword()}
@@ -554,7 +558,7 @@ export default function Setup() {
             </div>
             <Show when={bootstrapMode()}>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm password</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('setup.confirmPassword')}</label>
                 <input
                   type="password"
                   value={adminPasswordConfirm()}
@@ -566,7 +570,7 @@ export default function Setup() {
             </Show>
             <Show when={bootstrapMode()}>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="setup-token">Setup token</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="setup-token">{i18nStore.t('setup.setupToken')}</label>
                 <input
                   id="setup-token"
                   type="password"
@@ -579,9 +583,9 @@ export default function Setup() {
                 <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">
                   <Show
                     when={setupTokenSource() === 'env'}
-                    fallback={<>Printed in the PocketBase server log at startup as <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">STJORNA_SETUP_TOKEN=…</code> (e.g. <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">docker compose logs pocketbase</code> / <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">kubectl logs</code>).</>}
+                    fallback={<>{i18nStore.t('setup.tokenHintLog')}</>}
                   >
-                    The value of the <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">STJORNA_SETUP_TOKEN</code> environment variable on the PocketBase server.
+                    {i18nStore.t('setup.tokenHintEnv')}
                   </Show>
                 </p>
               </div>
@@ -592,8 +596,8 @@ export default function Setup() {
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
               {loading()
-                ? (bootstrapMode() ? 'Creating...' : 'Logging in...')
-                : (bootstrapMode() ? 'Create superuser & continue' : 'Continue')}
+                ? (bootstrapMode() ? i18nStore.t('setup.creating') : i18nStore.t('setup.loggingIn'))
+                : (bootstrapMode() ? i18nStore.t('setup.createSuperuser') : i18nStore.t('setup.continue'))}
             </button>
           </form>
         </Show>
@@ -606,7 +610,7 @@ export default function Setup() {
               handleConfigureStorage();
             }}
           >
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">Choose how STJÓRNA should store uploaded files:</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">{i18nStore.t('setup.storageIntro')}</p>
 
             <div class="space-y-2">
               <label class="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
@@ -618,10 +622,9 @@ export default function Setup() {
                   class="mt-1"
                 />
                 <div class="flex-1">
-                  <div class="text-gray-900 dark:text-white font-medium text-sm">Local filesystem (default)</div>
+                  <div class="text-gray-900 dark:text-white font-medium text-sm">{i18nStore.t('setup.storageLocalTitle')}</div>
                   <div class="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                    Files are stored inside the PocketBase container at <code class="text-gray-700 dark:text-gray-300">pb_data/storage/</code>.
-                    Best for development. Make sure to mount a volume in production to persist data.
+                    {i18nStore.t('setup.storageLocalDesc')}
                   </div>
                 </div>
               </label>
@@ -635,10 +638,9 @@ export default function Setup() {
                   class="mt-1"
                 />
                 <div class="flex-1">
-                  <div class="text-gray-900 dark:text-white font-medium text-sm">S3 (or S3-compatible)</div>
+                  <div class="text-gray-900 dark:text-white font-medium text-sm">{i18nStore.t('setup.storageS3Title')}</div>
                   <div class="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                    Files are stored in an S3 bucket. Works with AWS S3, Cloudflare R2, Backblaze B2, MinIO, etc.
-                    Requires restart of PocketBase after setup.
+                    {i18nStore.t('setup.storageS3Desc')}
                   </div>
                 </div>
               </label>
@@ -647,7 +649,7 @@ export default function Setup() {
             <Show when={storageType() === 's3'}>
               <div class="space-y-3 pl-4 border-l-2 border-blue-500">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-bucket">Bucket *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-bucket">{i18nStore.t('setup.bucket')}</label>
                   <input
                     id="s3-bucket"
                     type="text"
@@ -658,7 +660,7 @@ export default function Setup() {
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-region">Region *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-region">{i18nStore.t('setup.region')}</label>
                   <input
                     id="s3-region"
                     type="text"
@@ -669,7 +671,7 @@ export default function Setup() {
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-endpoint">Endpoint *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-endpoint">{i18nStore.t('setup.endpoint')}</label>
                   <input
                     id="s3-endpoint"
                     type="text"
@@ -679,10 +681,10 @@ export default function Setup() {
                     required
                     class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
                   />
-                  <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">Auto-filled from region for AWS, override for R2 / B2 / MinIO</p>
+                  <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">{i18nStore.t('setup.endpointHint')}</p>
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-access-key">Access Key *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-access-key">{i18nStore.t('setup.accessKey')}</label>
                   <input
                     id="s3-access-key"
                     type="text"
@@ -692,7 +694,7 @@ export default function Setup() {
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-secret-key">Secret Key *</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="s3-secret-key">{i18nStore.t('setup.secretKey')}</label>
                   <input
                     id="s3-secret-key"
                     type="password"
@@ -708,7 +710,7 @@ export default function Setup() {
                     checked={s3ForcePathStyle()}
                     onChange={(e) => { setS3ForcePathStyle(e.currentTarget.checked); setS3TestPassed(false); }}
                   />
-                  Force path-style addressing (MinIO, local S3)
+                  {i18nStore.t('setup.forcePathStyle')}
                 </label>
               </div>
 
@@ -720,7 +722,7 @@ export default function Setup() {
                   class="w-full bg-gray-100 dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
                   data-testid="s3-test-btn"
                 >
-                  {s3TestStatus() === 'testing' ? 'Testing…' : 'Verify S3 settings'}
+                  {s3TestStatus() === 'testing' ? i18nStore.t('setup.testing') : i18nStore.t('setup.verifyS3')}
                 </button>
                 <Show when={s3TestStatus() === 'success'}>
                   <div
@@ -740,12 +742,12 @@ export default function Setup() {
                 </Show>
                 <Show when={s3TestStatus() === 'error'}>
                   <p class="text-gray-600 dark:text-gray-500 text-xs italic mt-1">
-                    If a test record was created, it will appear in the media list with a <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">__stjorna_s3_test__</code> filename. You can safely delete it.
+                    {i18nStore.t('setup.testRecordNote')}
                   </p>
                 </Show>
                 <Show when={storageType() === 's3' && !s3TestPassed() && s3TestStatus() !== 'testing'}>
                   <p class="text-gray-600 dark:text-gray-500 text-xs italic mt-1">
-                    Click "Verify S3 settings" before continuing.
+                    {i18nStore.t('setup.clickVerify')}
                   </p>
                 </Show>
               </div>
@@ -756,7 +758,7 @@ export default function Setup() {
               disabled={!isS3Valid() || (storageType() === 's3' && !s3TestPassed())}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
-              Continue
+              {i18nStore.t('setup.continue')}
             </button>
           </form>
         </Show>
@@ -769,9 +771,9 @@ export default function Setup() {
               handleCreateTenant();
             }}
           >
-            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">Create your first tenant (an existing tenant with the same slug is reused):</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm mb-4">{i18nStore.t('setup.tenantIntro')}</p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('setup.companyName')}</label>
               <input
                 type="text"
                 value={tenantName()}
@@ -780,7 +782,7 @@ export default function Setup() {
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('setup.slug')}</label>
               <input
                 type="text"
                 value={tenantSlug()}
@@ -793,7 +795,7 @@ export default function Setup() {
               disabled={loading() || !tenantName() || !tenantSlug()}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
-              {loading() ? 'Saving...' : 'Continue'}
+              {loading() ? i18nStore.t('setup.saving') : i18nStore.t('setup.continue')}
             </button>
           </form>
         </Show>
@@ -807,14 +809,14 @@ export default function Setup() {
             }}
           >
             <p class="text-gray-500 dark:text-gray-400 text-sm mb-2">
-              A tenant-level admin account (<code class="text-gray-700 dark:text-gray-300">{adminEmail()}</code>) is
-              created in <Show when={tenantReused()} fallback={<>the new tenant</>}>the existing tenant</Show>{' '}
-              <code class="text-gray-700 dark:text-gray-300">{tenantSlug()}</code>. It is separate from the
-              superuser and gets its own password. If a user with this email already exists, it is
-              linked as-is and the fields below are ignored.
+              {i18nStore.t('setup.linkIntro', {
+                email: adminEmail(),
+                where: tenantReused() ? i18nStore.t('setup.linkWhereExisting') : i18nStore.t('setup.linkWhereNew'),
+                slug: tenantSlug(),
+              })}
             </p>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="user-password">Tenant admin password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="user-password">{i18nStore.t('setup.tenantAdminPassword')}</label>
               <input
                 id="user-password"
                 type="password"
@@ -823,10 +825,10 @@ export default function Setup() {
                 autocomplete="new-password"
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
               />
-              <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">At least 10 characters, different from the superuser password.</p>
+              <p class="text-gray-600 dark:text-gray-500 text-xs mt-1">{i18nStore.t('setup.tenantAdminPasswordHint')}</p>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="user-password-confirm">Confirm tenant admin password</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="user-password-confirm">{i18nStore.t('setup.confirmTenantAdminPassword')}</label>
               <input
                 id="user-password-confirm"
                 type="password"
@@ -841,26 +843,26 @@ export default function Setup() {
               disabled={loading()}
               class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
             >
-              {loading() ? 'Linking...' : 'Complete Setup'}
+              {loading() ? i18nStore.t('setup.linking') : i18nStore.t('setup.completeSetup')}
             </button>
           </form>
         </Show>
 
         <Show when={step() === 'done'}>
           <div class="text-center space-y-3">
-            <p class="text-green-600 dark:text-green-400 text-lg mb-2">Setup complete!</p>
+            <p class="text-green-600 dark:text-green-400 text-lg mb-2">{i18nStore.t('setup.doneTitle')}</p>
             <Show when={storageType() === 's3'}>
               <div class="bg-green-500/10 border border-green-500/50 rounded p-3 text-left">
-                <p class="text-green-700 dark:text-green-300 text-xs font-medium mb-1">S3 storage active</p>
+                <p class="text-green-700 dark:text-green-300 text-xs font-medium mb-1">{i18nStore.t('setup.s3Active')}</p>
                 <p class="text-green-700/80 dark:text-green-200/80 text-xs">
-                  New uploads will be stored in bucket <code class="bg-gray-50 dark:bg-gray-700 px-1 rounded">{s3Bucket()}</code>.
+                  {i18nStore.t('setup.s3ActiveDesc', { bucket: s3Bucket() })}
                 </p>
               </div>
             </Show>
             <Show when={storageType() === 'local'}>
-              <p class="text-gray-500 dark:text-gray-400 text-xs">Using local filesystem storage.</p>
+              <p class="text-gray-500 dark:text-gray-400 text-xs">{i18nStore.t('setup.localStorageDesc')}</p>
             </Show>
-            <p class="text-gray-500 dark:text-gray-400 text-sm">Redirecting to login...</p>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">{i18nStore.t('setup.redirecting')}</p>
           </div>
         </Show>
 

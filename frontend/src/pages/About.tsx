@@ -1,6 +1,7 @@
 import { createSignal, onMount, Show } from 'solid-js';
 import { Code, Globe, Hash, Calendar, Info } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 
 type VersionInfo = {
     version: string;
@@ -100,11 +101,11 @@ const DEPENDENCIES = [
 ] as const;
 
 const ROLE_LABEL: Record<string, string> = {
-    backend: 'Backend',
-    frontend: 'Frontend',
-    styling: 'Styling',
-    tooling: 'Tooling',
-    deployment: 'Deployment',
+    backend: 'about.roleBackend',
+    frontend: 'about.roleFrontend',
+    styling: 'about.roleStyling',
+    tooling: 'about.roleTooling',
+    deployment: 'about.roleDeployment',
 };
 
 function formatBuildTime(iso: string): string {
@@ -146,26 +147,26 @@ export default function About() {
             <div class="flex items-center gap-3">
                 <Info size={28} class="text-blue-600 dark:text-blue-400" />
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">About STJÓRNA</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">Multi-tenant product management with a read-only REST API.</p>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('about.title')}</h1>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{i18nStore.t('about.tagline')}</p>
                 </div>
             </div>
 
             <Show when={authStore.isAuthenticated()}>
                 <p class="text-sm text-gray-600 dark:text-gray-400">
-                    You are signed in as <code class="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">{authStore.user?.email || 'unknown user'}</code>.
+                    {i18nStore.t('about.signedInAs', { email: authStore.user?.email || i18nStore.t('about.unknownUser') })}
                 </p>
             </Show>
 
             {/* Links */}
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Project links</h2>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('about.projectLinks')}</h2>
                 <ul class="space-y-3">
                     <li>
                         <a href="https://github.com/secanis/stjorna" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
                             <Code size={18} />
                             <span class="flex-1">
-                                <span class="font-medium">Source code (GitHub)</span>
+                                <span class="font-medium">{i18nStore.t('about.sourceCode')}</span>
                                 <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">github.com/secanis/stjorna</span>
                             </span>
                             <span class="text-gray-400">↗</span>
@@ -175,7 +176,7 @@ export default function About() {
                         <a href="https://stjorna.secanis.ch" target="_blank" rel="noopener noreferrer" class="flex items-center gap-3 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:text-blue-400">
                             <Globe size={18} />
                             <span class="flex-1">
-                                <span class="font-medium">Project website &amp; install docs</span>
+                                <span class="font-medium">{i18nStore.t('about.projectWebsite')}</span>
                                 <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">stjorna.secanis.ch</span>
                             </span>
                             <span class="text-gray-400">↗</span>
@@ -186,25 +187,25 @@ export default function About() {
 
             {/* Version */}
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Build info</h2>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('about.buildInfo')}</h2>
                 <Show
                     when={versionInfo()}
                     fallback={
                         <p class="text-sm text-gray-500 dark:text-gray-400">
-                            <Show when={loadError()} fallback={<>Loading version…</>}>
-                                Version info not available ({loadError()}). This usually means the running image was built before the version stamp was added; rebuild from main to populate <code>/version.json</code>.
+                            <Show when={loadError()} fallback={<>{i18nStore.t('about.loadingVersion')}</>}>
+                                {i18nStore.t('about.versionNotAvailable', { error: loadError() })}
                             </Show>
                         </p>
                     }
                 >
                     <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                         <dt class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                            <Info size={14} /> Version
+                            <Info size={14} /> {i18nStore.t('about.version')}
                         </dt>
                         <dd class="font-mono text-gray-900 dark:text-white">{versionInfo()!.version}</dd>
 
                         <dt class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                            <Hash size={14} /> Commit
+                            <Hash size={14} /> {i18nStore.t('about.commit')}
                         </dt>
                         <dd class="font-mono text-gray-900 dark:text-white">
                             <a href={`https://github.com/secanis/stjorna/commit/${versionInfo()!.commit}`} target="_blank" rel="noopener noreferrer" class="hover:underline">
@@ -213,7 +214,7 @@ export default function About() {
                         </dd>
 
                         <dt class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                            <Calendar size={14} /> Built
+                            <Calendar size={14} /> {i18nStore.t('about.built')}
                         </dt>
                         <dd class="font-mono text-gray-900 dark:text-white">{formatBuildTime(versionInfo()!.buildTime)}</dd>
                     </dl>
@@ -222,12 +223,12 @@ export default function About() {
 
             {/* OSS deps */}
             <div class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Open-source dependencies</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">STJÓRNA is AGPL-3.0-licensed and built on top of the following libraries. Full transitive license information ships with the source tree.</p>
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">{i18nStore.t('about.ossDeps')}</h2>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{i18nStore.t('about.ossDepsHint')}</p>
                 <ul class="divide-y divide-gray-100 dark:divide-gray-700">
                     {DEPENDENCIES.map((d) => (
                         <li class="py-3 flex items-start gap-3">
-                            <span class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 w-24 shrink-0 pt-0.5">{ROLE_LABEL[d.role] || d.role}</span>
+                            <span class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 w-24 shrink-0 pt-0.5">{i18nStore.t(ROLE_LABEL[d.role] || d.role)}</span>
                             <div class="flex-1 min-w-0">
                                 <a href={d.url} target="_blank" rel="noopener noreferrer" class="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400">
                                     {d.name}
@@ -240,7 +241,7 @@ export default function About() {
                 </ul>
             </div>
 
-            <p class="text-xs text-gray-400 dark:text-gray-500 text-center pt-2">STJÓRNA — open source under AGPL-3.0.</p>
+            <p class="text-xs text-gray-400 dark:text-gray-500 text-center pt-2">{i18nStore.t('about.footer')}</p>
         </div>
     );
 }

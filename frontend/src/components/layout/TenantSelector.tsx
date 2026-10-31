@@ -2,14 +2,15 @@ import { Show, For, createSignal, createEffect, onCleanup, onMount } from 'solid
 import { ChevronDown } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { pb } from '~/services/pocketbase';
+import { i18nStore } from '~/i18n';
 import { getMediaFileUrl } from '~/utils/mediaUrl';
 import type { TenantThemeConfig } from '~/types';
 
 function getTenantName(tenantId: string | null): string {
-  if (!tenantId) return 'Select tenant...';
-  if (authStore.isPBAdmin && tenantId === 'instance') return 'Instance Settings';
+  if (!tenantId) return i18nStore.t('tenantSelector.selectTenant');
+  if (authStore.isPBAdmin && tenantId === 'instance') return i18nStore.t('tenantSelector.instanceSettings');
   const tenant = authStore.tenants.find(t => t.tenant === tenantId);
-  return tenant ? (tenant.tenantName || tenant.tenant).substring(0, 20) : 'Select tenant...';
+  return tenant ? (tenant.tenantName || tenant.tenant).substring(0, 20) : i18nStore.t('tenantSelector.selectTenant');
 }
 
 // Resolves a tenant's logo media ID into a file URL, reactive to the
@@ -133,7 +134,7 @@ export default function TenantSelector() {
         aria-haspopup="menu"
         aria-expanded={open()}
         aria-controls="tenant-selector-menu"
-        aria-label={`Current tenant: ${getTenantName(currentValue())}. Switch tenant`}
+        aria-label={i18nStore.t('tenantSelector.currentTenant', { name: getTenantName(currentValue()) })}
         onClick={() => (open() ? closeMenu() : openMenu())}
         onKeyDown={onTriggerKeyDown}
         class="flex items-center gap-2 cursor-pointer px-3 py-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -160,7 +161,7 @@ export default function TenantSelector() {
         <div class="py-1">
           <Show when={authStore.isPBAdmin}>
             <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700" role="presentation">
-              <div class="text-xs text-gray-600 dark:text-gray-500 uppercase">System</div>
+              <div class="text-xs text-gray-600 dark:text-gray-500 uppercase">{i18nStore.t('tenantSelector.system')}</div>
             </div>
             <button
               type="button"
@@ -172,13 +173,13 @@ export default function TenantSelector() {
                 currentValue() === '' ? 'text-blue-600 dark:text-blue-400 bg-gray-50 dark:bg-gray-700' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:text-white'
               }`}
             >
-              <span>Instance Settings</span>
+              <span>{i18nStore.t('tenantSelector.instanceSettings')}</span>
               <Show when={currentValue() === ''}>
                 <span class="text-xs text-blue-600 dark:text-blue-400">✓</span>
               </Show>
             </button>
             <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700 mt-1" role="presentation">
-              <div class="text-xs text-gray-600 dark:text-gray-500 uppercase">Tenants</div>
+              <div class="text-xs text-gray-600 dark:text-gray-500 uppercase">{i18nStore.t('tenantSelector.tenants')}</div>
             </div>
           </Show>
 
@@ -205,7 +206,7 @@ export default function TenantSelector() {
           </For>
 
           <Show when={authStore.tenants.length === 0 && !authStore.isPBAdmin}>
-            <div class="px-4 py-3 text-gray-600 dark:text-gray-500 text-sm">No tenants available</div>
+            <div class="px-4 py-3 text-gray-600 dark:text-gray-500 text-sm">{i18nStore.t('tenantSelector.noTenants')}</div>
           </Show>
         </div>
       </div>

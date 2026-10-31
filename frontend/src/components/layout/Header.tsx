@@ -4,6 +4,7 @@ import UserMenu from './UserMenu';
 import { authStore } from '~/stores/auth';
 import { themeStore } from '~/stores/theme';
 import { tenantTheme } from '~/stores/tenantTheme';
+import { i18nStore } from '~/i18n';
 import { getMediaFileUrl } from '~/utils/mediaUrl';
 
 export default function Header() {
@@ -23,7 +24,7 @@ export default function Header() {
         {(media) => (
           <img
             src={getMediaFileUrl(media.id, media.file)}
-            alt="Tenant logo"
+            alt={i18nStore.t('header.tenantLogoAlt')}
             class="h-7 max-w-[200px] object-contain"
           />
         )}

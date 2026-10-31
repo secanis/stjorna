@@ -1,4 +1,5 @@
 import { createSignal, For, Show, JSX } from 'solid-js';
+import { i18nStore } from '~/i18n';
 
 export interface Column {
   key: string;
@@ -52,7 +53,7 @@ export default function Table(props: TableProps) {
             fallback={
               <tr>
                 <td colspan={props.columns.length} class="px-4 py-8 text-center text-gray-600 dark:text-gray-500">
-                  {props.emptyMessage || 'No data'}
+                  {props.emptyMessage || i18nStore.t('common.noData')}
                 </td>
               </tr>
             }

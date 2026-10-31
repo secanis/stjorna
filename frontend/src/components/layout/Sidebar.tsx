@@ -4,6 +4,7 @@ import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, Bo
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
+import { i18nStore } from '~/i18n';
 import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 
 type NavItem = {
@@ -16,35 +17,35 @@ type NavItem = {
 };
 
 const baseNavItems: NavItem[] = [
-    { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { path: '/media', label: 'Media', icon: Image, showCount: true, roles: ['editor', 'admin'] as const },
-    { path: '/categories', label: 'Categories', icon: Folder, showCount: true, roles: ['editor', 'admin'] as const },
-    { path: '/products', label: 'Products', icon: Package, showCount: true, roles: ['editor', 'admin'] as const },
-    { path: '/stats', label: 'Statistics', icon: BarChart3, roles: ['editor', 'admin'] as const },
-    { path: '/activities', label: 'Activities', icon: History, roles: ['editor', 'admin', 'pb_admin'] as const },
-    { path: '/api-docs', label: 'API Docs', icon: BookOpen, roles: ['editor', 'admin', 'pb_admin'] as const },
-    { path: '/users', label: 'Users', icon: Users, roles: ['admin', 'pb_admin'] as const, showCount: true },
-    { path: '/tenants', label: 'Tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
-    { path: '/api-keys', label: 'API Keys', icon: KeyRound, roles: ['pb_admin'] as const, showCount: true },
-    { path: '/superusers', label: 'Superusers', icon: Shield, roles: ['pb_admin'] as const, showCount: true },
+    { path: '/', label: 'nav.dashboard', icon: LayoutDashboard },
+    { path: '/media', label: 'nav.media', icon: Image, showCount: true, roles: ['editor', 'admin'] as const },
+    { path: '/categories', label: 'nav.categories', icon: Folder, showCount: true, roles: ['editor', 'admin'] as const },
+    { path: '/products', label: 'nav.products', icon: Package, showCount: true, roles: ['editor', 'admin'] as const },
+    { path: '/stats', label: 'nav.statistics', icon: BarChart3, roles: ['editor', 'admin'] as const },
+    { path: '/activities', label: 'nav.activities', icon: History, roles: ['editor', 'admin', 'pb_admin'] as const },
+    { path: '/api-docs', label: 'nav.apiDocs', icon: BookOpen, roles: ['editor', 'admin', 'pb_admin'] as const },
+    { path: '/users', label: 'nav.users', icon: Users, roles: ['admin', 'pb_admin'] as const, showCount: true },
+    { path: '/tenants', label: 'nav.tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
+    { path: '/api-keys', label: 'nav.apiKeys', icon: KeyRound, roles: ['pb_admin'] as const, showCount: true },
+    { path: '/superusers', label: 'nav.superusers', icon: Shield, roles: ['pb_admin'] as const, showCount: true },
 ];
 
 const settingsItem = (): NavItem => {
     if (authStore.isPBAdmin) {
         return {
             path: '/settings/general',
-            label: 'Settings',
+            label: 'nav.settings',
             icon: Settings,
             children: [
-                { path: '/settings/general', label: 'General' },
-                { path: '/settings/backup', label: 'Backup' },
-                { path: '/settings/oidc', label: 'OIDC' },
-                { path: '/settings/smtp', label: 'SMTP' },
-                { path: '/settings/security', label: 'Security' },
+                { path: '/settings/general', label: 'nav.general' },
+                { path: '/settings/backup', label: 'nav.backup' },
+                { path: '/settings/oidc', label: 'nav.oidc' },
+                { path: '/settings/smtp', label: 'nav.smtp' },
+                { path: '/settings/security', label: 'nav.security' },
             ],
         };
     }
-    return { path: '/settings', label: 'Settings', icon: Settings };
+    return { path: '/settings', label: 'nav.settings', icon: Settings };
 };
 
 export default function Sidebar() {
@@ -178,7 +179,7 @@ export default function Sidebar() {
                                     }}
                                 >
                                 <Icon size={20} />
-                                <span class="flex-1">{item.label}</span>
+                                <span class="flex-1">{i18nStore.t(item.label)}</span>
                                 <Show when={item.children}>
                                     {parentActive() || isChildActive() ? (
                                         <ChevronDown size={16} class="text-gray-500 dark:text-gray-400" />
@@ -267,7 +268,7 @@ export default function Sidebar() {
                                                             'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700': !childActive(),
                                                         }}
                                                     >
-                                                        {child.label}
+                                                        {i18nStore.t(child.label)}
                                                     </A>
                                                 );
                                             }}
@@ -294,7 +295,7 @@ export default function Sidebar() {
                     }}
                 >
                     <Info size={14} />
-                    <span>About STJÓRNA</span>
+                    <span>{i18nStore.t('nav.about')}</span>
                 </A>
             </div>
         </aside>
