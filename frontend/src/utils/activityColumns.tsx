@@ -10,7 +10,7 @@
  */
 
 import { JSX } from 'solid-js';
-import { ENTITY_TYPE_COLORS, ENTITY_TYPE_LABELS, ACTION_COLORS, ENTITY_TYPE_TEXT_COLORS } from '~/styles/colors';
+import { ENTITY_TYPE_COLORS, ACTION_COLORS, ENTITY_TYPE_TEXT_COLORS } from '~/styles/colors';
 import type { Column } from '~/components/ui/Table';
 import type { ActivityType, ActivityAction, ActivityEvent } from '~/utils/activity';
 import { authStore } from '~/stores/auth';
@@ -21,11 +21,11 @@ import { i18nStore } from '~/i18n';
 // ─────────────────────────────────────────
 
 export function TypeBadge(props: { value: unknown }): JSX.Element {
-  const t = props.value as ActivityType;
-  const bg = ENTITY_TYPE_COLORS[t] ?? 'bg-gray-100 dark:bg-gray-600';
+  const type = props.value as ActivityType;
+  const bg = ENTITY_TYPE_COLORS[type] ?? 'bg-gray-100 dark:bg-gray-600';
   return (
     <span class={`px-2 py-1 rounded text-xs font-medium ${bg} text-white`}>
-      {ENTITY_TYPE_LABELS[t] ?? String(props.value)}
+      {i18nStore.t(`activity.${type}`) ?? String(props.value)}
     </span>
   );
 }
@@ -38,7 +38,7 @@ export function ActionBadge(props: { value: unknown }): JSX.Element {
   };
   return (
     <span class={`px-2 py-1 rounded text-xs font-medium ${c.bg} ${c.text}`}>
-      {a}
+      {i18nStore.t(`activities.${a}`)}
     </span>
   );
 }

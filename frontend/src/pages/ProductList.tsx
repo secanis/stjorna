@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, onMount, For } from 'solid-js';
+import { createSignal, createResource, createMemo, Show, onMount, For } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import Table, { Column } from '~/components/ui/Table';
 import { pb, tenantFilter, toSortExpr } from '~/services/pocketbase';
@@ -12,6 +12,7 @@ import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import type { Product, Category } from '~/types';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
+import { i18nStore } from '~/i18n';
 
 const PER_PAGE = 50;
 
@@ -80,13 +81,13 @@ export default function ProductList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!(await confirmDialog({ message: 'Delete this product?', danger: true }))) return;
+    if (!(await confirmDialog({ message: i18nStore.t('products.deleteConfirm'), danger: true }))) return;
     try {
       await pb.collection('products').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      void alertDialog(`Failed to delete: ${e.message}`);
+      void alertDialog(i18nStore.t('common.failedToDelete', { msg: e.message }));
     }
   };
 
@@ -96,20 +97,20 @@ export default function ProductList() {
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      void alertDialog(`Failed to update: ${e.message}`);
+      void alertDialog(i18nStore.t('common.failedToUpdate', { msg: e.message }));
     }
   };
 
-  const columns: Column[] = [
+  const columns = createMemo<Column[]>(() => [
     {
       key: 'media',
-      label: 'Thumb',
+      label: i18nStore.t('products.thumb'),
       render: (_, row) => {
         const expanded = (row as any).expand?.media;
         const list: any[] = Array.isArray(expanded) ? expanded : (expanded ? [expanded] : []);
         if (list.length === 0) {
           return (
-            <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center" title="No media">
+            <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center" title={i18nStore.t('products.noMedia')}>
               <ImageOff size={16} class="text-gray-600 dark:text-gray-500" />
             </div>
           );
@@ -136,24 +137,24 @@ export default function ProductList() {
     },
     {
       key: 'name',
-      label: 'Name',
+      label: i18nStore.t('common.name'),
       sortable: true,
     },
-    { key: 'slug', label: 'Slug', sortable: true },
+    { key: 'slug', label: i18nStore.t('common.slug'), sortable: true },
     {
       key: 'category',
-      label: 'Category',
+      label: i18nStore.t('common.category'),
       render: (v) => v || '-',
     },
     {
       key: 'price',
-      label: 'Price',
+      label: i18nStore.t('common.price'),
       sortable: true,
       render: (v) => v != null ? `${v.toFixed(2)}` : '-',
     },
     {
       key: 'active',
-      label: 'Active',
+      label: i18nStore.t('common.active'),
       sortable: true,
       render: (v, row) => (
         <ActiveBadge
@@ -165,54 +166,54 @@ export default function ProductList() {
     },
     {
       key: 'sort_order',
-      label: 'Sort Order',
+      label: i18nStore.t('common.sortOrder'),
       sortable: true,
       render: (v) => v ?? '-',
     },
     {
       key: 'created',
-      label: 'Created',
+      label: i18nStore.t('common.created'),
       sortable: true,
       render: (v) => v ? new Date(v).toLocaleDateString() : '-',
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: i18nStore.t('common.actions'),
       render: (_, row) => (
         <div class="flex gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/products/${row.id}`); }}
             class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
           >
-            Edit
+            {i18nStore.t('common.edit')}
           </button>
           <Show when={authStore.isEditorOrAbove()}>
             <button
               onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
               class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
             >
-              Delete
+              {i18nStore.t('common.delete')}
             </button>
           </Show>
         </div>
       ),
     },
-  ];
+  ]);
 
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Products</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('products.title')}</h1>
         <Show when={authStore.isEditorOrAbove()}>
           <A href="/products/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.product} px-4 py-2 rounded font-medium transition-colors`}>
-            + Add Product
+            {i18nStore.t('products.addProduct')}
           </A>
         </Show>
       </div>
 
       <div class="flex flex-wrap items-end gap-3">
         <div class="flex-1 min-w-[200px]">
-          <label for="product-search" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+          <label for="product-search" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.search')}</label>
           <input
             id="product-search"
             data-testid="product-search"
@@ -220,53 +221,53 @@ export default function ProductList() {
             type="text"
             value={search()}
             onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
-            placeholder="Search name, slug or description…"
+            placeholder={i18nStore.t('products.searchPlaceholder')}
             class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
         <div class="w-64">
-          <label for="product-category" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
+          <label for="product-category" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.category')}</label>
           <Combobox
             id="product-category"
             testId="product-category"
             value={categoryFilter()}
             onChange={(v) => { setCategoryFilter(v); setPage(1); }}
             options={(categories()?.items || []).map((c) => ({ value: c.id, label: c.name }))}
-            placeholder="All categories"
-            clearLabel="All categories"
-            emptyMessage="No matching category"
+            placeholder={i18nStore.t('common.allCategories')}
+            clearLabel={i18nStore.t('common.allCategories')}
+            emptyMessage={i18nStore.t('products.noMatchingCategory')}
           />
         </div>
         <div class="w-56">
-          <label for="product-status" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
+          <label for="product-status" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.status')}</label>
           <Combobox
             id="product-status"
             testId="product-status"
             value={activeFilter()}
             onChange={(v) => { setActiveFilter(v); setPage(1); }}
             options={[
-              { value: 'active', label: 'Active' },
-              { value: 'inactive', label: 'Inactive' },
+              { value: 'active', label: i18nStore.t('common.active') },
+              { value: 'inactive', label: i18nStore.t('common.inactive') },
             ]}
-            placeholder="All statuses"
-            clearLabel="All statuses"
+            placeholder={i18nStore.t('common.allStatuses')}
+            clearLabel={i18nStore.t('common.allStatuses')}
           />
         </div>
       </div>
 
       <Show
         when={!data.loading}
-        fallback={<div class="text-gray-500 dark:text-gray-400">Loading products...</div>}
+        fallback={<div class="text-gray-500 dark:text-gray-400">{i18nStore.t('products.loading')}</div>}
       >
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
-            columns={columns}
+            columns={columns()}
             data={data()?.items || []}
             sortKey={sortKey()}
             sortDir={sortDir()}
             onSort={handleSort}
             onRowClick={(row) => navigate(`/products/${row.id}`)}
-            emptyMessage="No products yet"
+            emptyMessage={i18nStore.t('products.empty')}
           />
         </div>
 
@@ -277,17 +278,17 @@ export default function ProductList() {
               disabled={page() === 1}
               class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
-              Previous
+              {i18nStore.t('common.previous')}
             </button>
             <span class="text-gray-500 dark:text-gray-400 py-1 px-3">
-              Page {page()} of {data()?.totalPages || 1}
+              {i18nStore.t('common.pageOf', { page: page(), total: data()?.totalPages || 1 })}
             </span>
             <button
               onClick={() => setPage(p => p + 1)}
               disabled={page() >= (data()?.totalPages || 1)}
               class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
-              Next
+              {i18nStore.t('common.next')}
             </button>
           </div>
         </Show>

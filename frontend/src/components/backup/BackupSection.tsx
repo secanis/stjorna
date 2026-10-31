@@ -1,6 +1,7 @@
 import { createSignal, Show } from 'solid-js';
 import type { ImportResult } from '~/services/backup';
 import { downloadTenantBackup, importBackup } from '~/services/backup';
+import { i18nStore } from '~/i18n';
 import { Download, Upload, FileWarning, CheckCircle2 } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -22,7 +23,7 @@ export default function BackupSection(props: Props) {
     try {
       await downloadTenantBackup(props.tenantId);
     } catch (err: unknown) {
-      setDownloadError(err instanceof Error ? err.message : 'Download failed');
+      setDownloadError(err instanceof Error ? err.message : i18nStore.t('backup.downloadFailed'));
     } finally {
       setDownloading(false);
     }
@@ -40,7 +41,7 @@ export default function BackupSection(props: Props) {
     e.preventDefault();
     const f = file();
     if (!f) {
-      setError('Please choose a backup file');
+      setError(i18nStore.t('backup.pleaseChooseFile'));
       return;
     }
     setImporting(true);
@@ -48,10 +49,10 @@ export default function BackupSection(props: Props) {
     setResult(null);
     try {
       const r = await importBackup({ file: f, tenantId: props.tenantId });
-      if (!r.success) setError(r.error || 'Import failed');
+      if (!r.success) setError(r.error || i18nStore.t('backup.importFailed'));
       setResult(r);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Network error');
+      setError(err instanceof Error ? err.message : i18nStore.t('backup.networkError'));
     } finally {
       setImporting(false);
     }
@@ -61,9 +62,9 @@ export default function BackupSection(props: Props) {
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('backup.tenantBackup')}</h2>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Download a ZIP of this tenant's categories, products and media.
+            {i18nStore.t('backup.tenantBackupHint')}
           </p>
         </div>
         <button
@@ -73,7 +74,7 @@ export default function BackupSection(props: Props) {
           class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2 shrink-0`}
         >
           <Download size={14} />
-          {downloading() ? 'Downloading…' : 'Download ZIP'}
+          {downloading() ? i18nStore.t('backup.downloading') : i18nStore.t('backup.downloadZip')}
         </button>
       </div>
 
@@ -85,16 +86,15 @@ export default function BackupSection(props: Props) {
       </Show>
 
       <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Restore Backup</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('backup.restoreBackup')}</h2>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Import content from a v3 backup ZIP (created with "Download ZIP") into this tenant.
-          Records that already exist (same category/product slug) are skipped.
+          {i18nStore.t('backup.restoreHint')}
         </p>
       </div>
 
       <form onSubmit={handleImport} class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Backup file</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('backup.backupFile')}</label>
           <input
             type="file"
             accept=".zip"
@@ -110,7 +110,7 @@ export default function BackupSection(props: Props) {
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Upload size={14} />
-            {importing() ? 'Importing…' : 'Import'}
+            {importing() ? i18nStore.t('backup.importing') : i18nStore.t('backup.import')}
           </button>
           <Show when={file()}>
             <span class="text-xs text-gray-500 dark:text-gray-400">
@@ -132,22 +132,26 @@ export default function BackupSection(props: Props) {
           <div class="flex items-center gap-2 font-medium">
             <CheckCircle2 size={16} />
             <span>
-              Imported {result()!.stats.created.categories} categories,{' '}
-              {result()!.stats.created.products} products
-              <Show when={result()!.stats.created.media > 0}>
-                , {result()!.stats.created.media} media
-              </Show>
-              .
+              {i18nStore.t('backup.imported', {
+                categories: result()!.stats.created.categories,
+                products: result()!.stats.created.products,
+                media:
+                  result()!.stats.created.media > 0
+                    ? i18nStore.t('backup.andMedia', { n: result()!.stats.created.media })
+                    : '',
+              })}
             </span>
           </div>
           <Show when={result()!.stats.updated.categories + result()!.stats.updated.products + result()!.stats.updated.media > 0}>
             <div class="text-gray-500 dark:text-gray-400 text-xs pl-6">
-              Updated {result()!.stats.updated.categories} categories,{' '}
-              {result()!.stats.updated.products} products
-              <Show when={result()!.stats.updated.media > 0}>
-                , {result()!.stats.updated.media} media
-              </Show>{' '}
-              (already exist).
+              {i18nStore.t('backup.updated', {
+                categories: result()!.stats.updated.categories,
+                products: result()!.stats.updated.products,
+                media:
+                  result()!.stats.updated.media > 0
+                    ? i18nStore.t('backup.andMedia', { n: result()!.stats.updated.media })
+                    : '',
+              })}
             </div>
           </Show>
           <Show when={result()!.stats.warnings.length > 0}>

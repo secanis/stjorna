@@ -13,9 +13,9 @@ import {
 } from '~/utils/activity';
 import {
   ENTITY_TYPE_COLORS,
-  ENTITY_TYPE_LABELS,
 } from '~/styles/colors';
 import { activityColumns, recordHref } from '~/utils/activityColumns';
+import { i18nStore } from '~/i18n';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -97,33 +97,33 @@ export default function Activities() {
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
           <History size={24} class="text-gray-500 dark:text-gray-400" />
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Activities</h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('activities.title')}</h1>
         </div>
         <button
           type="button"
           onClick={() => refetch()}
           class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex items-center gap-2 text-sm"
         >
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} /> {i18nStore.t('activities.refresh')}
         </button>
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded-lg p-4 space-y-4">
         <div class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
           <Filter size={14} />
-          <span class="font-medium">Filters</span>
+          <span class="font-medium">{i18nStore.t('activities.filters')}</span>
           <button
             type="button"
             onClick={resetFilters}
             class="ml-auto text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex items-center gap-1"
           >
-            <X size={12} /> Reset
+            <X size={12} /> {i18nStore.t('activities.reset')}
           </button>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.type')}</label>
             <div class="flex flex-wrap gap-1.5">
               <For each={ALL_ACTIVITY_TYPES}>
                 {(t) => {
@@ -141,7 +141,7 @@ export default function Activities() {
                         'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600': !isOn(),
                       }}
                     >
-                      {ENTITY_TYPE_LABELS[t]}
+                      {i18nStore.t(`activity.${t}`)}
                     </button>
                   );
                 }}
@@ -150,7 +150,7 @@ export default function Activities() {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Action</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('activities.action')}</label>
             <div class="flex gap-1.5">
               <For each={['created', 'updated'] as ActivityAction[]}>
                 {(a) => {
@@ -165,7 +165,7 @@ export default function Activities() {
                         'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600': !isOn(),
                       }}
                     >
-                      {a}
+                      {i18nStore.t(`activities.${a}`)}
                     </button>
                   );
                 }}
@@ -174,7 +174,7 @@ export default function Activities() {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-from">From</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-from">{i18nStore.t('activities.from')}</label>
             <input
               id="act-from"
               type="date"
@@ -186,7 +186,7 @@ export default function Activities() {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-to">To</label>
+            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-to">{i18nStore.t('activities.to')}</label>
             <input
               id="act-to"
               type="date"
@@ -200,13 +200,13 @@ export default function Activities() {
         </div>
 
         <div>
-          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-search">Name contains</label>
+          <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1" for="act-search">{i18nStore.t('activities.nameContains')}</label>
           <input
             id="act-search"
             type="text"
             value={nameFilter()}
             onInput={(e) => setNameFilter(e.currentTarget.value)}
-            placeholder="e.g. category name, product title, email…"
+            placeholder={i18nStore.t('activities.namePlaceholder')}
             class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -215,7 +215,7 @@ export default function Activities() {
       <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
         <Show
           when={!events.loading}
-          fallback={<div class="p-4 text-gray-500 dark:text-gray-400">Loading activities…</div>}
+          fallback={<div class="p-4 text-gray-500 dark:text-gray-400">{i18nStore.t('activities.loading')}</div>}
         >
           <Table
             columns={columns()}
@@ -227,8 +227,8 @@ export default function Activities() {
             }}
             emptyMessage={
               events()?.length === 0
-                ? 'No activity found for the selected filters.'
-                : 'No events match the name filter.'
+                ? i18nStore.t('activities.noResults')
+                : i18nStore.t('activities.noNameMatch')
             }
           />
         </Show>
@@ -236,8 +236,8 @@ export default function Activities() {
 
       <Show when={filtered().length > 0}>
         <p class="text-xs text-gray-600 dark:text-gray-500">
-          Showing {filtered().length} event{filtered().length === 1 ? '' : 's'}
-          {filtered().length >= 250 ? ' (capped — clear filters to see more)' : ''}.
+          {i18nStore.t('activities.showing', { n: filtered().length, s: filtered().length === 1 ? '' : 's' })}
+          {filtered().length >= 250 ? i18nStore.t('activities.capped') : ''}.
         </p>
       </Show>
     </div>

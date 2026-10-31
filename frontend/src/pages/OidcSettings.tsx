@@ -2,6 +2,7 @@ import { createSignal, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 import { Save, Copy, Check, Info } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
@@ -182,7 +183,7 @@ export default function OidcSettings() {
       const passwordAuth: any = usersColl.passwordAuth || {};
       setForm((f) => ({ ...f, disablePasswordLogin: passwordAuth.enabled === false }));
     } catch (e: any) {
-      setError(e.message || 'Failed to load OIDC settings');
+      setError(e.message || i18nStore.t('oidc.failedToLoad'));
     } finally {
       // Tenant slugs for the group-format preview box (superuser-only page).
       try {
@@ -205,26 +206,26 @@ export default function OidcSettings() {
     const f = form();
 
     if (f.enabled) {
-      if (!f.clientId) { setError('Client ID is required'); setSaving(false); return; }
-      if (!f.authUrl) { setError('Authorization URL is required'); setSaving(false); return; }
-      if (!f.tokenUrl) { setError('Token URL is required'); setSaving(false); return; }
+      if (!f.clientId) { setError(i18nStore.t('oidc.clientIdRequired')); setSaving(false); return; }
+      if (!f.authUrl) { setError(i18nStore.t('oidc.authUrlRequired')); setSaving(false); return; }
+      if (!f.tokenUrl) { setError(i18nStore.t('oidc.tokenUrlRequired')); setSaving(false); return; }
       // PocketBase requires a client secret even for the generic OIDC slot
       // when PKCE is enabled, so we enforce it unconditionally.
       if (!f.clientSecret && !hasExistingSecret()) {
-        setError('Client secret is required');
+        setError(i18nStore.t('oidc.clientSecretRequired'));
         setSaving(false);
         return;
       }
       const mapping = parseRoleMapping(f.roleMapping);
       if (!mapping['_admin'] || !mapping['_editor'] || !mapping['_viewer']) {
-        setError('Role mapping must define _admin, _editor and _viewer suffixes');
+        setError(i18nStore.t('oidc.roleMappingRequired'));
         setSaving(false);
         return;
       }
     }
 
     if (f.disablePasswordLogin && !f.enabled) {
-      setError('Cannot disable password login while OIDC is disabled');
+      setError(i18nStore.t('oidc.cannotDisablePassword'));
       setSaving(false);
       return;
     }
@@ -310,7 +311,7 @@ export default function OidcSettings() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.message || 'Failed to save OIDC settings');
+      setError(err.message || i18nStore.t('oidc.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -323,18 +324,14 @@ export default function OidcSettings() {
 
   return (
     <div class="space-y-6 max-w-3xl">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">OIDC Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('oidc.title')}</h1>
 
       <DescriptionBlock>
-        <p>Delegate user authentication to an external OpenID Connect provider.</p>
-        <p>
-          When enabled, users can sign in via SSO. Group claims are mapped to STJÓRNA tenants and roles.
-          Superuser login is never affected by these settings.
-        </p>
+        <p>{i18nStore.t('oidc.description')}</p>
       </DescriptionBlock>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error() && !loading()}>
@@ -345,7 +342,7 @@ export default function OidcSettings() {
 
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
-          OIDC settings saved successfully.
+          {i18nStore.t('oidc.saved')}
         </div>
       </Show>
 
@@ -358,24 +355,24 @@ export default function OidcSettings() {
                 checked={form().enabled}
                 onChange={(e) => setForm((f) => ({ ...f, enabled: e.currentTarget.checked }))}
               />
-              <span class="text-gray-900 dark:text-white font-medium">Enable OIDC login</span>
+              <span class="text-gray-900 dark:text-white font-medium">{i18nStore.t('oidc.enable')}</span>
             </label>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Provider slot</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.providerSlot')}</label>
               <input
                 type="text"
                 value={form().providerName}
                 onInput={(e) => setForm((f) => ({ ...f, providerName: e.currentTarget.value.trim() }))}
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">PocketBase generic OIDC slot, usually "oidc".</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('oidc.providerSlotHint')}</p>
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display name</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.displayName')}</label>
               <input
                 type="text"
                 value={form().displayName}
@@ -387,7 +384,7 @@ export default function OidcSettings() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client ID</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.clientId')}</label>
               <input
                 type="text"
                 value={form().clientId}
@@ -397,7 +394,7 @@ export default function OidcSettings() {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client secret</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.clientSecret')}</label>
               <input
                 type="password"
                 value={form().clientSecret}
@@ -407,14 +404,14 @@ export default function OidcSettings() {
               />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {hasExistingSecret() && !form().clientSecret
-                  ? 'Leave blank to keep the existing secret.'
-                  : 'Required by PocketBase for the OIDC slot, even with PKCE enabled.'}
+                  ? i18nStore.t('oidc.leaveBlankSecret')
+                  : i18nStore.t('oidc.secretRequiredHint')}
               </p>
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Authorization URL</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.authUrl')}</label>
             <input
               type="url"
               value={form().authUrl}
@@ -425,7 +422,7 @@ export default function OidcSettings() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Token URL</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.tokenUrl')}</label>
               <input
                 type="url"
                 value={form().tokenUrl}
@@ -435,27 +432,27 @@ export default function OidcSettings() {
             </div>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">UserInfo URL</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.userInfoUrl')}</label>
               <input
                 type="url"
                 value={form().userInfoUrl}
                 onInput={(e) => setForm((f) => ({ ...f, userInfoUrl: e.currentTarget.value.trim() }))}
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Optional. Leave empty to read claims from the ID token.</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('oidc.userInfoHint')}</p>
             </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Scopes</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.scopes')}</label>
               <input
                 type="text"
                 value={form().scopes}
                 onInput={(e) => setForm((f) => ({ ...f, scopes: e.currentTarget.value }))}
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Comma-separated. Include the scope that exposes the groups claim.</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('oidc.scopesHint')}</p>
             </div>
 
             <div class="flex items-center">
@@ -465,17 +462,17 @@ export default function OidcSettings() {
                   checked={form().pkce}
                   onChange={(e) => setForm((f) => ({ ...f, pkce: e.currentTarget.checked }))}
                 />
-                <span class="text-gray-900 dark:text-white font-medium">Use PKCE</span>
+                <span class="text-gray-900 dark:text-white font-medium">{i18nStore.t('oidc.usePkce')}</span>
               </label>
             </div>
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Group mapping</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('oidc.groupMapping')}</h2>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Groups claim</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.groupsClaim')}</label>
                 <input
                   type="text"
                   value={form().groupClaim}
@@ -485,18 +482,18 @@ export default function OidcSettings() {
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Group prefix</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.groupPrefix')}</label>
                 <input
                   type="text"
                   value={form().groupPrefix}
                   onInput={(e) => setForm((f) => ({ ...f, groupPrefix: e.currentTarget.value.trim() }))}
                   class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                 />
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Optional prefix stripped before parsing, e.g. "stjorna_".</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('oidc.groupPrefixHint')}</p>
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Separator</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.separator')}</label>
                 <input
                   type="text"
                   value={form().groupSeparator}
@@ -506,30 +503,30 @@ export default function OidcSettings() {
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Default role</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.defaultRole')}</label>
                 <Combobox
                   value={form().defaultRole}
                   onChange={(v) => setForm((f) => ({ ...f, defaultRole: v }))}
                   options={[
-                    { value: 'viewer', label: 'Viewer' },
-                    { value: 'editor', label: 'Editor' },
-                    { value: 'admin', label: 'Admin' },
+                    { value: 'viewer', label: i18nStore.t('common.viewer') },
+                    { value: 'editor', label: i18nStore.t('common.editor') },
+                    { value: 'admin', label: i18nStore.t('common.admin') },
                   ]}
-                  placeholder="Select role"
+                  placeholder={i18nStore.t('common.selectRole')}
                   allowClear={false}
                 />
               </div>
             </div>
 
             <div class="mt-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role mapping</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.roleMapping')}</label>
               <input
                 type="text"
                 value={form().roleMapping}
                 onInput={(e) => setForm((f) => ({ ...f, roleMapping: e.currentTarget.value }))}
                 class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Format: _admin:admin,_editor:editor,_viewer:viewer</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('oidc.roleMappingHint')}</p>
             </div>
 
             <div class="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded p-4">
@@ -537,15 +534,14 @@ export default function OidcSettings() {
                 <Info size={16} class="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
                 <div class="text-sm text-blue-900 dark:text-blue-200 space-y-2 min-w-0">
                   <p>
-                    Expected group format:{' '}
+                    {i18nStore.t('oidc.expectedGroupFormat')}{' '}
                     <code class="font-mono bg-blue-100 dark:bg-blue-900/40 px-1 rounded">
                       {form().groupPrefix || ''}&lt;tenant-slug&gt;&lt;suffix&gt;
                     </code>
                   </p>
                   <p class="text-xs text-blue-800 dark:text-blue-300">
-                    The prefix is stripped first, then the name is split at the last{' '}
-                    <code class="font-mono">{form().groupSeparator || '_'}</code>. Create these groups in your
-                    identity provider and assign users to them:
+                    {i18nStore.t('oidc.groupFormatHint')}{' '}
+                    <code class="font-mono">{form().groupSeparator || '_'}</code>. {i18nStore.t('oidc.createGroupsHint')}
                   </p>
                   <For each={groupExamples()}>
                     {(ex) => (
@@ -559,7 +555,7 @@ export default function OidcSettings() {
                               <span class="text-xs text-blue-800 dark:text-blue-300">→ {g.role}</span>
                               <button
                                 type="button"
-                                title="Copy group name"
+                                title={i18nStore.t('oidc.copyGroupName')}
                                 onClick={() => copyGroup(g.group)}
                                 class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200"
                               >
@@ -574,8 +570,8 @@ export default function OidcSettings() {
                     )}
                   </For>
                   <p class="text-xs text-blue-800 dark:text-blue-300">
-                    Unknown suffixes fall back to the default role ({form().defaultRole}). Users without any
-                    matching group {form().denyOnNoGroup ? 'are denied login' : 'get no tenant access'}.
+                    {i18nStore.t('oidc.unknownSuffixHint', { role: form().defaultRole })}{' '}
+                    {form().denyOnNoGroup ? i18nStore.t('oidc.areDeniedLogin') : i18nStore.t('oidc.getNoTenantAccess')}.
                   </p>
                 </div>
               </div>
@@ -588,29 +584,28 @@ export default function OidcSettings() {
                   checked={form().denyOnNoGroup}
                   onChange={(e) => setForm((f) => ({ ...f, denyOnNoGroup: e.currentTarget.checked }))}
                 />
-                <span class="text-gray-900 dark:text-white font-medium">Deny login if no matching tenant group is found</span>
+                <span class="text-gray-900 dark:text-white font-medium">{i18nStore.t('oidc.denyOnNoGroup')}</span>
               </label>
             </div>
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sync &amp; security</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('oidc.syncSecurity')}</h2>
 
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Membership sync mode</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('oidc.syncMode')}</label>
               <Combobox
                 value={form().syncMode}
                 onChange={(v) => setForm((f) => ({ ...f, syncMode: v }))}
                 options={[
-                  { value: 'replace-oidc', label: 'Replace — remove memberships for groups the user left' },
-                  { value: 'additive', label: 'Additive — only add/update, never remove' },
+                  { value: 'replace-oidc', label: i18nStore.t('oidc.syncModeReplace') },
+                  { value: 'additive', label: i18nStore.t('oidc.syncModeAdditive') },
                 ]}
-                placeholder="Select sync mode"
+                placeholder={i18nStore.t('oidc.selectSyncMode')}
                 allowClear={false}
               />
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Manual memberships are never touched either way. "Replace" also removes OIDC-sourced
-                memberships whose group no longer appears in the IdP.
+                {i18nStore.t('oidc.syncModeHint')}
               </p>
             </div>
 
@@ -621,37 +616,36 @@ export default function OidcSettings() {
                   checked={form().allowUnverifiedEmail}
                   onChange={(e) => setForm((f) => ({ ...f, allowUnverifiedEmail: e.currentTarget.checked }))}
                 />
-                <span class="text-gray-900 dark:text-white font-medium">Allow unverified email from the identity provider</span>
+                <span class="text-gray-900 dark:text-white font-medium">{i18nStore.t('oidc.allowUnverified')}</span>
               </label>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                When disabled (default), sign-in for existing accounts is blocked if the provider does not
-                assert <code class="font-mono">email_verified: true</code>. This prevents account takeover
-                through an unverified email match.
+                {i18nStore.t('oidc.allowUnverifiedHint')}{' '}
+                <code class="font-mono">email_verified: true</code>. {i18nStore.t('oidc.accountTakeoverTail')}
               </p>
             </div>
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Password login</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('oidc.passwordLogin')}</h2>
             <label class="flex items-center gap-3">
               <input
                 type="checkbox"
                 checked={form().disablePasswordLogin}
                 onChange={(e) => setForm((f) => ({ ...f, disablePasswordLogin: e.currentTarget.checked }))}
               />
-              <span class="text-gray-900 dark:text-white font-medium">Disable regular user password login</span>
+              <span class="text-gray-900 dark:text-white font-medium">{i18nStore.t('oidc.disablePasswordLogin')}</span>
             </label>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              PB admin login is not affected. Requires OIDC to be enabled.
+              {i18nStore.t('oidc.disablePasswordHint')}
             </p>
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Redirect URL</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">{i18nStore.t('oidc.redirectUrl')}</h2>
             <p class="text-sm text-gray-600 dark:text-gray-400 break-all font-mono bg-gray-50 dark:bg-gray-700 rounded p-2">
               {redirectUrl()}
             </p>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Register this redirect URL in your OIDC client.</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('oidc.redirectHint')}</p>
           </div>
 
           <button
@@ -660,7 +654,7 @@ export default function OidcSettings() {
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
-            {saving() ? 'Saving...' : 'Save OIDC Settings'}
+            {saving() ? i18nStore.t('settings.saving') : i18nStore.t('oidc.saveOidcSettings')}
           </button>
         </form>
       </Show>

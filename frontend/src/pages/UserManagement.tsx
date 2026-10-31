@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, createMemo, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
@@ -10,12 +10,7 @@ import Combobox from '~/components/ui/Combobox';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { X, ExternalLink, Search, UserPlus } from 'lucide-solid';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
-
-const ROLE_OPTIONS = [
-  { value: 'viewer', label: 'Viewer' },
-  { value: 'editor', label: 'Editor' },
-  { value: 'admin', label: 'Admin' },
-];
+import { i18nStore } from '~/i18n';
 
 // One row per tenant membership of a given user.
 interface UserMembership {
@@ -64,7 +59,7 @@ function aggregateUserTenants(rows: RawUserTenant[]): AggregatedUser[] {
     const membership: UserMembership = {
       userTenantId: ut.id,
       tenantId,
-      tenantName: ut.expand?.tenant?.name || 'Unknown tenant',
+      tenantName: ut.expand?.tenant?.name || i18nStore.t('common.unknownTenant'),
       role: ut.expand?.role?.name || ut.role || 'viewer',
       source: ut.source,
     };
@@ -174,6 +169,12 @@ export default function UserManagement() {
 
   const [error, setError] = createSignal('');
 
+  const roleOptions = createMemo(() => [
+    { value: 'viewer', label: i18nStore.t('common.viewer') },
+    { value: 'editor', label: i18nStore.t('common.editor') },
+    { value: 'admin', label: i18nStore.t('common.admin') },
+  ]);
+
   const getRoleId = async (roleName: string): Promise<string> => {
     const roles = await pb.collection('roles').getList(1, 10);
     const role = roles.items.find((r: any) => r.name === roleName);
@@ -183,13 +184,13 @@ export default function UserManagement() {
   const handleInvite = async (e: Event) => {
     e.preventDefault();
     if (invitePassword() !== invitePasswordConfirm()) {
-      setError('Passwords do not match');
+      setError(i18nStore.t('users.passwordsDoNotMatch'));
       return;
     }
 
     const tenant = inviteTenant();
     if (!tenant) {
-      setError('Please select a tenant first');
+      setError(i18nStore.t('users.selectTenantFirst'));
       return;
     }
 
@@ -213,7 +214,7 @@ export default function UserManagement() {
       sidebarStore.bump();
       refetch();
     } catch (err: any) {
-      setError(err.message || 'Failed to invite user');
+      setError(err.message || i18nStore.t('users.failedToInvite'));
     } finally {
       setInviting(false);
     }
@@ -251,10 +252,10 @@ export default function UserManagement() {
       setSearchResults(res.users || []);
       setSelectedUser(null);
       if ((res.users || []).length === 0) {
-        setError('No existing user found with that email.');
+        setError(i18nStore.t('users.noUserFound'));
       }
     } catch (err: any) {
-      setError(err.message || 'Search failed');
+      setError(err.message || i18nStore.t('users.searchFailed'));
       setSearchResults([]);
     } finally {
       setSearching(false);
@@ -266,11 +267,11 @@ export default function UserManagement() {
     const user = selectedUser();
     const tenant = getCurrentTenant();
     if (!user) {
-      setError('Please select a user from the search results');
+      setError(i18nStore.t('users.selectFromResults'));
       return;
     }
     if (!tenant) {
-      setError('No tenant selected');
+      setError(i18nStore.t('common.noTenantSelected'));
       return;
     }
     setAddingExisting(true);
@@ -287,7 +288,7 @@ export default function UserManagement() {
       sidebarStore.bump();
       refetch();
     } catch (err: any) {
-      setError(err.message || 'Failed to add user to tenant');
+      setError(err.message || i18nStore.t('users.failedToAdd'));
     } finally {
       setAddingExisting(false);
     }
@@ -299,18 +300,18 @@ export default function UserManagement() {
       await pb.collection('user_tenants').update(userTenantId, { role: roleId });
       refetch();
     } catch (e: any) {
-      void alertDialog(`Failed to update role: ${e?.message}`);
+      void alertDialog(i18nStore.t('users.failedToUpdateRole', { msg: e?.message }));
     }
   };
 
   const handleRemove = async (userTenantId: string, tenantName: string) => {
-    if (!(await confirmDialog({ message: `Remove this user from "${tenantName}"?`, danger: true }))) return;
+    if (!(await confirmDialog({ message: i18nStore.t('users.removeConfirm', { tenant: tenantName }), danger: true }))) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      void alertDialog(`Failed to remove user: ${e?.message}`);
+      void alertDialog(i18nStore.t('users.failedToRemove', { msg: e?.message }));
     }
   };
 
@@ -341,7 +342,7 @@ export default function UserManagement() {
               <Combobox
                 value={m.role}
                 onChange={(v) => handleRoleChange(m.userTenantId, v as Role)}
-                options={ROLE_OPTIONS}
+                options={roleOptions()}
                 disabled={!authStore.isAdminOrAbove()}
                 allowClear={false}
                 class="w-32"
@@ -350,7 +351,7 @@ export default function UserManagement() {
             <Show when={authStore.isAdminOrAbove()}>
               <button
                 onClick={(e) => { e.stopPropagation(); handleRemove(m.userTenantId, m.tenantName); }}
-                title={`Remove from ${m.tenantName}`}
+                title={i18nStore.t('users.removeFrom', { tenant: m.tenantName })}
                 class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
               >
                 <X size={14} />
@@ -362,12 +363,12 @@ export default function UserManagement() {
     </div>
   );
 
-  const columns: Column[] = [
-    { key: 'name', label: 'Name' },
-    { key: 'email', label: 'Email' },
+  const columns = createMemo<Column[]>(() => [
+    { key: 'name', label: i18nStore.t('common.name') },
+    { key: 'email', label: i18nStore.t('common.email') },
     {
       key: 'hasSSO',
-      label: 'Auth',
+      label: i18nStore.t('users.auth'),
       render: (_v, row) => {
         const user = row as AggregatedUser;
         return (
@@ -378,52 +379,52 @@ export default function UserManagement() {
                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
             }`}
           >
-            {user.hasSSO ? 'SSO' : 'Local'}
+            {user.hasSSO ? i18nStore.t('common.sso') : i18nStore.t('common.local')}
           </span>
         );
       },
     },
     {
       key: 'memberships',
-      label: 'Tenants',
+      label: i18nStore.t('users.memberships'),
       render: (_v, row) => renderMembershipCell(row as AggregatedUser),
     },
-  ];
+  ]);
 
   const isSuperuserInvite = () => authStore.isPBAdmin;
 
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('users.title')}</h1>
         <Show when={authStore.isAdminOrAbove()}>
           <button
             onClick={() => { setShowInvite(true); setError(''); }}
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors flex items-center gap-2`}
           >
             <UserPlus size={18} />
-            {isSuperuserInvite() ? 'Invite User' : 'Add User'}
+            {isSuperuserInvite() ? i18nStore.t('users.inviteUser') : i18nStore.t('users.addUser')}
           </button>
         </Show>
       </div>
 
       <Show when={!authStore.isAdminOrAbove()}>
         <div class="bg-yellow-500/10 border border-yellow-500 rounded p-4 text-yellow-600 dark:text-yellow-400 text-sm">
-          Only admins can manage users.
+          {i18nStore.t('users.onlyAdmins')}
         </div>
       </Show>
 
       <Show when={showInvite()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
-            {isSuperuserInvite() ? 'Invite User' : 'Add Existing User'}
+            {isSuperuserInvite() ? i18nStore.t('users.inviteUser') : i18nStore.t('users.addExistingUser')}
           </h2>
 
           <Show when={isSuperuserInvite()}>
             <form onSubmit={handleInvite} class="space-y-4">
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.name')}</label>
                   <input
                     type="text"
                     value={inviteName()}
@@ -433,7 +434,7 @@ export default function UserManagement() {
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.email')}</label>
                   <input
                     type="email"
                     value={inviteEmail()}
@@ -446,7 +447,7 @@ export default function UserManagement() {
               </div>
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.password')}</label>
                   <input
                     type="password"
                     value={invitePassword()}
@@ -457,7 +458,7 @@ export default function UserManagement() {
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.confirmPassword')}</label>
                   <input
                     type="password"
                     value={invitePasswordConfirm()}
@@ -469,23 +470,23 @@ export default function UserManagement() {
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.role')}</label>
                 <Combobox
                   value={inviteRole()}
                   onChange={(v) => setInviteRole(v as Role)}
-                  options={ROLE_OPTIONS}
-                  placeholder="Select role"
+                  options={roleOptions()}
+                  placeholder={i18nStore.t('common.selectRole')}
                   allowClear={false}
                 />
               </div>
 
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.tenant')}</label>
                 <Combobox
                   value={inviteTenant()}
                   onChange={(v) => setInviteTenant(v)}
                   options={authStore.tenants.map((t) => ({ value: t.tenant, label: t.tenantName || t.tenant }))}
-                  placeholder="Select a tenant"
+                  placeholder={i18nStore.t('common.selectTenant')}
                   allowClear={false}
                 />
               </div>
@@ -500,14 +501,14 @@ export default function UserManagement() {
                   disabled={inviting()}
                   class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
                 >
-                  {inviting() ? 'Inviting...' : 'Invite'}
+                  {inviting() ? i18nStore.t('users.inviting') : i18nStore.t('users.invite')}
                 </button>
                 <button
                   type="button"
                   onClick={() => resetInvite()}
                   class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
                 >
-                  Cancel
+                  {i18nStore.t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -515,8 +516,7 @@ export default function UserManagement() {
 
           <Show when={!isSuperuserInvite()}>
             <div class="bg-blue-500/10 border border-blue-500 rounded p-4 text-blue-600 dark:text-blue-400 text-sm">
-              Adding an existing user gives them access to the current tenant with the selected role.
-              Their password and other tenants stay unchanged.
+              {i18nStore.t('users.addExistingHint')}
             </div>
             <form onSubmit={handleSearch} class="space-y-4">
               <div class="flex gap-2">
@@ -524,7 +524,7 @@ export default function UserManagement() {
                   type="email"
                   value={searchEmail()}
                   onInput={(e) => setSearchEmail(e.currentTarget.value)}
-                  placeholder="Search by email"
+                  placeholder={i18nStore.t('users.searchByEmail')}
                   autocomplete="email"
                   class="flex-1 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white"
                   required
@@ -535,13 +535,13 @@ export default function UserManagement() {
                   class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors flex items-center gap-2 disabled:opacity-50`}
                 >
                   <Search size={16} />
-                  {searching() ? 'Searching...' : 'Search'}
+                  {searching() ? i18nStore.t('users.searching') : i18nStore.t('common.search')}
                 </button>
               </div>
 
               <Show when={searchResults().length > 0}>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select user</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('users.selectUser')}</label>
                   <div class="space-y-2">
                     <For each={searchResults()}>
                       {(u) => (
@@ -566,12 +566,12 @@ export default function UserManagement() {
 
               <Show when={selectedUser()}>
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.role')}</label>
                   <Combobox
                     value={addRole()}
                     onChange={(v) => setAddRole(v as Role)}
-                    options={ROLE_OPTIONS}
-                    placeholder="Select role"
+                    options={roleOptions()}
+                    placeholder={i18nStore.t('common.selectRole')}
                     allowClear={false}
                   />
                 </div>
@@ -588,14 +588,14 @@ export default function UserManagement() {
                   onClick={handleAddExisting}
                   class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
                 >
-                  {addingExisting() ? 'Adding...' : 'Add to Tenant'}
+                  {addingExisting() ? i18nStore.t('users.adding') : i18nStore.t('users.addToTenant')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowInvite(false); resetAddExisting(); }}
                   class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
                 >
-                  Cancel
+                  {i18nStore.t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -604,15 +604,15 @@ export default function UserManagement() {
       </Show>
 
       <Show when={users.loading}>
-        <div class="text-gray-500 dark:text-gray-400">Loading users...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('users.loading')}</div>
       </Show>
 
       <Show when={!users.loading && users()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
-            columns={columns}
+            columns={columns()}
             data={users() || []}
-            emptyMessage="No users found"
+            emptyMessage={i18nStore.t('users.empty')}
           />
         </div>
       </Show>

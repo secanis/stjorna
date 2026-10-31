@@ -7,6 +7,7 @@ import Table, { Column } from '~/components/ui/Table';
 import Combobox from '~/components/ui/Combobox';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
+import { i18nStore } from '~/i18n';
 
 // PB-side enum of API key records. Plaintext NEVER appears here — it's only
 // emitted in the issue endpoint response and never persisted.
@@ -89,11 +90,11 @@ export default function ApiKeys() {
         e.preventDefault();
         setFormError(null);
         if (!newTenant()) {
-            setFormError('Pick a tenant.');
+            setFormError(i18nStore.t('apiKeys.pickTenantError'));
             return;
         }
         if (!newName().trim()) {
-            setFormError('Name is required.');
+            setFormError(i18nStore.t('apiKeys.nameRequired'));
             return;
         }
         setCreating(true);
@@ -113,19 +114,19 @@ export default function ApiKeys() {
             setNewExpires('');
             await refetch();
         } catch (e: any) {
-            setFormError(e?.message || 'Failed to issue key.');
+            setFormError(e?.message || i18nStore.t('apiKeys.failedToIssue'));
         } finally {
             setCreating(false);
         }
     }
 
     async function handleRevoke(id: string, name: string) {
-        if (!(await confirmDialog({ message: `Revoke API key "${name}"? This cannot be undone.`, danger: true }))) return;
+        if (!(await confirmDialog({ message: i18nStore.t('apiKeys.revokeConfirm', { name }), danger: true }))) return;
         try {
             await revokeKey(id);
             await refetch();
         } catch (e: any) {
-            void alertDialog(`Failed to revoke: ${e.message}`);
+            void alertDialog(i18nStore.t('apiKeys.failedToRevoke', { msg: e.message }));
         }
     }
 
@@ -147,35 +148,35 @@ export default function ApiKeys() {
     };
 
     const columns: Column[] = [
-        { key: 'name', label: 'Name', sortable: true },
+        { key: 'name', label: i18nStore.t('common.name'), sortable: true },
         {
             key: 'tenant',
-            label: 'Tenant',
+            label: i18nStore.t('common.tenant'),
             render: (v) => tenantName(String(v)),
         },
         {
             key: 'prefix',
-            label: 'Prefix',
+            label: i18nStore.t('apiKeys.prefix'),
             render: (v) => <code class="text-xs text-gray-700 dark:text-gray-300">{v}</code>,
         },
         {
             key: 'revoked',
-            label: 'Status',
-            render: (v) => <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${v ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'}`}>{v ? 'revoked' : 'active'}</span>,
+            label: i18nStore.t('common.status'),
+            render: (v) => <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${v ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'}`}>{v ? i18nStore.t('apiKeys.revoked') : i18nStore.t('apiKeys.active')}</span>,
         },
         {
             key: 'last_used',
-            label: 'Last used',
+            label: i18nStore.t('apiKeys.lastUsed'),
             render: (v) => (v ? new Date(v).toLocaleString() : '—'),
         },
         {
             key: 'expires',
-            label: 'Expires',
-            render: (v) => (v ? new Date(v).toLocaleString() : 'never'),
+            label: i18nStore.t('apiKeys.expiresCol'),
+            render: (v) => (v ? new Date(v).toLocaleString() : i18nStore.t('apiKeys.never')),
         },
         {
             key: 'created',
-            label: 'Created',
+            label: i18nStore.t('common.created'),
             sortable: true,
             render: (v) => (v ? new Date(v).toLocaleString() : '—'),
         },
@@ -191,7 +192,7 @@ export default function ApiKeys() {
                     disabled={row.revoked}
                     class={`text-sm ${row.revoked ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 dark:text-red-400 hover:underline'}`}
                 >
-                    <Trash2 size={14} class="inline -mt-0.5" /> Revoke
+                    <Trash2 size={14} class="inline -mt-0.5" /> {i18nStore.t('apiKeys.revoke')}
                 </button>
             ),
         },
@@ -201,16 +202,16 @@ export default function ApiKeys() {
         <div class="space-y-4">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">API Keys</h1>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('apiKeys.title')}</h1>
                     <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        Tenant-scoped API keys for machine-to-machine access.
+                        {i18nStore.t('apiKeys.subtitle')}
                         <span class="block mt-0.5 text-amber-700 dark:text-amber-400">
-                            <AlertTriangle size={12} class="inline -mt-0.5" /> Plaintext is shown only at creation time — store it immediately. Lost keys must be revoked and re-issued.
+                            <AlertTriangle size={12} class="inline -mt-0.5" /> {i18nStore.t('apiKeys.warning')}
                         </span>
                     </p>
                 </div>
                 <button onClick={() => setFormOpen((v) => !v)} class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors flex items-center gap-1`}>
-                    <Plus size={14} /> Issue key
+                    <Plus size={14} /> {i18nStore.t('apiKeys.issueKey')}
                 </button>
             </div>
 
@@ -218,17 +219,17 @@ export default function ApiKeys() {
                 <form onSubmit={handleCreate} class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Tenant</label>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.tenant')}</label>
                             <Combobox
                                 value={newTenant()}
                                 onChange={(v) => setNewTenant(v)}
                                 options={(tenants() || []).map((t) => ({ value: t.id, label: `${t.name} (${t.slug})` }))}
-                                placeholder="— pick tenant —"
+                                placeholder={i18nStore.t('apiKeys.pickTenant')}
                                 allowClear={false}
                             />
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Name (label)</label>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('apiKeys.nameLabel')}</label>
                             <input
                                 type="text"
                                 value={newName()}
@@ -240,7 +241,7 @@ export default function ApiKeys() {
                             />
                         </div>
                         <div>
-                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Expires (optional)</label>
+                            <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('apiKeys.expires')}</label>
                             <input type="datetime-local" value={newExpires()} onInput={(e) => setNewExpires(e.currentTarget.value)} class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 text-sm" />
                         </div>
                     </div>
@@ -249,7 +250,7 @@ export default function ApiKeys() {
                     </Show>
                     <div class="flex gap-2">
                         <button type="submit" disabled={creating()} class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium disabled:opacity-50">
-                            {creating() ? 'Issuing…' : 'Issue key'}
+                            {creating() ? i18nStore.t('apiKeys.issuing') : i18nStore.t('apiKeys.issueKey')}
                         </button>
                         <button
                             type="button"
@@ -259,26 +260,26 @@ export default function ApiKeys() {
                             }}
                             class="px-4 py-2 rounded border border-gray-300 dark:border-gray-700 text-sm"
                         >
-                            Cancel
+                            {i18nStore.t('common.cancel')}
                         </button>
                     </div>
                 </form>
             </Show>
 
-            <Show when={!keys.loading} fallback={<div class="text-gray-500 dark:text-gray-400">Loading keys…</div>}>
+            <Show when={!keys.loading} fallback={<div class="text-gray-500 dark:text-gray-400">{i18nStore.t('apiKeys.loading')}</div>}>
                 <Show when={keys.error}>
                     <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm mb-3">
-                        <div class="font-medium mb-1">Failed to load API keys</div>
+                        <div class="font-medium mb-1">{i18nStore.t('apiKeys.failedToLoad')}</div>
                         <code class="text-xs break-all">{String((keys.error as any)?.message || keys.error)}</code>
                     </div>
                 </Show>
                 <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
-                    <Table columns={columns} data={keys() || []} emptyMessage="No API keys yet. Issue one to get started." />
+                    <Table columns={columns} data={keys() || []} emptyMessage={i18nStore.t('apiKeys.empty')} />
                 </div>
             </Show>
 
             <Show when={keys()}>
-                <p class="text-gray-600 dark:text-gray-500 text-sm">Total: {keys()!.length} keys (active + revoked).</p>
+                <p class="text-gray-600 dark:text-gray-500 text-sm">{i18nStore.t('apiKeys.total', { n: keys()!.length })}</p>
             </Show>
 
             <Show when={issued()}>
@@ -291,13 +292,13 @@ export default function ApiKeys() {
                     <div class="space-y-4">
                         <div class="flex items-center gap-2 text-amber-700 dark:text-amber-300">
                             <KeyRound size={20} />
-                            <h2 class="text-lg font-semibold">API key issued</h2>
+                            <h2 class="text-lg font-semibold">{i18nStore.t('apiKeys.issued')}</h2>
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300">
-                            <span class="font-medium">{issued()!.apiKey.name}</span> for tenant <span class="font-medium">{tenantName(issued()!.apiKey.tenant)}</span>.
+                            {i18nStore.t('apiKeys.issuedFor', { name: issued()!.apiKey.name, tenant: tenantName(issued()!.apiKey.tenant) })}
                         </p>
                         <p class="text-sm bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200 px-3 py-2 rounded">
-                            <AlertTriangle size={14} class="inline -mt-0.5" /> <span class="font-medium">Copy now.</span> The plaintext key is shown only here and cannot be retrieved later.
+                            <AlertTriangle size={14} class="inline -mt-0.5" /> <span class="font-medium">{i18nStore.t('apiKeys.copyNow')}</span> {i18nStore.t('apiKeys.copyHint')}
                         </p>
                         <div class="bg-gray-900 text-green-300 rounded p-3 font-mono text-xs break-all relative">
                             {issued()!.plaintext}
@@ -305,11 +306,11 @@ export default function ApiKeys() {
                                 <Show when={!copied()} fallback={<CheckCircle2 size={12} />}>
                                     <Copy size={12} />
                                 </Show>
-                                {copied() ? 'copied' : 'copy'}
+                                {copied() ? i18nStore.t('apiKeys.copied') : i18nStore.t('apiKeys.copy')}
                             </button>
                         </div>
                         <details class="text-xs text-gray-600 dark:text-gray-400">
-                            <summary class="cursor-pointer">How to use this key</summary>
+                            <summary class="cursor-pointer">{i18nStore.t('apiKeys.howToUse')}</summary>
                             <div class="mt-2 space-y-1 font-mono">
                                 <div>
                                     curl -H "Authorization: Bearer {issued()!.plaintext}" \<br />
@@ -325,7 +326,7 @@ export default function ApiKeys() {
                                 }}
                                 class="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
                             >
-                                I've stored it — close
+                                {i18nStore.t('apiKeys.storedClose')}
                             </button>
                         </div>
                     </div>

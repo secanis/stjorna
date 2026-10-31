@@ -10,6 +10,7 @@ import ActiveBadge from '~/components/ui/ActiveBadge';
 import { formatCustomFields, parseCustomFields } from '~/utils/customFields';
 import type { Product, Category, Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { i18nStore } from '~/i18n';
 
 async function fetchCategories() {
   const tenant = getCurrentTenant();
@@ -74,7 +75,7 @@ export default function ProductEdit() {
 
     const tenant = getCurrentTenant();
     if (!tenant) {
-      setError('No tenant selected');
+      setError(i18nStore.t('common.noTenantSelected'));
       setLoading(false);
       setMediaLoading(false);
       return;
@@ -108,7 +109,7 @@ export default function ProductEdit() {
         }
       } catch (e: any) {
         setLoadFailed(true);
-        setError(e.message || 'Failed to load product');
+        setError(e.message || i18nStore.t('products.failedToLoad'));
       }
     }
     setLoading(false);
@@ -192,7 +193,7 @@ export default function ProductEdit() {
 
     const tenant = getCurrentTenant();
     if (!tenant) {
-      setError('No tenant selected');
+      setError(i18nStore.t('common.noTenantSelected'));
       setSaving(false);
       return;
     }
@@ -227,7 +228,7 @@ export default function ProductEdit() {
       setSuccess(true);
       setTimeout(() => navigate('/products'), 1500);
     } catch (e: any) {
-      setError(e.message || 'Failed to save');
+      setError(e.message || i18nStore.t('common.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -240,15 +241,15 @@ export default function ProductEdit() {
           onClick={() => navigate('/products')}
           class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
         >
-          ← Back
+          {i18nStore.t('common.back')}
         </button>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {isNew() ? 'New Product' : 'Edit Product'}
+          {isNew() ? i18nStore.t('products.newProduct') : i18nStore.t('products.editProduct')}
         </h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error() && !loading()}>
@@ -259,18 +260,18 @@ export default function ProductEdit() {
 
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
-          Product saved successfully!
+          {i18nStore.t('products.saved')}
         </div>
       </Show>
 
       <Show when={!loading() && !loadFailed()}>
         <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-name">Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-name">{i18nStore.t('common.name')}</label>
             <input
               id="prod-name"
               type="text"
-              placeholder="Product name"
+              placeholder={i18nStore.t('products.productName')}
               value={formData().name}
               onInput={(e) => handleNameChange(e.currentTarget.value)}
               class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
@@ -280,9 +281,9 @@ export default function ProductEdit() {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-slug">
-              Slug
+              {i18nStore.t('common.slug')}
               <Show when={!slugManuallyEdited()}>
-                <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">(auto-generated from name)</span>
+                <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">{i18nStore.t('products.autoSlug')}</span>
               </Show>
             </label>
             <input
@@ -297,20 +298,20 @@ export default function ProductEdit() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-category">Category</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-category">{i18nStore.t('common.category')}</label>
             <Combobox
               id="prod-category"
               testId="prod-category"
               value={formData().category}
               onChange={(v) => setFormData(d => ({ ...d, category: v }))}
               options={(categories()?.items || []).map(c => ({ value: c.id, label: c.name }))}
-              placeholder="Type to search categories…"
-              emptyMessage="No matching category"
+              placeholder={i18nStore.t('products.typeToSearchCategories')}
+              emptyMessage={i18nStore.t('products.noMatchingCategory')}
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-price">Price</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-price">{i18nStore.t('common.price')}</label>
             <input
               id="prod-price"
               type="number"
@@ -322,10 +323,10 @@ export default function ProductEdit() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-desc">Description</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-desc">{i18nStore.t('common.description')}</label>
             <textarea
               id="prod-desc"
-              placeholder="Product description"
+              placeholder={i18nStore.t('products.productDescription')}
               value={formData().description}
               onInput={(e) => setFormData(d => ({ ...d, description: e.currentTarget.value }))}
               rows="4"
@@ -334,7 +335,7 @@ export default function ProductEdit() {
           </div>
 
           <div class="flex items-center gap-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Active</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{i18nStore.t('common.active')}</label>
             <ActiveBadge
               active={formData().active}
               size="md"
@@ -343,7 +344,7 @@ export default function ProductEdit() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-sort">Sort Order</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-sort">{i18nStore.t('common.sortOrder')}</label>
             <input
               id="prod-sort"
               type="number"
@@ -354,7 +355,7 @@ export default function ProductEdit() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-custom-fields">Custom Fields (JSON)</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="prod-custom-fields">{i18nStore.t('products.customFields')}</label>
             <textarea
               id="prod-custom-fields"
               placeholder='{"key": "value"}'
@@ -367,10 +368,10 @@ export default function ProductEdit() {
 
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Media</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{i18nStore.t('common.media')}</label>
               <Show when={selectedMediaRecords().length > 0}>
                 <span class="text-xs text-gray-600 dark:text-gray-500">
-                  {selectedMediaRecords().length} selected · drag to reorder
+                  {i18nStore.t('products.selectedCount', { n: selectedMediaRecords().length })}
                 </span>
               </Show>
             </div>
@@ -378,7 +379,7 @@ export default function ProductEdit() {
             <Show when={mediaLoading()}>
               <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm py-4">
                 <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
-                Loading media records...
+                {i18nStore.t('products.loadingMedia')}
               </div>
             </Show>
 
@@ -406,7 +407,7 @@ export default function ProductEdit() {
                         type="button"
                         onClick={() => handleRemoveSelected(m.id)}
                         class="absolute top-1 right-1 bg-red-600 text-gray-900 dark:text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100"
-                        title="Remove"
+                        title={i18nStore.t('common.remove')}
                       >
                         ×
                       </button>
@@ -422,23 +423,23 @@ export default function ProductEdit() {
             <Show when={!mediaLoading()}>
               <div>
                 <p class="text-xs text-gray-600 dark:text-gray-500 mb-2">
-                  Pick from media library:
+                  {i18nStore.t('products.pickFromLibrary')}
                 </p>
                 <Show
                   when={media()?.items && media()!.items.length > 0}
                   fallback={
                     <div class="bg-gray-100/50 dark:bg-gray-700/50 rounded p-4 text-center text-sm">
                       <p class="text-gray-500 dark:text-gray-400">
-                        No media uploaded yet.
+                        {i18nStore.t('products.noMediaYet')}
                       </p>
                       <a
                         href="/media/new"
                         class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline"
                       >
-                        Upload some at /media/new
+                        {i18nStore.t('products.uploadFirst')}
                       </a>
                       <p class="text-gray-500 dark:text-gray-400">
-                        first.
+                        {i18nStore.t('products.first')}
                       </p>
                     </div>
                   }
@@ -478,14 +479,14 @@ export default function ProductEdit() {
               disabled={saving() || mediaLoading()}
               class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
-              {saving() ? 'Saving...' : 'Save Product'}
+              {saving() ? i18nStore.t('common.saving') : i18nStore.t('products.saveProduct')}
             </button>
             <button
               type="button"
               onClick={() => navigate('/products')}
               class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-6 rounded"
             >
-              Cancel
+              {i18nStore.t('common.cancel')}
             </button>
           </div>
         </form>

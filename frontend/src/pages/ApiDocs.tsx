@@ -1,6 +1,7 @@
 import { createSignal, onMount, onCleanup, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 import { pb } from '~/services/pocketbase';
 // CSS is referenced by URL to avoid pulling the entire swagger-ui CSS
 // into the main bundle. Vite returns the resolved asset URL.
@@ -109,7 +110,7 @@ export default function ApiDocs() {
 
       setLoading(false);
     } catch (e: any) {
-      setError(e?.message || 'Failed to load API docs');
+      setError(e?.message || i18nStore.t('apiDocs.failedToLoad'));
       setLoading(false);
     }
   });
@@ -124,22 +125,21 @@ export default function ApiDocs() {
   return (
     <div class="space-y-4">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">API Documentation</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('apiDocs.title')}</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Auto-generated OpenAPI spec for the STJÓRN backend. The spec is
-          filtered server-side based on the current token: anonymous
-          visitors see <span class="text-gray-700 dark:text-gray-300">Public</span>, any
-          authenticated user sees <span class="text-gray-700 dark:text-gray-300">Public + Private</span>,
-          and only PB superusers see the
-          <span class="text-gray-700 dark:text-gray-300">Admin</span> section. The
-          "Try it out" feature uses the currently logged-in token to
-          authorize calls.
+          {i18nStore.t('apiDocs.description')}{' '}
+          <span class="text-gray-700 dark:text-gray-300">{i18nStore.t('apiDocs.publicTier')}</span>,{' '}
+          {i18nStore.t('apiDocs.anyUserSees')}{' '}
+          <span class="text-gray-700 dark:text-gray-300">{i18nStore.t('apiDocs.publicAndPrivate')}</span>,{' '}
+          {i18nStore.t('apiDocs.onlySuperusersSee')}{' '}
+          <span class="text-gray-700 dark:text-gray-300">{i18nStore.t('apiDocs.adminTier')}</span>{' '}
+          {i18nStore.t('apiDocs.sectionHint')}
         </p>
       </div>
 
       <Show when={loading()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 text-gray-500 dark:text-gray-400">
-          Loading API docs…
+          {i18nStore.t('apiDocs.loading')}
         </div>
       </Show>
 

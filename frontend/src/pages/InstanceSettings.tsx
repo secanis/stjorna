@@ -2,6 +2,7 @@ import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 import { Save } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
@@ -71,7 +72,7 @@ export default function InstanceSettings() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e: any) {
-      setError(e.message || 'Failed to save');
+      setError(e.message || i18nStore.t('common.failedToSave'));
     } finally {
       setSaving(false);
     }
@@ -79,29 +80,23 @@ export default function InstanceSettings() {
 
   return (
     <div class="space-y-6 max-w-3xl">
-      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">General Settings</h1>
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('instanceSettings.title')}</h1>
 
       <DescriptionBlock>
-        <p>Configure the public identity of this STJÓRNA instance.</p>
-        <p>
-          The instance name is shown in system emails.
-          Backups below contain all tenants, users, products, categories and media.
-        </p>
+        <p>{i18nStore.t('instanceSettings.description')}</p>
       </DescriptionBlock>
 
       <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
         <div>
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Backup</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('instanceSettings.backup')}</h2>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Full-instance backups are handled by PocketBase's built-in backup feature
-            (Settings {'>'} Backups in the admin UI). Tenant-scoped export/import is
-            available on each tenant's settings page.
+            {i18nStore.t('instanceSettings.backupHint')}
           </p>
         </div>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error() && !loading()}>
@@ -112,14 +107,14 @@ export default function InstanceSettings() {
 
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
-          Instance settings saved successfully!
+          {i18nStore.t('instanceSettings.saved')}
         </div>
       </Show>
 
       <Show when={!loading()}>
         <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Instance Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('instanceSettings.instanceName')}</label>
             <input
               type="text"
               value={formData().instance_name}
@@ -130,8 +125,8 @@ export default function InstanceSettings() {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Superuser IPs
-              <span class="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">(optional)</span>
+              {i18nStore.t('instanceSettings.superuserIps')}
+              <span class="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">({i18nStore.t('common.optional')})</span>
             </label>
             <textarea
               value={superuserIPs()}
@@ -141,7 +136,7 @@ export default function InstanceSettings() {
               placeholder="127.0.0.1&#10;10.0.0.0/8"
             />
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Restrict superuser logins to these IPs or CIDR subnets. Leave empty to allow any IP.
+              {i18nStore.t('instanceSettings.superuserIpsHint')}
             </p>
           </div>
 
@@ -151,7 +146,7 @@ export default function InstanceSettings() {
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
-            {saving() ? 'Saving...' : 'Save Instance Settings'}
+            {saving() ? i18nStore.t('settings.saving') : i18nStore.t('instanceSettings.saveInstanceSettings')}
           </button>
         </form>
       </Show>

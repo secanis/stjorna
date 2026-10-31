@@ -1,4 +1,5 @@
 import { Show } from 'solid-js';
+import { i18nStore } from '~/i18n';
 
 // Structured editor for a tenant's theme_config. Replaces the old raw-JSON
 // textarea: syntax errors are impossible here, and unknown JSON keys are
@@ -43,12 +44,12 @@ function ColorField(props: {
         <div
           class="w-9 h-9 rounded border border-gray-300 dark:border-gray-600 shrink-0"
           style={{ 'background-color': props.value.trim() || 'transparent' }}
-          title={props.value.trim() ? props.value.trim() : 'default'}
+          title={props.value.trim() ? props.value.trim() : i18nStore.t('theme.defaultLabel')}
         />
       </div>
       <Show when={props.value.trim()}>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          Any CSS color works (#hex, rgb(), oklch(), named). If the swatch stays empty, the color is invalid and the default is used.
+          {i18nStore.t('theme.colorHint')}
         </p>
       </Show>
     </div>
@@ -60,10 +61,10 @@ export default function ThemeConfigFields(props: Props) {
 
   return (
     <fieldset class="border border-gray-200 dark:border-gray-700 rounded p-4 space-y-4">
-      <legend class="text-sm font-medium text-gray-700 dark:text-gray-300 px-1">Theme</legend>
+      <legend class="text-sm font-medium text-gray-700 dark:text-gray-300 px-1">{i18nStore.t('theme.legend')}</legend>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Logo media ID</label>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('theme.logoMediaId')}</label>
         <input
           type="text"
           value={props.value.logoMediaId}
@@ -72,19 +73,19 @@ export default function ThemeConfigFields(props: Props) {
           placeholder="Media record ID, e.g. 7xk9m2p4q8r1s5t"
         />
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          ID of an uploaded media record, shown in the header instead of the "STJÓRNA" text. Empty = default text.
+          {i18nStore.t('theme.logoMediaIdHint')}
         </p>
       </div>
 
       <ColorField
-        label="Header background (light mode)"
+        label={i18nStore.t('theme.headerBgLight')}
         value={props.value.headerBgLight}
         placeholder="#f9fafb (default)"
         onInput={(v) => set({ headerBgLight: v })}
       />
 
       <ColorField
-        label="Header background (dark mode)"
+        label={i18nStore.t('theme.headerBgDark')}
         value={props.value.headerBgDark}
         placeholder="#111827 (default)"
         onInput={(v) => set({ headerBgDark: v })}

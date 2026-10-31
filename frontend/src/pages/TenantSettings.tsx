@@ -12,6 +12,7 @@ import BackupSection from '~/components/backup/BackupSection';
 import Combobox from '~/components/ui/Combobox';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
+import { i18nStore } from '~/i18n';
 
 interface TenantUser {
   id: string;
@@ -180,7 +181,7 @@ export default function TenantSettings() {
       if (e.status === 404) {
         setNotFound(true);
       } else {
-        setError(e.message || 'Failed to load tenant');
+        setError(e.message || i18nStore.t('tenants.failedToLoad'));
       }
     } finally {
       setLoading(false);
@@ -224,7 +225,7 @@ export default function TenantSettings() {
     } catch (e: any) {
       // Show the real PB error message — the same pattern CategoryEdit
       // uses (e.response.message holds the server-side reason).
-      const detail = e?.response?.message || e?.message || 'Failed to save';
+      const detail = e?.response?.message || e?.message || i18nStore.t('common.failedToSave');
       const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
       setError(`${detail}${fields}`);
     } finally {
@@ -255,7 +256,7 @@ export default function TenantSettings() {
       sidebarStore.bump();
       await loadTenantUsers();
     } catch (e: any) {
-      const detail = e?.response?.message || e?.message || 'Failed to add user';
+      const detail = e?.response?.message || e?.message || i18nStore.t('tenants.failedToAddUser');
       const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
       setError(`${detail}${fields}`);
     } finally {
@@ -264,13 +265,13 @@ export default function TenantSettings() {
   };
 
   const handleRemoveUser = async (userTenantId: string) => {
-    if (!(await confirmDialog({ message: 'Remove this user from the tenant?', danger: true }))) return;
+    if (!(await confirmDialog({ message: i18nStore.t('tenants.removeUserConfirm'), danger: true }))) return;
     try {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       await loadTenantUsers();
     } catch (e: any) {
-      void alertDialog(`Failed to remove user: ${e.message}`);
+      void alertDialog(i18nStore.t('tenants.failedToRemoveUser', { msg: e.message }));
     }
   };
 
@@ -281,7 +282,7 @@ export default function TenantSettings() {
       setEditingUserId(null);
       await loadTenantUsers();
     } catch (e: any) {
-      void alertDialog(`Failed to update role: ${e.message}`);
+      void alertDialog(i18nStore.t('tenants.failedToUpdateRole', { msg: e.message }));
     }
   };
 
@@ -298,18 +299,18 @@ export default function TenantSettings() {
           class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex items-center gap-1"
         >
           <ArrowLeft size={16} />
-          Back to Tenants
+          {i18nStore.t('tenants.backToTenants')}
         </button>
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{isNew() ? 'New Tenant' : 'Tenant Settings'}</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{isNew() ? i18nStore.t('tenants.newTenant') : i18nStore.t('tenants.tenantSettings')}</h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={notFound()}>
         <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm">
-          Tenant not found.
+          {i18nStore.t('tenants.notFound')}
         </div>
       </Show>
 
@@ -321,21 +322,20 @@ export default function TenantSettings() {
 
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
-          Settings saved successfully!
+          {i18nStore.t('tenants.saved')}
         </div>
       </Show>
 
       <Show when={!loading() && !notFound() && !isNew()}>
         <div class="bg-blue-500/10 border border-blue-500 rounded p-4 text-blue-700 dark:text-blue-300 text-sm">
-          Fill in the details below and save. After creating the tenant,
-          you'll be able to invite users and manage backups from this page.
+          {i18nStore.t('tenants.introHint')}
         </div>
       </Show>
 
       <Show when={!loading() && !notFound()}>
         <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Company Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('tenants.companyName')}</label>
             <input
               type="text"
               value={formData().name}
@@ -346,7 +346,7 @@ export default function TenantSettings() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Slug</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.slug')}</label>
             <input
               type="text"
               value={formData().slug}
@@ -357,23 +357,23 @@ export default function TenantSettings() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Plan</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.plan')}</label>
             <Combobox
               value={formData().plan}
               onChange={(v) => setFormData(d => ({ ...d, plan: v }))}
               options={[
-                { value: 'free', label: 'Free' },
-                { value: 'starter', label: 'Starter' },
-                { value: 'professional', label: 'Professional' },
-                { value: 'enterprise', label: 'Enterprise' },
+                { value: 'free', label: i18nStore.t('settings.planFree') },
+                { value: 'starter', label: i18nStore.t('settings.planStarter') },
+                { value: 'professional', label: i18nStore.t('settings.planProfessional') },
+                { value: 'enterprise', label: i18nStore.t('settings.planEnterprise') },
               ]}
-              placeholder="Select plan"
+              placeholder={i18nStore.t('settings.selectPlan')}
               allowClear={false}
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Custom Domain</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('tenants.customDomain')}</label>
             <input
               type="text"
               value={formData().custom_domain}
@@ -391,7 +391,7 @@ export default function TenantSettings() {
             class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
           >
             <Save size={16} />
-            {saving() ? (isNew() ? 'Creating...' : 'Saving...') : (isNew() ? 'Create Tenant' : 'Save Settings')}
+            {saving() ? (isNew() ? i18nStore.t('tenants.creating') : i18nStore.t('settings.saving')) : (isNew() ? i18nStore.t('tenants.createTenant') : i18nStore.t('tenants.saveSettings'))}
           </button>
         </form>
       </Show>
@@ -401,9 +401,9 @@ export default function TenantSettings() {
 
         <div class="bg-white dark:bg-gray-800 rounded-lg p-4 flex items-center justify-between">
           <div>
-            <div class="text-sm font-semibold text-gray-900 dark:text-white">Statistics</div>
+            <div class="text-sm font-semibold text-gray-900 dark:text-white">{i18nStore.t('tenants.statistics')}</div>
             <div class="text-xs text-gray-500 dark:text-gray-400">
-              Counts, storage usage and last-30-day activity for this tenant.
+              {i18nStore.t('tenants.statisticsHint')}
             </div>
           </div>
           <A
@@ -411,7 +411,7 @@ export default function TenantSettings() {
             class="inline-flex items-center gap-1 text-sm px-3 py-1.5 rounded border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             <BarChart3 size={14} />
-            View stats
+            {i18nStore.t('tenants.viewStats')}
           </A>
         </div>
       </Show>
@@ -419,13 +419,13 @@ export default function TenantSettings() {
       <Show when={!loading() && !notFound() && !isNew()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Tenant Users</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('tenants.tenantUsers')}</h2>
             <button
               onClick={() => setShowAddUser(true)}
               class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-3 py-1.5 rounded text-sm flex items-center gap-1`}
             >
               <UserPlus size={14} />
-              Add User
+              {i18nStore.t('users.addUser')}
             </button>
           </div>
 
@@ -433,13 +433,13 @@ export default function TenantSettings() {
             <form onSubmit={handleAddUser} class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-3">
               <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-user">
-                  Assign existing user
+                  {i18nStore.t('tenants.assignExistingUser')}
                 </label>
                 <input
                   id="ts-user-search"
                   type="search"
-                  aria-label="Search users by email"
-                  placeholder="Search by email…"
+                  aria-label={i18nStore.t('tenants.searchUsersByEmail')}
+                  placeholder={i18nStore.t('tenants.searchByEmail')}
                   value={userSearch()}
                   onInput={(e) => onUserSearchInput(e.currentTarget.value)}
                   class="w-full mb-2 bg-gray-100 dark:bg-gray-600 border border-gray-300 dark:border-gray-500 rounded px-3 py-1.5 text-gray-900 dark:text-white text-sm"
@@ -453,31 +453,31 @@ export default function TenantSettings() {
                     value: u.id,
                     label: u.name ? `${u.name} <${u.email}>` : u.email,
                   }))}
-                  placeholder="— Select a user —"
+                  placeholder={i18nStore.t('tenants.selectAUser')}
                   allowClear={false}
                   disabled={availableLoading()}
                 />
                 <Show when={!userSearch() && availableTruncated()}>
                   <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">
-                    Showing the first {AVAILABLE_LIMIT} users. Search by email to find others.
+                    {i18nStore.t('tenants.showingFirst', { n: AVAILABLE_LIMIT })}
                   </p>
                 </Show>
                 <Show when={!availableLoading() && availableUsers().length === 0 && !!userSearch()}>
-                  <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">No matching users.</p>
+                  <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">{i18nStore.t('tenants.noMatchingUsers')}</p>
                 </Show>
                 <Show when={!availableLoading() && availableUsers().length === 0 && !userSearch()}>
                   <p class="text-xs text-gray-600 dark:text-gray-500 mt-1">
-                    No users available. Go to{' '}
+                    {i18nStore.t('tenants.noUsersAvailable')}{' '}
                     <a href="/users" class="text-blue-600 dark:text-blue-400 hover:underline">
-                      User Management
+                      {i18nStore.t('tenants.userManagement')}
                     </a>{' '}
-                    to create a new one.
+                    {i18nStore.t('tenants.toCreateOne')}
                   </p>
                 </Show>
               </div>
               <div>
                 <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1" for="ts-existing-role">
-                  Role
+                  {i18nStore.t('common.role')}
                 </label>
                 <Combobox
                   id="ts-existing-role"
@@ -485,11 +485,11 @@ export default function TenantSettings() {
                   value={newUserRole()}
                   onChange={(v) => setNewUserRole(v)}
                   options={[
-                    { value: 'viewer', label: 'Viewer' },
-                    { value: 'editor', label: 'Editor' },
-                    { value: 'admin', label: 'Admin' },
+                    { value: 'viewer', label: i18nStore.t('common.viewer') },
+                    { value: 'editor', label: i18nStore.t('common.editor') },
+                    { value: 'admin', label: i18nStore.t('common.admin') },
                   ]}
-                  placeholder="Select role"
+                  placeholder={i18nStore.t('common.selectRole')}
                   allowClear={false}
                 />
               </div>
@@ -502,25 +502,25 @@ export default function TenantSettings() {
                   disabled={addingUser() || !selectedUserId() || availableUsers().length === 0}
                   class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm disabled:opacity-50`}
                 >
-                  {addingUser() ? 'Adding...' : 'Add to tenant'}
+                  {addingUser() ? i18nStore.t('users.adding') : i18nStore.t('tenants.addToTenant')}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setShowAddUser(false); setSelectedUserId(''); setError(''); }}
                   class="bg-gray-100 dark:bg-gray-600 hover:bg-gray-100 dark:hover:bg-gray-500 text-gray-900 dark:text-white px-4 py-1.5 rounded text-sm"
                 >
-                  Cancel
+                  {i18nStore.t('common.cancel')}
                 </button>
               </div>
             </form>
           </Show>
 
           <Show when={usersLoading()}>
-            <div class="text-gray-500 dark:text-gray-400 text-sm">Loading users...</div>
+            <div class="text-gray-500 dark:text-gray-400 text-sm">{i18nStore.t('users.loading')}</div>
           </Show>
 
           <Show when={!usersLoading() && tenantUsers().length === 0}>
-            <div class="text-gray-600 dark:text-gray-500 text-sm">No users in this tenant</div>
+            <div class="text-gray-600 dark:text-gray-500 text-sm">{i18nStore.t('tenants.noUsersInTenant')}</div>
           </Show>
 
           <Show when={!usersLoading() && tenantUsers().length > 0}>
@@ -529,7 +529,7 @@ export default function TenantSettings() {
                 {(user) => (
                   <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded px-3 py-2">
                     <div>
-                      <div class="text-gray-900 dark:text-white text-sm">{user.name || 'Unknown'}</div>
+                      <div class="text-gray-900 dark:text-white text-sm">{user.name || i18nStore.t('common.unknown')}</div>
                       <div class="text-gray-500 dark:text-gray-400 text-xs">{user.email}</div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -542,7 +542,7 @@ export default function TenantSettings() {
                               onClick={() => startEditRole(user)}
                               class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs"
                             >
-                              Change
+                              {i18nStore.t('tenants.change')}
                             </button>
                           </>
                         }
@@ -551,11 +551,11 @@ export default function TenantSettings() {
                           value={editingRole()}
                           onChange={(v) => setEditingRole(v)}
                           options={[
-                            { value: 'viewer', label: 'Viewer' },
-                            { value: 'editor', label: 'Editor' },
-                            { value: 'admin', label: 'Admin' },
+                            { value: 'viewer', label: i18nStore.t('common.viewer') },
+                            { value: 'editor', label: i18nStore.t('common.editor') },
+                            { value: 'admin', label: i18nStore.t('common.admin') },
                           ]}
-                          placeholder="Select role"
+                          placeholder={i18nStore.t('common.selectRole')}
                           allowClear={false}
                           class="w-32"
                         />
@@ -563,13 +563,13 @@ export default function TenantSettings() {
                           onClick={() => handleRoleChange(user.userTenantId, editingRole())}
                           class="text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 text-xs"
                         >
-                          Save
+                          {i18nStore.t('common.save')}
                         </button>
                         <button
                           onClick={() => setEditingUserId(null)}
                           class="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 text-xs"
                         >
-                          Cancel
+                          {i18nStore.t('common.cancel')}
                         </button>
                       </Show>
                       <button

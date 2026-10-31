@@ -1,10 +1,11 @@
-import { createSignal, createResource, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, createMemo, Show, For, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Settings, BarChart3 } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import Table, { Column } from '~/components/ui/Table';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
+import { i18nStore } from '~/i18n';
 
 interface TenantRecord {
   id: string;
@@ -52,14 +53,14 @@ export default function TenantList() {
     navigate(`/tenants/${tenantId}/stats`);
   };
 
-  const columns: Column[] = [
-    { key: 'name', label: 'Name', sortable: true },
-    { key: 'slug', label: 'Slug', sortable: true },
-    { key: 'plan', label: 'Plan' },
-    { key: 'custom_domain', label: 'Domain' },
+  const columns = createMemo<Column[]>(() => [
+    { key: 'name', label: i18nStore.t('common.name'), sortable: true },
+    { key: 'slug', label: i18nStore.t('common.slug'), sortable: true },
+    { key: 'plan', label: i18nStore.t('common.plan') },
+    { key: 'custom_domain', label: i18nStore.t('common.domain') },
     {
       key: 'created',
-      label: 'Created',
+      label: i18nStore.t('common.created'),
       sortable: true,
       render: (v) => v ? new Date(v).toLocaleDateString() : '-',
     },
@@ -71,52 +72,52 @@ export default function TenantList() {
           <button
             onClick={(e) => { e.stopPropagation(); handleStats(row.id); }}
             class="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 text-sm flex items-center gap-1"
-            title="View statistics"
+            title={i18nStore.t('tenants.viewStatistics')}
           >
             <BarChart3 size={14} />
-            Stats
+            {i18nStore.t('tenants.stats')}
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); handleSettings(row.id); }}
             class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm flex items-center gap-1"
           >
             <Settings size={14} />
-            Settings
+            {i18nStore.t('nav.settings')}
           </button>
         </div>
       ),
     },
-  ];
+  ]);
 
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Tenants</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('tenants.title')}</h1>
         <A
           href="/tenants/new"
           class={`${ENTITY_TYPE_BUTTON_CLASSES.tenant} px-4 py-2 rounded font-medium transition-colors`}
         >
-          + Add Tenant
+          {i18nStore.t('tenants.addTenant')}
         </A>
       </div>
 
       <Show
         when={!data.loading && data()}
-        fallback={<div class="text-gray-500 dark:text-gray-400">Loading tenants...</div>}
+        fallback={<div class="text-gray-500 dark:text-gray-400">{i18nStore.t('tenants.loading')}</div>}
       >
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
-            columns={columns}
+            columns={columns()}
             data={data()?.items || []}
             onRowClick={(row) => handleSettings(row.id)}
-            emptyMessage="No tenants found"
+            emptyMessage={i18nStore.t('tenants.empty')}
           />
         </div>
       </Show>
 
       <Show when={data()}>
         <p class="text-gray-600 dark:text-gray-500 text-sm">
-          Total: {data()?.totalItems || 0} tenants
+          {i18nStore.t('tenants.total', { n: data()?.totalItems || 0 })}
         </p>
       </Show>
     </div>

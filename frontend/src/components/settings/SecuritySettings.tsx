@@ -1,5 +1,6 @@
 import { createSignal, Show, onMount } from 'solid-js';
 import { pb } from '~/services/pocketbase';
+import { i18nStore } from '~/i18n';
 import { Save, Shield } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 
@@ -13,8 +14,8 @@ interface AuthCollection {
 }
 
 function describeError(err: any): string {
-  if (!err) return 'Operation failed';
-  return err.response?.message || err.message || 'Operation failed';
+  if (!err) return i18nStore.t('security.operationFailed');
+  return err.response?.message || err.message || i18nStore.t('security.operationFailed');
 }
 
 function Section(props: { title: string; children: any }) {
@@ -83,7 +84,7 @@ export default function SecuritySettings() {
     try {
       if (superusers()) await saveCollection(superusers()!);
       if (users()) await saveCollection(users()!);
-      showSuccess('Security settings saved.');
+      showSuccess(i18nStore.t('security.saved'));
     } catch (err: any) {
       setError(describeError(err));
     } finally {
@@ -126,10 +127,10 @@ export default function SecuritySettings() {
             />
             <div>
               <label for={`${col.name}-otp`} class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Enable email OTP
+                {i18nStore.t('security.enableEmailOtp')}
               </label>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Allows login with a one-time code sent by email. Requires SMTP to be configured.
+                {i18nStore.t('security.emailOtpHint')}
               </p>
             </div>
           </div>
@@ -145,13 +146,13 @@ export default function SecuritySettings() {
             />
             <div>
               <label for={`${col.name}-mfa`} class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Enforce multi-factor authentication
+                {i18nStore.t('security.enforceMfa')}
               </label>
               <p class="text-xs text-gray-500 dark:text-gray-400">
-                Requires two different login methods (e.g. password + OTP).{' '}
+                {i18nStore.t('security.mfaHint')}{' '}
                 {!canEnableMfa && (
                   <span class="text-amber-600 dark:text-amber-400">
-                    Enable password + OTP (or OIDC) first.
+                    {i18nStore.t('security.enablePasswordOtpFirst')}
                   </span>
                 )}
               </p>
@@ -166,11 +167,11 @@ export default function SecuritySettings() {
     <div class="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700">
       <div class="flex items-center gap-2 mb-4">
         <Shield size={18} class="text-gray-500 dark:text-gray-400" />
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Security</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('security.security')}</h2>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error()}>
@@ -189,13 +190,13 @@ export default function SecuritySettings() {
         <form onSubmit={handleSave} class="space-y-2">
           {renderCollectionToggles(
             superusers(),
-            'Superuser authentication',
-            'These settings apply to all PocketBase superusers.'
+            i18nStore.t('security.superuserAuth'),
+            i18nStore.t('security.superuserAuthNote')
           )}
           {renderCollectionToggles(
             users(),
-            'User authentication',
-            'These settings apply to all non-SSO users. OIDC users follow the OIDC provider rules.'
+            i18nStore.t('security.userAuth'),
+            i18nStore.t('security.userAuthNote')
           )}
 
           <div class="pt-4">
@@ -205,7 +206,7 @@ export default function SecuritySettings() {
               class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
             >
               <Save size={16} />
-              {saving() ? 'Saving...' : 'Save Security Settings'}
+              {saving() ? i18nStore.t('settings.saving') : i18nStore.t('security.saveSecuritySettings')}
             </button>
           </div>
         </form>

@@ -9,6 +9,7 @@ import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import type { Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { i18nStore } from '~/i18n';
 
 async function fetchMedia() {
   const tenant = getCurrentTenant();
@@ -55,7 +56,7 @@ export default function CategoryEdit() {
 
     const tenant = getCurrentTenant();
     if (!tenant && !authStore.isPBAdmin) {
-      setError('No tenant selected');
+      setError(i18nStore.t('common.noTenantSelected'));
       setLoading(false);
       return;
     }
@@ -75,7 +76,7 @@ export default function CategoryEdit() {
         setSlugManuallyEdited(true);
       } catch (e: any) {
         setLoadFailed(true);
-        setError(e.message || 'Failed to load category');
+        setError(e.message || i18nStore.t('categories.failedToLoad'));
       }
     }
     setLoading(false);
@@ -160,7 +161,7 @@ export default function CategoryEdit() {
     } catch (e: any) {
       // Show the actual PB error response (e.response.message has the real
       // server-side reason, e.message is usually the generic SDK fallback).
-      const detail = e?.response?.message || e?.message || 'Failed to save';
+      const detail = e?.response?.message || e?.message || i18nStore.t('common.failedToSave');
       const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
       setError(`${detail}${fields}`);
     } finally {
@@ -175,15 +176,15 @@ export default function CategoryEdit() {
           onClick={() => navigate('/categories')}
           class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
         >
-          ← Back
+          {i18nStore.t('common.back')}
         </button>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {location.pathname.endsWith('/new') ? 'New Category' : 'Edit Category'}
+          {location.pathname.endsWith('/new') ? i18nStore.t('categories.newCategory') : i18nStore.t('categories.editCategory')}
         </h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error() && !loading()}>
@@ -194,18 +195,18 @@ export default function CategoryEdit() {
 
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
-          Category saved successfully!
+          {i18nStore.t('categories.saved')}
         </div>
       </Show>
 
       <Show when={!loading() && !loadFailed()}>
         <form onSubmit={handleSubmit} class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-name">Name</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-name">{i18nStore.t('common.name')}</label>
             <input
               id="cat-name"
               type="text"
-              placeholder="Category name"
+              placeholder={i18nStore.t('categories.categoryName')}
               value={formData().name}
               onInput={(e) => handleNameChange(e.currentTarget.value)}
               class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
@@ -215,9 +216,9 @@ export default function CategoryEdit() {
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-slug">
-              Slug
+              {i18nStore.t('common.slug')}
               <Show when={!slugManuallyEdited()}>
-                <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">(auto-generated from name)</span>
+                <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">{i18nStore.t('categories.autoSlug')}</span>
               </Show>
             </label>
             <input
@@ -232,11 +233,11 @@ export default function CategoryEdit() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-desc">Description</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="cat-desc">{i18nStore.t('common.description')}</label>
             <input
               id="cat-desc"
               type="text"
-              placeholder="Optional description"
+              placeholder={i18nStore.t('categories.optionalDescription')}
               value={formData().description}
               onInput={(e) => setFormData(d => ({ ...d, description: e.currentTarget.value }))}
               class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
@@ -244,7 +245,7 @@ export default function CategoryEdit() {
           </div>
 
           <div class="flex items-center gap-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Active</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{i18nStore.t('common.active')}</label>
             <ActiveBadge
               active={formData().active}
               size="md"
@@ -253,7 +254,7 @@ export default function CategoryEdit() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort Order</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.sortOrder')}</label>
             <input
               type="number"
               value={formData().sort_order}
@@ -264,14 +265,14 @@ export default function CategoryEdit() {
 
           <div>
             <div class="flex items-center justify-between mb-2">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Media</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">{i18nStore.t('common.media')}</label>
               <Show when={selectedMedia()}>
                 <button
                   type="button"
                   onClick={handleClearMedia}
                   class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 >
-                  Remove
+                  {i18nStore.t('common.remove')}
                 </button>
               </Show>
             </div>
@@ -352,7 +353,7 @@ export default function CategoryEdit() {
             <Show when={media.loading}>
               <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm py-4">
                 <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
-                Loading media library...
+                {i18nStore.t('categories.loadingMediaLibrary')}
               </div>
             </Show>
 
@@ -362,7 +363,7 @@ export default function CategoryEdit() {
                 class="border border-gray-200 dark:border-gray-700 rounded bg-white/80 dark:bg-gray-900/40 max-h-96 overflow-y-auto p-2"
               >
                 <p class="text-xs text-gray-600 dark:text-gray-500 mb-2 sticky top-0 bg-white/95 dark:bg-gray-900/95 py-1 -mt-1 z-10">
-                  Pick one (replaces current):
+                  {i18nStore.t('categories.pickOne')}
                 </p>
                 <div class="grid grid-cols-6 gap-2">
                 <For each={media()?.items || []}>
@@ -390,7 +391,7 @@ export default function CategoryEdit() {
 
             <Show when={!media.loading && (media()?.items?.length || 0) === 0}>
               <p class="text-gray-500 dark:text-gray-400 text-sm">
-                No media uploaded yet. <a href="/media/new" class="text-blue-600 dark:text-blue-400 hover:underline">Upload some at /media/new</a> first.
+                {i18nStore.t('categories.noMediaYet')} <a href="/media/new" class="text-blue-600 dark:text-blue-400 hover:underline">{i18nStore.t('categories.uploadFirst')}</a> {i18nStore.t('categories.first')}
               </p>
             </Show>
           </div>
@@ -401,14 +402,14 @@ export default function CategoryEdit() {
               disabled={saving()}
               class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
-              {saving() ? 'Saving...' : 'Save Category'}
+              {saving() ? i18nStore.t('common.saving') : i18nStore.t('categories.saveCategory')}
             </button>
             <button
               type="button"
               onClick={() => navigate('/categories')}
               class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-6 rounded"
             >
-              Cancel
+              {i18nStore.t('common.cancel')}
             </button>
           </div>
         </form>

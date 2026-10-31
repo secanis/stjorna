@@ -9,6 +9,7 @@ import { ImageCropperModal } from '~/components/media';
 import type { Media, Product, Category } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { confirmDialog } from '~/components/ui/ConfirmDialog';
+import { i18nStore } from '~/i18n';
 
 const MAX_FILE_BYTES = 524288000; // 500 MiB — matches pocketbase/setup.ts media.file.maxSize
 
@@ -63,7 +64,7 @@ export default function MediaEdit() {
         applyRecord(record);
       } catch (e: any) {
         setLoadError(`Record not found: ${e.status} ${e.message}`);
-        setError(`Could not load media record ${params.id}`);
+        setError(i18nStore.t('media.couldNotLoad', { id: params.id }));
       }
     }
     setLoading(false);
@@ -80,7 +81,7 @@ export default function MediaEdit() {
     if (file.size > MAX_FILE_BYTES) {
       const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
       const limitMb = Math.round(MAX_FILE_BYTES / (1024 * 1024));
-      setError(`File is ${sizeMb} MB — the maximum allowed size is ${limitMb} MB.`);
+      setError(i18nStore.t('media.fileTooLarge', { size: sizeMb, limit: limitMb }));
       return;
     }
     if (previewUrl()) {
@@ -224,7 +225,7 @@ export default function MediaEdit() {
 
     const tenant = getCurrentTenant();
     if (!tenant) {
-      setError('No tenant selected');
+      setError(i18nStore.t('common.noTenantSelected'));
       return;
     }
 
@@ -233,7 +234,7 @@ export default function MediaEdit() {
     try {
       if (isNew()) {
         if (!pendingFile()) {
-          setError('Please select a file to upload');
+          setError(i18nStore.t('media.selectFile'));
           setSaving(false);
           return;
         }
@@ -307,8 +308,8 @@ export default function MediaEdit() {
     if (!isEditing()) return;
     const usedCount = usedInProducts().length + usedInCategories().length;
     const message = usedCount > 0
-      ? `This media is used in ${usedInProducts().length} product(s) and ${usedInCategories().length} category(ies). Delete anyway?`
-      : 'Delete this media item?';
+      ? i18nStore.t('media.deleteUsedConfirm', { products: usedInProducts().length, categories: usedInCategories().length })
+      : i18nStore.t('media.deleteConfirm');
     if (!(await confirmDialog({ message: message, danger: true }))) return;
     try {
       await pb.collection('media').delete(params.id!);
@@ -323,15 +324,15 @@ export default function MediaEdit() {
     <div class="space-y-6 max-w-3xl">
       <div class="flex items-center gap-4">
         <button onClick={() => navigate('/media')} class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
-          ← Back
+          {i18nStore.t('common.back')}
         </button>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-          {isEditing() ? 'Edit Media' : 'Upload Media'}
+          {isEditing() ? i18nStore.t('media.editMedia') : i18nStore.t('media.uploadMedia')}
         </h1>
       </div>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error()}>
@@ -342,7 +343,7 @@ export default function MediaEdit() {
 
       <Show when={success()}>
         <div class="bg-green-500/10 border border-green-500 rounded p-4 text-green-600 dark:text-green-400 text-sm">
-          Media saved successfully!
+          {i18nStore.t('media.saved')}
         </div>
       </Show>
 
@@ -354,9 +355,9 @@ export default function MediaEdit() {
                 <div class="flex items-start gap-3">
                   <AlertTriangle size={24} class="text-red-600 dark:text-red-400 shrink-0 mt-1" />
                   <div>
-                    <h3 class="text-gray-900 dark:text-white font-semibold mb-1">Media record not found</h3>
+                    <h3 class="text-gray-900 dark:text-white font-semibold mb-1">{i18nStore.t('media.recordNotFound')}</h3>
                     <p class="text-gray-700 dark:text-gray-300 text-sm mb-2">
-                      Record ID: <code class="text-red-700 dark:text-red-300">{params.id}</code>
+                      {i18nStore.t('media.recordId')}: <code class="text-red-700 dark:text-red-300">{params.id}</code>
                     </p>
                     <p class="text-gray-500 dark:text-gray-400 text-sm">
                       {loadError()}
@@ -371,13 +372,10 @@ export default function MediaEdit() {
                 <div class="flex items-start gap-3">
                   <AlertTriangle size={24} class="text-yellow-600 dark:text-yellow-400 shrink-0 mt-1" />
                   <div>
-                    <h3 class="text-gray-900 dark:text-white font-semibold mb-1">File missing</h3>
-                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-3">
-                      This media record exists but has no file attached (the <code class="text-yellow-700 dark:text-yellow-300">file</code> field is empty).
-                      This can happen if the file was deleted on the server, or if the record was created without uploading a file.
-                    </p>
+                    <h3 class="text-gray-900 dark:text-white font-semibold mb-1">{i18nStore.t('media.fileMissing')}</h3>
+                    <p class="text-gray-700 dark:text-gray-300 text-sm mb-3" innerHTML={i18nStore.t('media.fileMissingHint')} />
                     <p class="text-gray-500 dark:text-gray-400 text-sm">
-                      Drop a file below to upload a replacement.
+                      {i18nStore.t('media.dropReplacement')}
                     </p>
                   </div>
                 </div>
@@ -392,7 +390,7 @@ export default function MediaEdit() {
                     alt={formData().original_name || formData().filename}
                     class="max-h-96 mx-auto rounded"
                     onError={() => {
-                      setImageError(`Failed to load image from: ${resolvedUrl()}`);
+                      setImageError(i18nStore.t('media.imageFailedFrom', { url: resolvedUrl() }));
                     }}
                     onLoad={() => setImageError(null)}
                   />
@@ -401,7 +399,7 @@ export default function MediaEdit() {
                       type="button"
                       onClick={() => setCropperOpen(true)}
                       class="absolute top-2 left-2 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded shadow"
-                      title="Edit image"
+                      title={i18nStore.t('media.editImage')}
                     >
                       <Scissors size={18} />
                     </button>
@@ -413,7 +411,7 @@ export default function MediaEdit() {
                     controls
                     class="max-h-96 mx-auto rounded"
                     onError={() => {
-                      setImageError(`Failed to load video from: ${resolvedUrl()}`);
+                      setImageError(i18nStore.t('media.videoFailed', { url: resolvedUrl() }));
                     }}
                   />
                 </Show>
@@ -422,7 +420,7 @@ export default function MediaEdit() {
                     type="button"
                     onClick={clearPendingFile}
                     class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-gray-900 dark:text-white p-1.5 rounded"
-                    title="Remove file"
+                    title={i18nStore.t('media.removeFile')}
                   >
                     <X size={16} />
                   </button>
@@ -435,7 +433,7 @@ export default function MediaEdit() {
                 <div class="flex items-start gap-3">
                   <AlertTriangle size={20} class="text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
                   <div class="flex-1 min-w-0">
-                    <h4 class="text-gray-900 dark:text-white font-medium text-sm mb-1">Image failed to load</h4>
+                    <h4 class="text-gray-900 dark:text-white font-medium text-sm mb-1">{i18nStore.t('media.imageFailed')}</h4>
                     <p class="text-red-700 dark:text-red-300 text-xs break-all">{imageError()}</p>
                   </div>
                 </div>
@@ -454,9 +452,9 @@ export default function MediaEdit() {
               >
                 <Upload size={32} class="text-gray-500 dark:text-gray-400 mb-2" />
                 <p class="text-gray-900 dark:text-white text-sm font-medium mb-1">
-                  {pendingFile() ? 'Drop another file to replace' : (isNew() ? 'Drop file here or click to browse' : 'Drop new file to replace')}
+                  {pendingFile() ? i18nStore.t('media.dropAnotherFile') : (isNew() ? i18nStore.t('media.dropFileHere') : i18nStore.t('media.dropNewFile'))}
                 </p>
-                <p class="text-gray-500 dark:text-gray-400 text-xs">JPEG, PNG, WebP, GIF, MP4, WebM — max 500 MB</p>
+                <p class="text-gray-500 dark:text-gray-400 text-xs">{i18nStore.t('media.fileTypesHint')}</p>
                 <input
                   id="media-file"
                   type="file"
@@ -469,11 +467,11 @@ export default function MediaEdit() {
           </div>
 
           <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Details</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('media.details')}</h2>
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-filename">Filename</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-filename">{i18nStore.t('media.filename')}</label>
                 <input
                   id="media-filename"
                   type="text"
@@ -484,8 +482,8 @@ export default function MediaEdit() {
               </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-original-name">
-                  Original Name
-                  <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">(set on upload, not editable)</span>
+                  {i18nStore.t('media.originalName')}
+                  <span class="ml-2 text-xs text-gray-600 dark:text-gray-500">{i18nStore.t('media.originalNameHint')}</span>
                 </label>
                 <input
                   id="media-original-name"
@@ -499,7 +497,7 @@ export default function MediaEdit() {
 
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-mime">MIME Type</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-mime">{i18nStore.t('media.mimeType')}</label>
                 <input
                   id="media-mime"
                   type="text"
@@ -509,7 +507,7 @@ export default function MediaEdit() {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-size">Size (bytes)</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" for="media-size">{i18nStore.t('media.sizeBytes')}</label>
                 <input
                   id="media-size"
                   type="number"
@@ -523,7 +521,7 @@ export default function MediaEdit() {
             <Show when={fileUrl()}>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  File URL
+                  {i18nStore.t('media.fileUrl')}
                 </label>
                 <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
                   <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={fileUrl()}>{fileUrl()}</code>
@@ -531,7 +529,7 @@ export default function MediaEdit() {
                     type="button"
                     onClick={() => copyUrl('file')}
                     class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
-                    title="Copy URL"
+                    title={i18nStore.t('media.copyUrl')}
                   >
                     <Show when={copied() === 'file'} fallback={<Copy size={14} />}>
                       <Check size={14} class="text-green-600 dark:text-green-400" />
@@ -544,7 +542,7 @@ export default function MediaEdit() {
             <Show when={thumbUrl()}>
               <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Thumbnail URL
+                  {i18nStore.t('media.thumbnailUrl')}
                 </label>
                 <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
                   <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={thumbUrl()}>{thumbUrl()}</code>
@@ -552,7 +550,7 @@ export default function MediaEdit() {
                     type="button"
                     onClick={() => copyUrl('thumb')}
                     class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
-                    title="Copy URL"
+                    title={i18nStore.t('media.copyUrl')}
                   >
                     <Show when={copied() === 'thumb'} fallback={<Copy size={14} />}>
                       <Check size={14} class="text-green-600 dark:text-green-400" />
@@ -565,19 +563,19 @@ export default function MediaEdit() {
 
           <Show when={isEditing()}>
             <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
-              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Used In</h2>
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('media.usedIn')}</h2>
 
               <Show when={usageLoading()}>
-                <div class="text-gray-500 dark:text-gray-400 text-sm">Loading usage…</div>
+                <div class="text-gray-500 dark:text-gray-400 text-sm">{i18nStore.t('media.loadingUsage')}</div>
               </Show>
 
               <Show when={!usageLoading() && usedInProducts().length === 0 && usedInCategories().length === 0}>
-                <p class="text-gray-500 dark:text-gray-400 text-sm">This media is not used in any products or categories.</p>
+                <p class="text-gray-500 dark:text-gray-400 text-sm">{i18nStore.t('media.notUsed')}</p>
               </Show>
 
               <Show when={!usageLoading() && usedInProducts().length > 0}>
                 <div>
-                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Products</h3>
+                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{i18nStore.t('common.products')}</h3>
                   <ul class="space-y-1">
                     <For each={usedInProducts()}>
                       {(product) => (
@@ -599,7 +597,7 @@ export default function MediaEdit() {
 
               <Show when={!usageLoading() && usedInCategories().length > 0}>
                 <div>
-                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Categories</h3>
+                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{i18nStore.t('common.categories')}</h3>
                   <ul class="space-y-1">
                     <For each={usedInCategories()}>
                       {(category) => (
@@ -627,14 +625,14 @@ export default function MediaEdit() {
               disabled={saving() || (isNew() && !pendingFile())}
               class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-6 rounded disabled:opacity-50`}
             >
-              {saving() ? 'Saving...' : isNew() ? 'Upload' : 'Save Changes'}
+              {saving() ? i18nStore.t('common.saving') : isNew() ? i18nStore.t('media.upload') : i18nStore.t('media.saveChanges')}
             </button>
             <button
               type="button"
               onClick={() => navigate('/media')}
               class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-6 rounded"
             >
-              Cancel
+              {i18nStore.t('common.cancel')}
             </button>
             <Show when={isEditing() && authStore.isEditorOrAbove()}>
               <button
@@ -643,7 +641,7 @@ export default function MediaEdit() {
                 class="ml-auto bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-6 rounded flex items-center gap-2"
               >
                 <Trash2 size={18} />
-                Delete
+                {i18nStore.t('common.delete')}
               </button>
             </Show>
           </div>
@@ -663,10 +661,10 @@ export default function MediaEdit() {
 }
 
 function describeApiError(err: any): string {
-  if (!err) return 'Failed to save';
+  if (!err) return i18nStore.t('common.failedToSave');
   if (err.status === 0 || err.isAbort) {
-    return 'Cannot reach PocketBase server.';
+    return i18nStore.t('common.cannotReachServer');
   }
   const msg = err.response?.message || err.message;
-  return msg || `Failed to save (${err.status || 'unknown'})`;
+  return msg || `${i18nStore.t('common.failedToSave')} (${err.status || 'unknown'})`;
 }

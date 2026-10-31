@@ -60,14 +60,6 @@ export const ENTITY_TYPE_TEXT_COLORS: Record<ActivityType, string> = {
   category: 'text-purple-600',
 };
 
-export const ENTITY_TYPE_LABELS: Record<ActivityType, string> = {
-  tenant:   'Tenant',
-  user:     'User',
-  product:  'Product',
-  media:    'Media',
-  category: 'Category',
-};
-
 // ─────────────────────────────────────────────
 // Brand primary button
 // Used in: Save / Submit / generic CTAs across all admin and edit
@@ -89,10 +81,4 @@ export const ACTION_COLORS: Record<ActivityAction, { bg: string; text: string }>
   created: { bg: 'bg-green-100 dark:bg-green-500/20',  text: 'text-green-700 dark:text-green-300'  },
   updated: { bg: 'bg-blue-100 dark:bg-blue-500/20',    text: 'text-blue-700 dark:text-blue-300'    },
   deleted: { bg: 'bg-red-100 dark:bg-red-500/20',      text: 'text-red-700 dark:text-red-300'      },
-};
-
-export const ACTION_LABELS: Record<ActivityAction, string> = {
-  created: 'created',
-  updated: 'updated',
-  deleted: 'deleted',
 };

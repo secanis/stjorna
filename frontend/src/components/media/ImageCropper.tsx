@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-solid';
 import clsx from 'clsx';
+import { i18nStore } from '~/i18n';
 
 interface AspectRatioOption {
   label: string;
@@ -21,7 +22,7 @@ interface AspectRatioOption {
 }
 
 const ASPECT_RATIOS: AspectRatioOption[] = [
-  { label: 'Free', value: undefined },
+  { label: i18nStore.t('imageCropper.free'), value: undefined },
   { label: '1:1', value: 1 },
   { label: '16:9', value: 16 / 9 },
   { label: '4:3', value: 4 / 3 },
@@ -55,7 +56,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
 
   const handleError = () => {
     setImageLoaded(false);
-    setImageError('Failed to load image for cropping.');
+    setImageError(i18nStore.t('imageCropper.failedToLoad'));
     props.onReadyChange?.(false);
   };
 
@@ -68,12 +69,12 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
         output: 'blob',
       });
       if (!result || typeof result === 'string') {
-        setProcessingError('Could not generate cropped image.');
+        setProcessingError(i18nStore.t('imageCropper.couldNotGenerate'));
         return;
       }
       await props.onApply(result);
     } catch (e: any) {
-      setProcessingError(e.message || 'Cropping failed.');
+      setProcessingError(e.message || i18nStore.t('imageCropper.croppingFailed'));
     } finally {
       setIsProcessing(false);
     }
@@ -122,7 +123,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
 
         <Show when={!imageLoaded() && !imageError()}>
           <div class="absolute inset-0 flex items-center justify-center bg-gray-900/50 text-white">
-            Loading image…
+            {i18nStore.t('imageCropper.loadingImage')}
           </div>
         </Show>
 
@@ -134,7 +135,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
               onClick={props.onCancel}
               class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
             >
-              Close
+              {i18nStore.t('imageCropper.close')}
             </button>
           </div>
         </Show>
@@ -150,7 +151,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
             </Show>
 
             <div class="flex flex-wrap items-center gap-2">
-              <span class="text-sm text-gray-500 dark:text-gray-400 mr-1">Aspect</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400 mr-1">{i18nStore.t('imageCropper.aspect')}</span>
               {ASPECT_RATIOS.map((ratio) => (
                 <button
                   type="button"
@@ -169,7 +170,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 onClick={() => api().rotateBy(-90)}
                 disabled={toolbarDisabled()}
                 class={iconButtonClass}
-                title="Rotate left"
+                title={i18nStore.t('imageCropper.rotateLeft')}
               >
                 <RotateCcw size={18} />
               </button>
@@ -178,7 +179,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 onClick={() => api().rotateBy(90)}
                 disabled={toolbarDisabled()}
                 class={iconButtonClass}
-                title="Rotate right"
+                title={i18nStore.t('imageCropper.rotateRight')}
               >
                 <RotateCw size={18} />
               </button>
@@ -187,7 +188,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 onClick={() => api().flipHorizontally()}
                 disabled={toolbarDisabled()}
                 class={iconButtonClass}
-                title="Flip horizontal"
+                title={i18nStore.t('imageCropper.flipHorizontal')}
               >
                 <FlipHorizontal size={18} />
               </button>
@@ -196,7 +197,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 onClick={() => api().flipVertically()}
                 disabled={toolbarDisabled()}
                 class={iconButtonClass}
-                title="Flip vertical"
+                title={i18nStore.t('imageCropper.flipVertical')}
               >
                 <FlipVertical size={18} />
               </button>
@@ -205,7 +206,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 onClick={() => api().zoomBy(-0.1)}
                 disabled={toolbarDisabled()}
                 class={iconButtonClass}
-                title="Zoom out"
+                title={i18nStore.t('imageCropper.zoomOut')}
               >
                 <ZoomOut size={18} />
               </button>
@@ -214,7 +215,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 onClick={() => api().zoomBy(0.1)}
                 disabled={toolbarDisabled()}
                 class={iconButtonClass}
-                title="Zoom in"
+                title={i18nStore.t('imageCropper.zoomIn')}
               >
                 <ZoomIn size={18} />
               </button>
@@ -223,7 +224,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 onClick={() => api().reset()}
                 disabled={toolbarDisabled()}
                 class={iconButtonClass}
-                title="Reset"
+                title={i18nStore.t('imageCropper.reset')}
               >
                 <Maximize size={18} />
               </button>
@@ -237,7 +238,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 class="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
               >
                 <X size={18} class="inline mr-1" />
-                Cancel
+                {i18nStore.t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -248,7 +249,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 <Show when={isProcessing()} fallback={<Crop size={18} />}>
                   <span class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 </Show>
-                {isProcessing() ? 'Applying…' : 'Apply Crop'}
+                {isProcessing() ? i18nStore.t('imageCropper.applying') : i18nStore.t('imageCropper.applyCrop')}
                 <Check size={18} />
               </button>
             </div>

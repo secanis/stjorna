@@ -1,7 +1,8 @@
-import { createSignal, createResource, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, createMemo, Show, For, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { FileText, Video } from 'lucide-solid';
 import Table, { Column } from '~/components/ui/Table';
+import { i18nStore } from '~/i18n';
 import { pb, tenantFilter, toSortExpr } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
@@ -68,20 +69,20 @@ export default function MediaList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!(await confirmDialog({ message: 'Delete this media item?', danger: true }))) return;
+    if (!(await confirmDialog({ message: i18nStore.t('media.deleteConfirm'), danger: true }))) return;
     try {
       await pb.collection('media').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (e: any) {
-      void alertDialog(`Failed to delete: ${e.message}`);
+      void alertDialog(i18nStore.t('common.failedToDelete', { msg: e.message }));
     }
   };
 
-  const columns: Column[] = [
+  const columns = createMemo<Column[]>(() => [
     {
       key: 'file',
-      label: 'Preview',
+      label: i18nStore.t('media.preview'),
       render: (v, row) => (
         <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-gray-900 dark:bg-black">
           <Show when={row.mime_type?.startsWith('image/') && v}>
@@ -111,58 +112,58 @@ export default function MediaList() {
         </div>
       ),
     },
-    { key: 'filename', label: 'Filename', sortable: true },
-    { key: 'mime_type', label: 'Type' },
+    { key: 'filename', label: i18nStore.t('media.filename'), sortable: true },
+    { key: 'mime_type', label: i18nStore.t('common.type') },
     {
       key: 'size',
-      label: 'Size',
+      label: i18nStore.t('common.size'),
       sortable: true,
       render: (v) => v ? `${(v / 1024).toFixed(1)} KB` : '-',
     },
     {
       key: 'created',
-      label: 'Created',
+      label: i18nStore.t('common.created'),
       sortable: true,
       render: (v) => v ? new Date(v).toLocaleDateString() : '-',
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: i18nStore.t('common.actions'),
       render: (_, row) => (
         <div class="flex gap-2">
           <button
             onClick={(e) => { e.stopPropagation(); navigate(`/media/${row.id}`); }}
             class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm"
           >
-            Edit
+            {i18nStore.t('common.edit')}
           </button>
           <Show when={authStore.isEditorOrAbove()}>
             <button
               onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
               class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
             >
-              Delete
+              {i18nStore.t('common.delete')}
             </button>
           </Show>
         </div>
       ),
     },
-  ];
+  ]);
 
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Media</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('media.title')}</h1>
         <Show when={authStore.isEditorOrAbove()}>
           <A href="/media/new" class={`${ENTITY_TYPE_BUTTON_CLASSES.media} px-4 py-2 rounded font-medium transition-colors`}>
-            + Add Media
+            {i18nStore.t('media.addMedia')}
           </A>
         </Show>
       </div>
 
       <div class="flex flex-wrap items-end gap-3">
         <div class="flex-1 min-w-[200px]">
-          <label for="media-search" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Search</label>
+          <label for="media-search" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.search')}</label>
           <input
             id="media-search"
             data-testid="media-search"
@@ -170,40 +171,40 @@ export default function MediaList() {
             type="text"
             value={search()}
             onInput={(e) => { setSearch(e.currentTarget.value); setPage(1); }}
-            placeholder="Search filename…"
+            placeholder={i18nStore.t('media.searchPlaceholder')}
             class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-gray-900 dark:text-white text-sm focus:outline-none focus:border-blue-500"
           />
         </div>
         <div class="w-56">
-          <label for="media-type" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Type</label>
+          <label for="media-type" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.type')}</label>
           <Combobox
             id="media-type"
             testId="media-type"
             value={filterType()}
             onChange={(v) => { setFilterType(v); setPage(1); }}
             options={[
-              { value: 'image', label: 'Images' },
-              { value: 'video', label: 'Videos' },
+              { value: 'image', label: i18nStore.t('common.images') },
+              { value: 'video', label: i18nStore.t('common.videos') },
             ]}
-            placeholder="All types"
-            clearLabel="All types"
+            placeholder={i18nStore.t('common.allTypes')}
+            clearLabel={i18nStore.t('common.allTypes')}
           />
         </div>
       </div>
 
       <Show
         when={!data.loading}
-        fallback={<div class="text-gray-500 dark:text-gray-400">Loading media...</div>}
+        fallback={<div class="text-gray-500 dark:text-gray-400">{i18nStore.t('media.loading')}</div>}
       >
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
-            columns={columns}
+            columns={columns()}
             data={data()?.items || []}
             sortKey={sortKey()}
             sortDir={sortDir()}
             onSort={handleSort}
             onRowClick={(row) => navigate(`/media/${row.id}`)}
-            emptyMessage="No media items yet"
+            emptyMessage={i18nStore.t('media.empty')}
           />
         </div>
 
@@ -214,17 +215,17 @@ export default function MediaList() {
               disabled={page() === 1}
               class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
-              Previous
+              {i18nStore.t('common.previous')}
             </button>
             <span class="text-gray-500 dark:text-gray-400 py-1 px-3">
-              Page {page()} of {data()?.totalPages || 1}
+              {i18nStore.t('common.pageOf', { page: page(), total: data()?.totalPages || 1 })}
             </span>
             <button
               onClick={() => setPage(p => p + 1)}
               disabled={page() >= (data()?.totalPages || 1)}
               class="px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded text-gray-900 dark:text-white disabled:opacity-50"
             >
-              Next
+              {i18nStore.t('common.next')}
             </button>
           </div>
         </Show>

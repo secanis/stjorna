@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, Show, For, onMount, createMemo } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
@@ -7,6 +7,7 @@ import Table, { Column } from '~/components/ui/Table';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { Shield, Plus, KeyRound, Trash2 } from 'lucide-solid';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
+import { i18nStore } from '~/i18n';
 
 interface Superuser {
   id: string;
@@ -68,7 +69,7 @@ export default function SuperuserManagement() {
   const handleCreate = async (e: Event) => {
     e.preventDefault();
     if (newPassword() !== newPasswordConfirm()) {
-      setError('Passwords do not match');
+      setError(i18nStore.t('superusers.passwordsDoNotMatch'));
       return;
     }
     setCreating(true);
@@ -87,7 +88,7 @@ export default function SuperuserManagement() {
       sidebarStore.bump();
       refetch();
     } catch (err: any) {
-      setError(err.message || 'Failed to create superuser');
+      setError(err.message || i18nStore.t('superusers.failedToCreate'));
     } finally {
       setCreating(false);
     }
@@ -98,14 +99,14 @@ export default function SuperuserManagement() {
       await pb.collection('_superusers').update(su.id, { active: !su.active });
       refetch();
     } catch (err: any) {
-      void alertDialog(`Failed to update status: ${err?.message}`);
+      void alertDialog(i18nStore.t('superusers.failedToUpdateStatus', { msg: err?.message }));
     }
   };
 
   const handlePasswordSave = async (e: Event, id: string) => {
     e.preventDefault();
     if (password() !== passwordConfirm()) {
-      setError('Passwords do not match');
+      setError(i18nStore.t('superusers.passwordsDoNotMatch'));
       return;
     }
     setSavingPassword(true);
@@ -119,28 +120,28 @@ export default function SuperuserManagement() {
       setPassword('');
       setPasswordConfirm('');
     } catch (err: any) {
-      setError(err.message || 'Failed to change password');
+      setError(err.message || i18nStore.t('superusers.failedToChangePassword'));
     } finally {
       setSavingPassword(false);
     }
   };
 
   const handleDelete = async (id: string, email: string) => {
-    if (!(await confirmDialog({ message: `Delete superuser "${email}"? This cannot be undone.`, danger: true }))) return;
+    if (!(await confirmDialog({ message: i18nStore.t('superusers.deleteConfirm', { email }), danger: true }))) return;
     try {
       await pb.collection('_superusers').delete(id);
       sidebarStore.bump();
       refetch();
     } catch (err: any) {
-      void alertDialog(`Failed to delete superuser: ${err?.message}`);
+      void alertDialog(i18nStore.t('superusers.failedToDelete', { msg: err?.message }));
     }
   };
 
-  const columns: Column[] = [
-    { key: 'email', label: 'Email' },
+  const columns = createMemo<Column[]>(() => [
+    { key: 'email', label: i18nStore.t('common.email') },
     {
       key: 'active',
-      label: 'Active',
+      label: i18nStore.t('common.active'),
       render: (_v, row: Superuser) => (
         <label class="inline-flex items-center gap-2 cursor-pointer">
           <input
@@ -148,55 +149,55 @@ export default function SuperuserManagement() {
             checked={row.active}
             onChange={() => toggleActive(row)}
           />
-          <span class="text-gray-900 dark:text-white">{row.active ? 'Enabled' : 'Disabled'}</span>
+          <span class="text-gray-900 dark:text-white">{row.active ? i18nStore.t('common.enabled') : i18nStore.t('common.disabled')}</span>
         </label>
       ),
     },
     {
       key: 'actions',
-      label: 'Actions',
+      label: i18nStore.t('common.actions'),
       render: (_v, row: Superuser) => (
         <div class="flex items-center gap-3">
           <button
             onClick={() => { setShowPassword(row.id); setPassword(''); setPasswordConfirm(''); setError(''); }}
             class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
-            title="Change password"
+            title={i18nStore.t('superusers.changePassword')}
           >
-            <KeyRound size={14} /> Password
+            <KeyRound size={14} /> {i18nStore.t('superusers.password')}
           </button>
           <button
             onClick={() => handleDelete(row.id, row.email)}
             class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
           >
-            <Trash2 size={14} /> Delete
+            <Trash2 size={14} /> {i18nStore.t('common.delete')}
           </button>
         </div>
       ),
     },
-  ];
+  ]);
 
   return (
     <div class="space-y-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <Shield class="text-gray-900 dark:text-white" size={24} />
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Superusers</h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('superusers.title')}</h1>
         </div>
         <button
           onClick={() => { setShowCreate(true); setError(''); }}
           class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white px-4 py-2 rounded font-medium transition-colors flex items-center gap-2`}
         >
-          <Plus size={18} /> Add Superuser
+          <Plus size={18} /> {i18nStore.t('superusers.addSuperuser')}
         </button>
       </div>
 
       <Show when={showCreate()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Add Superuser</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('superusers.addSuperuser')}</h2>
           <form onSubmit={handleCreate} class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.email')}</label>
                 <input
                   type="email"
                   value={newEmail()}
@@ -207,7 +208,7 @@ export default function SuperuserManagement() {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.password')}</label>
                 <input
                   type="password"
                   value={newPassword()}
@@ -218,7 +219,7 @@ export default function SuperuserManagement() {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('common.confirmPassword')}</label>
                 <input
                   type="password"
                   value={newPasswordConfirm()}
@@ -238,14 +239,14 @@ export default function SuperuserManagement() {
                 disabled={creating()}
                 class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
               >
-                {creating() ? 'Adding...' : 'Add Superuser'}
+                {creating() ? i18nStore.t('superusers.adding') : i18nStore.t('superusers.addSuperuser')}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowCreate(false); setError(''); }}
                 class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
               >
-                Cancel
+                {i18nStore.t('common.cancel')}
               </button>
             </div>
           </form>
@@ -254,11 +255,11 @@ export default function SuperuserManagement() {
 
       <Show when={showPassword()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg p-6 space-y-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Change Password</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{i18nStore.t('superusers.changePassword')}</h2>
           <form onSubmit={(e) => handlePasswordSave(e, showPassword()!)} class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('superusers.newPassword')}</label>
                 <input
                   type="password"
                   value={password()}
@@ -268,7 +269,7 @@ export default function SuperuserManagement() {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm New Password</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('superusers.confirmNewPassword')}</label>
                 <input
                   type="password"
                   value={passwordConfirm()}
@@ -287,14 +288,14 @@ export default function SuperuserManagement() {
                 disabled={savingPassword()}
                 class={`${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
               >
-                {savingPassword() ? 'Saving...' : 'Save Password'}
+                {savingPassword() ? i18nStore.t('common.saving') : i18nStore.t('superusers.savePassword')}
               </button>
               <button
                 type="button"
                 onClick={() => { setShowPassword(null); setError(''); }}
                 class="bg-gray-50 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded"
               >
-                Cancel
+                {i18nStore.t('common.cancel')}
               </button>
             </div>
           </form>
@@ -302,15 +303,15 @@ export default function SuperuserManagement() {
       </Show>
 
       <Show when={superusers.loading}>
-        <div class="text-gray-500 dark:text-gray-400">Loading superusers...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('superusers.loading')}</div>
       </Show>
 
       <Show when={!superusers.loading && superusers()}>
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
-            columns={columns}
+            columns={columns()}
             data={superusers() || []}
-            emptyMessage="No superusers found"
+            emptyMessage={i18nStore.t('superusers.empty')}
           />
         </div>
       </Show>

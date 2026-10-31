@@ -2,6 +2,7 @@ import { createSignal, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import { i18nStore } from '~/i18n';
 import { Save, Send, Mail } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
@@ -20,8 +21,8 @@ interface SmtpForm {
 }
 
 function describeError(err: any): string {
-  if (!err) return 'Operation failed';
-  return err.response?.message || err.message || 'Operation failed';
+  if (!err) return i18nStore.t('smtp.operationFailed');
+  return err.response?.message || err.message || i18nStore.t('smtp.operationFailed');
 }
 
 export default function SmtpSettings() {
@@ -112,7 +113,7 @@ export default function SmtpSettings() {
           senderAddress: form().senderAddress,
         },
       });
-      showSuccess('SMTP settings saved successfully.');
+      showSuccess(i18nStore.t('smtp.saved'));
       setForm((f) => ({ ...f, password: '' }));
     } catch (e: any) {
       setError(describeError(e));
@@ -127,7 +128,7 @@ export default function SmtpSettings() {
     setTestSuccess('');
     try {
       const email = authStore.user?.email;
-      if (!email) throw new Error('No email address for the current user.');
+      if (!email) throw new Error(i18nStore.t('smtp.noEmail'));
       await pb.send('/api/settings/test/email', {
         method: 'POST',
         body: {
@@ -136,7 +137,7 @@ export default function SmtpSettings() {
           collection: authStore.isPBAdmin ? '_superusers' : 'users',
         },
       });
-      setTestSuccess(`Test email sent to ${email}.`);
+      setTestSuccess(i18nStore.t('smtp.testSent', { email }));
       setTimeout(() => setTestSuccess(''), 5000);
     } catch (e: any) {
       setTestError(describeError(e));
@@ -149,19 +150,15 @@ export default function SmtpSettings() {
     <div class="space-y-6 max-w-3xl">
       <div class="flex items-center gap-3">
         <Mail size={24} class="text-gray-500 dark:text-gray-400" />
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">SMTP Settings</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{i18nStore.t('smtp.title')}</h1>
       </div>
 
       <DescriptionBlock>
-        <p>Configure the outgoing mail server used by PocketBase.</p>
-        <p>
-          SMTP is required for email OTP codes, verification emails and other system notifications.
-          Without it, OTP login and MFA will fail unless STJORNA_LOG_OTP is enabled for local testing.
-        </p>
+        <p>{i18nStore.t('smtp.description')}</p>
       </DescriptionBlock>
 
       <Show when={loading()}>
-        <div class="text-gray-500 dark:text-gray-400">Loading...</div>
+        <div class="text-gray-500 dark:text-gray-400">{i18nStore.t('common.loading')}</div>
       </Show>
 
       <Show when={error()}>
@@ -187,13 +184,13 @@ export default function SmtpSettings() {
               class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label for="smtp-enabled" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Enable SMTP
+              {i18nStore.t('smtp.enable')}
             </label>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Host</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('smtp.host')}</label>
               <input
                 type="text"
                 value={form().host}
@@ -203,7 +200,7 @@ export default function SmtpSettings() {
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Port</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('smtp.port')}</label>
               <input
                 type="number"
                 value={form().port}
@@ -215,7 +212,7 @@ export default function SmtpSettings() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Username</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('smtp.username')}</label>
               <input
                 type="text"
                 value={form().username}
@@ -225,8 +222,8 @@ export default function SmtpSettings() {
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Password
-                <span class="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">(leave blank to keep current)</span>
+                {i18nStore.t('smtp.password')}
+                <span class="text-xs text-gray-500 dark:text-gray-400 font-normal ml-1">{i18nStore.t('smtp.keepPasswordHint')}</span>
               </label>
               <input
                 type="password"
@@ -240,7 +237,7 @@ export default function SmtpSettings() {
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Auth method</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('smtp.authMethod')}</label>
               <input
                 type="text"
                 value={form().authMethod}
@@ -250,7 +247,7 @@ export default function SmtpSettings() {
               />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Local name (HELO)</label>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('smtp.localName')}</label>
               <input
                 type="text"
                 value={form().localName}
@@ -269,15 +266,15 @@ export default function SmtpSettings() {
               class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <label for="smtp-tls" class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Use TLS
+              {i18nStore.t('smtp.useTls')}
             </label>
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-            <h3 class="text-md font-semibold text-gray-900 dark:text-white mb-4">Sender</h3>
+            <h3 class="text-md font-semibold text-gray-900 dark:text-white mb-4">{i18nStore.t('smtp.sender')}</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sender name</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('smtp.senderName')}</label>
                 <input
                   type="text"
                   value={form().senderName}
@@ -286,7 +283,7 @@ export default function SmtpSettings() {
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sender address</label>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{i18nStore.t('smtp.senderAddress')}</label>
                 <input
                   type="email"
                   value={form().senderAddress}
@@ -304,7 +301,7 @@ export default function SmtpSettings() {
               class={`${PRIMARY_BUTTON_CLASSES} text-white font-medium py-2 px-6 rounded disabled:opacity-50 flex items-center gap-2`}
             >
               <Save size={16} />
-              {saving() ? 'Saving...' : 'Save SMTP Settings'}
+              {saving() ? i18nStore.t('settings.saving') : i18nStore.t('smtp.saveSmtpSettings')}
             </button>
 
             <button
@@ -314,7 +311,7 @@ export default function SmtpSettings() {
               class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50 flex items-center gap-2"
             >
               <Send size={16} />
-              {testing() ? 'Sending...' : 'Send Test Email'}
+              {testing() ? i18nStore.t('smtp.sending') : i18nStore.t('smtp.sendTestEmail')}
             </button>
           </div>
 
