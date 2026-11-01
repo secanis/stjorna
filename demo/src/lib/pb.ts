@@ -1,4 +1,4 @@
-import PocketBase from 'pocketbase';
+import PocketBase, { BaseAuthStore } from 'pocketbase';
 import { createSignal } from 'solid-js';
 import { startApiLog } from '~/lib/apiLog';
 
@@ -7,37 +7,20 @@ const TOKEN_KEY = 'demo_pb_token';
 const API_KEY_KEY = 'demo_pb_api_key';
 const THEME_KEY = 'demo_theme';
 
-// T-05.1: credentials live in sessionStorage only. sessionStorage is
-// cleared when the tab is closed and is not shared with other tabs, so
-// neither the raw API key nor the service-user JWT outlives the demo
-// session. The URL and theme are harmless and stay in localStorage.
-// (`sessionStorage` can throw in some privacy modes; every access is
-// guarded so the demo still works without persistence.)
-function sessionGet(key: string): string {
-  try {
-    return sessionStorage.getItem(key) || '';
-  } catch {
-    return '';
-  }
-}
-
-function sessionSet(key: string, value: string): void {
-  try {
-    sessionStorage.setItem(key, value);
-  } catch {}
-}
-
-function sessionRemove(key: string): void {
-  try {
-    sessionStorage.removeItem(key);
-  } catch {}
-}
+// T-05.1: credentials (the API key and the short-lived service-user JWT) are
+// kept in memory only and never written to localStorage/sessionStorage, so no
+// secret outlives the page. The URL and theme are harmless and stay in
+// localStorage.
+let inMemoryToken = '';
+let inMemoryApiKey = '';
 
 // One-off migration: older demo builds persisted the key + JWT in
-// localStorage. Drop them so a stale credential does not linger.
+// localStorage/sessionStorage. Drop them so a stale credential does not linger.
 try {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(API_KEY_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(API_KEY_KEY);
 } catch {}
 
 const initialUrl = (localStorage.getItem(URL_KEY) || '').replace(/\/+$/, '');
@@ -48,14 +31,14 @@ export function hasSavedUrl() {
   return () => !!pbUrl();
 }
 
-export let pb: PocketBase = initialUrl ? new PocketBase(initialUrl) : new PocketBase('/');
+export let pb: PocketBase = initialUrl
+  ? new PocketBase(initialUrl, new BaseAuthStore())
+  : new PocketBase('/', new BaseAuthStore());
 pb.autoCancellation(false);
 
-// NOTE: we deliberately do NOT auto-load TOKEN_KEY into authStore at
-// module load time. A stale or invalid JWT would otherwise persist
-// across page reloads and silently cause /api/collections/* requests
-// to return 200 / items: []. The token is applied only when the user
-// explicitly saves via saveToken() or when recreatePb() rebuilds the
+// NOTE: the JWT lives only in memory (BaseAuthStore + inMemoryToken), so it
+// is never auto-loaded at module load. The token is applied only when the
+// user explicitly saves via saveToken() or when recreatePb() rebuilds the
 // client after a URL change.
 
 // One-time fetch monkey-patch for the live API log.
@@ -65,13 +48,13 @@ export function recreatePb(url: string) {
   const clean = url.replace(/\/+$/, '');
   localStorage.setItem(URL_KEY, clean);
   setPbUrl(clean);
-  pb = new PocketBase(clean);
+  pb = new PocketBase(clean, new BaseAuthStore());
   pb.autoCancellation(false);
-  // Re-apply whatever's in sessionStorage — this is the one place where
+  // Re-apply the in-memory token — this is the one place where
   // we honor the saved token without going through the full
   // exchange/validation flow. The Settings page always overrides this
   // by calling saveToken() after recreatePb().
-  const t = sessionGet(TOKEN_KEY);
+  const t = inMemoryToken;
   if (t) {
     try {
       pb.authStore.save(t, null);
@@ -139,13 +122,13 @@ function jwtExpiresAt(token: string): number {
 // If the session holds an API key and the JWT is missing or about to
 // expire, exchange again. Safe to call before any request.
 export async function ensureFreshToken(): Promise<void> {
-  const apiKey = sessionGet(API_KEY_KEY);
+  const apiKey = inMemoryApiKey;
   if (!apiKey) return;
-  const current = sessionGet(TOKEN_KEY);
+  const current = inMemoryToken;
   const exp = current ? jwtExpiresAt(current) : 0;
   if (current && exp > Date.now() + 60_000) return;
   const jwt = await upgradeApiKeyToJwt(apiKey);
-  sessionSet(TOKEN_KEY, jwt);
+  inMemoryToken = jwt;
   pb.authStore.save(jwt, null);
 }
 
@@ -164,8 +147,8 @@ export async function saveToken(raw: string): Promise<void> {
     setAuthStatus('Exchanging API key for STJÓRN A user JWT…');
     try {
       const jwt = await upgradeApiKeyToJwt(t);
-      sessionSet(API_KEY_KEY, t);
-      sessionSet(TOKEN_KEY, jwt);
+      inMemoryApiKey = t;
+      inMemoryToken = jwt;
       pb.authStore.save(jwt, null);
       setAuthStatus('API key exchanged — using service user JWT.');
       // auto-clear the banner after a beat
@@ -176,7 +159,7 @@ export async function saveToken(raw: string): Promise<void> {
       // JWT that would still send 200/empty on subsequent requests.
       // The caller will see the error in the form.
       pb.authStore.clear();
-      sessionRemove(TOKEN_KEY);
+      inMemoryToken = '';
       // Note: keep API_KEY_KEY around so the user can see their
       // original key in the textarea. They can clear it via the
       // "Clear saved token" button.
@@ -188,27 +171,27 @@ export async function saveToken(raw: string): Promise<void> {
 
   // Regular user JWT or PB admin token: store as-is and clear any
   // stale api-key marker (we no longer need to refresh).
-  sessionSet(TOKEN_KEY, t);
-  sessionRemove(API_KEY_KEY);
+  inMemoryToken = t;
+  inMemoryApiKey = '';
   try {
     pb.authStore.save(t, null);
   } catch {}
 }
 
 export function clearToken() {
-  sessionRemove(TOKEN_KEY);
-  sessionRemove(API_KEY_KEY);
+  inMemoryToken = '';
+  inMemoryApiKey = '';
   pb.authStore.clear();
 }
 
 export function getTokenRaw(): string {
-  return sessionGet(TOKEN_KEY);
+  return inMemoryToken;
 }
 
 // Useful for the demo "API key" textarea to prefill the original key,
 // not the derived JWT.
 export function getApiKeyRaw(): string {
-  return sessionGet(API_KEY_KEY);
+  return inMemoryApiKey;
 }
 
 export function getTheme(): 'light' | 'dark' {

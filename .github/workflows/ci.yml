@@ -62,7 +62,9 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
-          cache: npm
+          # Cache poisoning: don't populate the npm cache from untrusted PR
+          # code — only cache on trusted events (push / release workflow_call).
+          cache: ${{ github.event_name != 'pull_request' && 'npm' || '' }}
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         working-directory: frontend
@@ -93,7 +95,9 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
-          cache: npm
+          # Cache poisoning: don't populate the npm cache from untrusted PR
+          # code — only cache on trusted events (push / release workflow_call).
+          cache: ${{ github.event_name != 'pull_request' && 'npm' || '' }}
           cache-dependency-path: pocketbase/package-lock.json
       - name: Install dependencies
         working-directory: pocketbase
@@ -159,7 +163,9 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
-          cache: npm
+          # Cache poisoning: don't populate the npm cache from untrusted PR
+          # code — only cache on trusted events (push / release workflow_call).
+          cache: ${{ github.event_name != 'pull_request' && 'npm' || '' }}
           cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         working-directory: frontend
