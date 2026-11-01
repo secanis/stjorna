@@ -8,8 +8,12 @@
 #   - test-e2e:      Playwright against a real PB (non-blocking, T-15)
 #   - lint-helm:     helm lint + template render check
 #   - test-helm:     full kind-based end-to-end test (slower, only on push)
-#   - build-images:  build PB + frontend images (no push), warms the GHA
-#                    cache (only on branch pushes; release.yml builds itself)
+#   - build-images:  build PB + frontend images (no push) to catch build
+#                    errors (only on branch pushes; release.yml builds itself)
+#
+# Cache poisoning: no job populates a cache (npm or Docker layers), so
+# untrusted pull_request code has nothing to poison. This keeps CI a bit
+# slower but avoids the CodeQL actions/cache-poisoning findings.
 #
 # Actions are pinned to commit SHAs (version in the trailing comment).
 # Required secrets: none (uses GITHUB_TOKEN for ghcr.io login)
@@ -62,10 +66,6 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
-          # Cache poisoning: don't populate the npm cache from untrusted PR
-          # code — only cache on trusted events (push / release workflow_call).
-          cache: ${{ github.event_name != 'pull_request' && 'npm' || '' }}
-          cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
@@ -95,10 +95,6 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
-          # Cache poisoning: don't populate the npm cache from untrusted PR
-          # code — only cache on trusted events (push / release workflow_call).
-          cache: ${{ github.event_name != 'pull_request' && 'npm' || '' }}
-          cache-dependency-path: pocketbase/package-lock.json
       - name: Install dependencies
         working-directory: pocketbase
         run: npm install --no-audit --no-fund
@@ -163,10 +159,6 @@ jobs:
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '24'
-          # Cache poisoning: don't populate the npm cache from untrusted PR
-          # code — only cache on trusted events (push / release workflow_call).
-          cache: ${{ github.event_name != 'pull_request' && 'npm' || '' }}
-          cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
@@ -309,12 +301,9 @@ jobs:
           file: ${{ matrix.dockerfile }}
           # Don't push to ghcr.io on CI: the default GITHUB_TOKEN can't
           # create org-owned packages, and the release workflow handles
-          # the public Docker Hub push. We still build (and cache layers
-          # via cache-to: type=gha) to catch build errors and warm the
-          # cache for the next run.
+          # the public Docker Hub push. We still build (no layer cache — see
+          # the cache-poisoning note in the header) to catch build errors.
           push: false
           load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
