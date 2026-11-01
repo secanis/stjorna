@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal, onCleanup } from 'solid-js';
+import { Show, createEffect, createSignal, onCleanup, untrack } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { i18nStore } from '~/i18n';
 
@@ -35,12 +35,12 @@ const [current, setCurrent] = createSignal<DialogRequest | null>(null);
 const queue: DialogRequest[] = [];
 
 function enqueue(req: DialogRequest) {
-  if (current()) queue.push(req);
+  if (untrack(() => current())) queue.push(req);
   else setCurrent(req);
 }
 
 function settle(ok: boolean) {
-  const req = current();
+  const req = untrack(() => current());
   if (!req) return;
   setCurrent(queue.shift() ?? null);
   req.resolve(ok);
@@ -48,31 +48,29 @@ function settle(ok: boolean) {
 
 export function confirmDialog(opts: ConfirmOptions | string): Promise<boolean> {
   const o = typeof opts === 'string' ? { message: opts } : opts;
-  return new Promise((resolve) =>
-    enqueue({
-      title: o.title ?? i18nStore.t('common.pleaseConfirm'),
-      message: o.message,
-      confirmLabel: o.confirmLabel ?? i18nStore.t('common.confirm'),
-      cancelLabel: o.cancelLabel ?? i18nStore.t('common.cancel'),
-      danger: o.danger ?? false,
-      alertOnly: false,
-      resolve,
-    }),
-  );
+  // Resolve the translated strings up front (this runs in the caller's tracked
+  // scope) so the Promise executor below stays free of reactive reads.
+  const base = {
+    title: o.title ?? i18nStore.t('common.pleaseConfirm'),
+    message: o.message,
+    confirmLabel: o.confirmLabel ?? i18nStore.t('common.confirm'),
+    cancelLabel: o.cancelLabel ?? i18nStore.t('common.cancel'),
+    danger: o.danger ?? false,
+    alertOnly: false,
+  };
+  return new Promise((resolve) => enqueue({ ...base, resolve }));
 }
 
 export function alertDialog(message: string, title = i18nStore.t('common.somethingWentWrong')): Promise<void> {
-  return new Promise((resolve) =>
-    enqueue({
-      title,
-      message,
-      confirmLabel: i18nStore.t('common.ok'),
-      cancelLabel: '',
-      danger: false,
-      alertOnly: true,
-      resolve: () => resolve(),
-    }),
-  );
+  const base = {
+    title,
+    message,
+    confirmLabel: i18nStore.t('common.ok'),
+    cancelLabel: '',
+    danger: false,
+    alertOnly: true,
+  };
+  return new Promise((resolve) => enqueue({ ...base, resolve: () => resolve() }));
 }
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';

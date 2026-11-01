@@ -37,16 +37,38 @@ const ICON_SIZE = { sm: 12, md: 14 } as const;
 
 export function ActiveBadge(props: ActiveBadgeProps): JSX.Element {
   const size = () => props.size ?? 'sm';
-  const on = props.labelOn ?? i18nStore.t('common.yes');
-  const off = props.labelOff ?? i18nStore.t('common.no');
-  const ariaLabel = () => props.ariaLabel ?? i18nStore.t('common.activeLabel', { state: props.active ? on : off });
+  const on = () => props.labelOn ?? i18nStore.t('common.yes');
+  const off = () => props.labelOff ?? i18nStore.t('common.no');
+  const ariaLabel = () =>
+    props.ariaLabel ?? i18nStore.t('common.activeLabel', { state: props.active ? on() : off() });
   // The shape is identical for button vs span — only the wrapper tag differs.
-  // We split into two components so the disabled / aria behavior is right.
-  if (props.onClick) {
-    return (
+  // A single <Show> keeps the component returning one node (no early return,
+  // which would break Solid's once-only execution).
+  return (
+    <Show
+      when={props.onClick}
+      fallback={
+        <span
+          role="status"
+          aria-label={ariaLabel()}
+          classList={{
+            'inline-flex items-center gap-1 rounded font-medium': true,
+            'px-2 py-1 text-xs': size() === 'sm',
+            'px-3 py-1 text-sm': size() === 'md',
+            'bg-green-600 text-white': props.active,
+            'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300': !props.active,
+          }}
+        >
+          <Show when={props.active} fallback={<X size={ICON_SIZE[size()]} />}>
+            <Check size={ICON_SIZE[size()]} />
+          </Show>
+          {props.active ? on() : off()}
+        </span>
+      }
+    >
       <button
         type="button"
-        onClick={() => { if (!props.disabled) props.onClick!(); }}
+        onClick={() => { if (!props.disabled) props.onClick?.(); }}
         aria-pressed={props.active}
         aria-label={ariaLabel()}
         disabled={props.disabled}
@@ -62,27 +84,9 @@ export function ActiveBadge(props: ActiveBadgeProps): JSX.Element {
         <Show when={props.active} fallback={<X size={ICON_SIZE[size()]} />}>
           <Check size={ICON_SIZE[size()]} />
         </Show>
-        {props.active ? on : off}
+        {props.active ? on() : off()}
       </button>
-    );
-  }
-  return (
-    <span
-      role="status"
-      aria-label={ariaLabel()}
-      classList={{
-        'inline-flex items-center gap-1 rounded font-medium': true,
-        'px-2 py-1 text-xs': size() === 'sm',
-        'px-3 py-1 text-sm': size() === 'md',
-        'bg-green-600 text-white': props.active,
-        'bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300': !props.active,
-      }}
-    >
-      <Show when={props.active} fallback={<X size={ICON_SIZE[size()]} />}>
-        <Check size={ICON_SIZE[size()]} />
-      </Show>
-      {props.active ? on : off}
-    </span>
+    </Show>
   );
 }
 

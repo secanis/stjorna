@@ -1,4 +1,5 @@
 import { createSignal, Show, createEffect, on, type Component } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
 import { A, useNavigate } from '@solidjs/router';
 import { Package, Folder, Image, Users, Building2 } from 'lucide-solid';
 import Table from '~/components/ui/Table';
@@ -10,9 +11,16 @@ import { fetchRecentActivity, type ActivityEvent, type ActivityType } from '~/ut
 import {
   ENTITY_TYPE_TEXT_COLORS,
   ENTITY_TYPE_BUTTON_CLASSES,
-  PRIMARY_BUTTON_CLASSES,
 } from '~/styles/colors';
 import { dashboardActivityColumns } from '~/utils/activityColumns';
+
+interface DashboardStats {
+  tenants: number;
+  categories: number;
+  products: number;
+  media: number;
+  users: number;
+}
 
 async function fetchStats() {
   const tenant = getCurrentTenant();
@@ -82,7 +90,7 @@ async function fetchStats() {
 export default function Dashboard() {
   const navigate = useNavigate();
 
-  const [stats, setStats] = createSignal<any>(null);
+  const [stats, setStats] = createSignal<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = createSignal(true);
   const [recentActivity, setRecentActivity] = createSignal<ActivityEvent[] | null>(null);
   const [recentLoading, setRecentLoading] = createSignal(true);
@@ -162,7 +170,7 @@ export default function Dashboard() {
           >
             <Table
               columns={activityColumns()}
-              data={recentActivity() || []}
+              data={(recentActivity() || []) as unknown as Record<string, unknown>[]}
               onRowClick={(row) => {
                 if (row.type === 'media') navigate(`/media/${row.id}`);
                 else if (row.type === 'product') navigate(`/products/${row.id}`);
@@ -179,15 +187,12 @@ export default function Dashboard() {
 }
 
 function StatCard(props: { label: string; value: number; icon: Component<{ size?: number; class?: string }>; type?: ActivityType }) {
-  const Icon = props.icon;
   // The entity type is passed explicitly now (the label is translated), so
   // the icon picks up the matching entity color. Unknown types fall back to gray.
-  const iconClass = props.type
-    ? ENTITY_TYPE_TEXT_COLORS[props.type]
-    : 'text-gray-500 dark:text-gray-400';
+  const iconClass = () => (props.type ? ENTITY_TYPE_TEXT_COLORS[props.type] : 'text-gray-500 dark:text-gray-400');
   return (
     <div class="bg-white dark:bg-gray-800 rounded-lg p-4 flex items-center gap-4">
-      <Icon size={28} class={iconClass} />
+      <Dynamic component={props.icon} size={28} class={iconClass()} />
       <div>
         <div class="text-2xl font-bold text-gray-900 dark:text-white">{props.value}</div>
         <div class="text-gray-500 dark:text-gray-400 text-sm">{props.label}</div>

@@ -1,4 +1,4 @@
-import { createSignal, createResource, createMemo, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, createMemo, Show, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { Settings, BarChart3 } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
@@ -27,7 +27,7 @@ export default function TenantList() {
   const [initialized, setInitialized] = createSignal(false);
   let initStarted = false;
 
-  const [data, { refetch }] = createResource(initialized, (ready) => {
+  const [data] = createResource(initialized, (ready) => {
     if (!ready) return undefined;
     return fetchTenants();
   });
@@ -62,7 +62,7 @@ export default function TenantList() {
       key: 'created',
       label: i18nStore.t('common.created'),
       sortable: true,
-      render: (v) => v ? new Date(v).toLocaleDateString() : '-',
+      render: (v) => v ? new Date(v as string | number).toLocaleDateString() : '-',
     },
     {
       key: 'actions',
@@ -70,7 +70,7 @@ export default function TenantList() {
       render: (_, row) => (
         <div class="flex gap-3 items-center justify-end">
           <button
-            onClick={(e) => { e.stopPropagation(); handleStats(row.id); }}
+            onClick={(e) => { e.stopPropagation(); handleStats(String(row.id)); }}
             class="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 text-sm flex items-center gap-1"
             title={i18nStore.t('tenants.viewStatistics')}
           >
@@ -78,7 +78,7 @@ export default function TenantList() {
             {i18nStore.t('tenants.stats')}
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); handleSettings(row.id); }}
+            onClick={(e) => { e.stopPropagation(); handleSettings(String(row.id)); }}
             class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm flex items-center gap-1"
           >
             <Settings size={14} />
@@ -108,8 +108,8 @@ export default function TenantList() {
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns()}
-            data={data()?.items || []}
-            onRowClick={(row) => handleSettings(row.id)}
+            data={(data()?.items || []) as unknown as Record<string, unknown>[]}
+            onRowClick={(row) => handleSettings(String(row.id))}
             emptyMessage={i18nStore.t('tenants.empty')}
           />
         </div>

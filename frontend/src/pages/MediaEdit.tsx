@@ -1,9 +1,11 @@
 import { createSignal, Show, For, onMount, onCleanup } from 'solid-js';
 import { useNavigate, useParams } from '@solidjs/router';
+import { ClientResponseError } from 'pocketbase';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { getMediaFileUrl, getMediaFileUrlAbsolute } from '~/utils/mediaUrl';
+import { errorMessage } from '~/utils/errors';
 import { Upload, X, AlertTriangle, Copy, Check, Scissors, Trash2, ExternalLink } from 'lucide-solid';
 import { ImageCropperModal } from '~/components/media';
 import type { Media, Product, Category } from '~/types';
@@ -62,8 +64,9 @@ export default function MediaEdit() {
       try {
         const record = await pb.collection('media').getOne<Media>(params.id!);
         applyRecord(record);
-      } catch (e: any) {
-        setLoadError(`Record not found: ${e.status} ${e.message}`);
+      } catch (e: unknown) {
+        const status = e instanceof ClientResponseError ? e.status : '';
+        setLoadError(`Record not found: ${status} ${errorMessage(e)}`);
         setError(i18nStore.t('media.couldNotLoad', { id: params.id }));
       }
     }
@@ -198,7 +201,7 @@ export default function MediaEdit() {
       ]);
       setUsedInProducts(products.items);
       setUsedInCategories(categories.items);
-    } catch (e: any) {
+    } catch {
       // Best-effort: usage data is non-critical.
       setUsedInProducts([]);
       setUsedInCategories([]);
@@ -252,7 +255,7 @@ export default function MediaEdit() {
         navigate(`/media/${created.id}`);
         return;
       } else {
-        const updateData: any = {
+        const updateData: Record<string, unknown> = {
           filename: formData().filename,
           original_name: formData().original_name,
           tenant,
@@ -278,7 +281,7 @@ export default function MediaEdit() {
           setTimeout(() => navigate('/media'), 800);
         }
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(describeApiError(e));
     } finally {
       setSaving(false);
@@ -315,7 +318,7 @@ export default function MediaEdit() {
       await pb.collection('media').delete(params.id!);
       sidebarStore.bump();
       navigate('/media');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(describeApiError(e));
     }
   };
@@ -664,11 +667,14 @@ export default function MediaEdit() {
   );
 }
 
-function describeApiError(err: any): string {
+function describeApiError(err: unknown): string {
   if (!err) return i18nStore.t('common.failedToSave');
-  if (err.status === 0 || err.isAbort) {
-    return i18nStore.t('common.cannotReachServer');
+  if (err instanceof ClientResponseError) {
+    if (err.status === 0 || err.isAbort) {
+      return i18nStore.t('common.cannotReachServer');
+    }
+    const msg = err.response?.message || err.message;
+    return msg || `${i18nStore.t('common.failedToSave')} (${err.status || 'unknown'})`;
   }
-  const msg = err.response?.message || err.message;
-  return msg || `${i18nStore.t('common.failedToSave')} (${err.status || 'unknown'})`;
+  return errorMessage(err, i18nStore.t('common.failedToSave'));
 }

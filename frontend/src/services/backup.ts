@@ -60,17 +60,18 @@ export async function importBackup(args: {
     body: arrayBuffer,
   });
   const text = await res.text();
-  let body: any;
+  let body: unknown;
   try {
     body = JSON.parse(text);
   } catch {
     body = { error: text };
   }
   if (!res.ok) {
+    const parsed = body as { error?: { message?: string }; message?: string };
     return {
       success: false,
       stats: { created: { categories: 0, products: 0, media: 0 }, updated: { categories: 0, products: 0, media: 0 }, warnings: [] },
-      error: body.error?.message || body.message || `import failed: ${res.status}`,
+      error: parsed.error?.message || parsed.message || `import failed: ${res.status}`,
     };
   }
   return body as ImportResult;

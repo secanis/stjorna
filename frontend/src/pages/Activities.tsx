@@ -219,9 +219,9 @@ export default function Activities() {
         >
           <Table
             columns={columns()}
-            data={filtered()}
+            data={filtered() as unknown as Record<string, unknown>[]}
             onRowClick={(row) => {
-              const e = row as ActivityEvent;
+              const e = row as unknown as ActivityEvent;
               const href = recordHref(e);
               if (href) navigate(href);
             }}

@@ -8,6 +8,7 @@ import MediaThumb from '~/components/media/MediaThumb';
 import Combobox from '~/components/ui/Combobox';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import { formatCustomFields, parseCustomFields } from '~/utils/customFields';
+import { errorMessage } from '~/utils/errors';
 import type { Product, Category, Media } from '~/types';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { i18nStore } from '~/i18n';
@@ -107,9 +108,9 @@ export default function ProductEdit() {
           setSelectedMediaIds(valid.map(r => r.id));
           setSelectedMediaRecords(valid);
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         setLoadFailed(true);
-        setError(e.message || i18nStore.t('products.failedToLoad'));
+        setError(errorMessage(e, i18nStore.t('products.failedToLoad')));
       }
     }
     setLoading(false);
@@ -206,7 +207,7 @@ export default function ProductEdit() {
     }
 
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         name: formData().name,
         slug: formData().slug,
         category: formData().category || null,
@@ -227,8 +228,8 @@ export default function ProductEdit() {
       sidebarStore.bump();
       setSuccess(true);
       setTimeout(() => navigate('/products'), 1500);
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('common.failedToSave'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('common.failedToSave')));
     } finally {
       setSaving(false);
     }
@@ -378,7 +379,7 @@ export default function ProductEdit() {
 
             <Show when={mediaLoading()}>
               <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm py-4">
-                <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+                <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin" />
                 {i18nStore.t('products.loadingMedia')}
               </div>
             </Show>
@@ -393,10 +394,10 @@ export default function ProductEdit() {
                     <div
                       data-testid={`prod-selected-media-${m.id}`}
                       draggable={true}
-                      onDragStart={handleDragStart(i())}
-                      onDragOver={handleDragOver(i())}
+                      onDragStart={(e) => handleDragStart(i())(e)}
+                      onDragOver={(e) => handleDragOver(i())(e)}
                       onDragLeave={handleDragLeave}
-                      onDrop={handleDrop(i())}
+                      onDrop={(e) => handleDrop(i())(e)}
                       onDragEnd={handleDragEnd}
                       class={`relative group cursor-move bg-gray-50 dark:bg-gray-700 rounded border-2 ${
                         dragOverIndex() === i() ? 'border-blue-500' : 'border-transparent'

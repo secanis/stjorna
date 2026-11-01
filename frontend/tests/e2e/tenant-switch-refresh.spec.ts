@@ -1,3 +1,4 @@
+import type { Page, APIRequestContext } from '@playwright/test';
 import { test, expect, getContext } from './helpers/test-context';
 
 /**
@@ -42,7 +43,7 @@ import { test, expect, getContext } from './helpers/test-context';
  */
 test.describe('Tenant switch refresh — page + sidebar badges', () => {
   /** Helper: list of all cells text in the active tbody, joined by ' | '. */
-  async function tbodyCellsText(page: any): Promise<string> {
+  async function tbodyCellsText(page: Page): Promise<string> {
     return page.evaluate(() => {
       const cells = Array.from(document.querySelectorAll('tbody tr td'));
       return cells.map((c) => (c.textContent || '').trim()).join(' | ');
@@ -50,19 +51,19 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
   }
 
   /** Helper: read the sidebar badge text for an entity link. */
-  async function sidebarBadge(page: any, path: string): Promise<string | null> {
+  async function sidebarBadge(page: Page, path: string): Promise<string | null> {
     return page.locator(`a[href="${path}"] span`).last().textContent();
   }
 
   /** Helper: a tenant's media total from PB, as the badge renders it. */
-  async function mediaCount(request: any, pbUrl: string, headers: Record<string, string>, tenantId: string): Promise<string> {
+  async function mediaCount(request: APIRequestContext, pbUrl: string, headers: Record<string, string>, tenantId: string): Promise<string> {
     const filter = encodeURIComponent(`tenant="${tenantId}"`);
     const res = await request.get(`${pbUrl}/api/collections/media/records?perPage=1&filter=${filter}`, { headers });
     return String((await res.json()).totalItems);
   }
 
   /** Switch tenant via the header dropdown UI. */
-  async function switchViaDropdown(page: any, tenantLabel: string) {
+  async function switchViaDropdown(page: Page, tenantLabel: string) {
     const trigger = page.locator('div.relative.group').filter({ hasText: 'Test Company' }).first();
     await trigger.hover();
     await page.waitForTimeout(300);
@@ -86,11 +87,11 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     const authHeader = { Authorization: token };
 
     const usersRes = await request.get(`${ctx.pbUrl}/api/collections/users/records?perPage=500`, { headers: authHeader });
-    const testUser = (await usersRes.json()).items.find((u: any) => u.email === ctx.credentials.userEmail);
+    const testUser = (await usersRes.json()).items.find((u: Record<string, unknown>) => u.email === ctx.credentials.userEmail);
     expect(testUser, 'test user exists').toBeTruthy();
 
     const rolesRes = await request.get(`${ctx.pbUrl}/api/collections/roles/records?perPage=20`, { headers: authHeader });
-    const editorRole = (await rolesRes.json()).items.find((r: any) => r.name === 'editor');
+    const editorRole = (await rolesRes.json()).items.find((r: Record<string, unknown>) => r.name === 'editor');
 
     const stamp = Date.now();
     const newTenantRes = await request.post(`${ctx.pbUrl}/api/collections/tenants/records`, {
@@ -134,7 +135,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     // Force initial scope to Test Company so the BEFORE assertion has
     // a known starting dataset.
     const tenantsRes = await request.get(`${ctx.pbUrl}/api/collections/tenants/records?perPage=500`, { headers: authHeader });
-    const seedTenant = (await tenantsRes.json()).items.find((t: any) => t.name === 'Test Company');
+    const seedTenant = (await tenantsRes.json()).items.find((t: Record<string, unknown>) => t.name === 'Test Company');
     await page.evaluate((id) => localStorage.setItem('stjorna_current_tenant', id), seedTenant.id);
 
     // Visit /media — bounded to Test Company (seed image).
@@ -175,9 +176,9 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     const authHeader = { Authorization: token };
 
     const usersRes = await request.get(`${ctx.pbUrl}/api/collections/users/records?perPage=500`, { headers: authHeader });
-    const testUser = (await usersRes.json()).items.find((u: any) => u.email === ctx.credentials.userEmail);
+    const testUser = (await usersRes.json()).items.find((u: Record<string, unknown>) => u.email === ctx.credentials.userEmail);
     const rolesRes = await request.get(`${ctx.pbUrl}/api/collections/roles/records?perPage=20`, { headers: authHeader });
-    const editorRole = (await rolesRes.json()).items.find((r: any) => r.name === 'editor');
+    const editorRole = (await rolesRes.json()).items.find((r: Record<string, unknown>) => r.name === 'editor');
 
     const stamp = Date.now();
     const newTenantRes = await request.post(`${ctx.pbUrl}/api/collections/tenants/records`, {
@@ -196,7 +197,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
 
     // Force start in Test Company.
     const tenantsRes = await request.get(`${ctx.pbUrl}/api/collections/tenants/records?perPage=500`, { headers: authHeader });
-    const seedTenant = (await tenantsRes.json()).items.find((t: any) => t.name === 'Test Company');
+    const seedTenant = (await tenantsRes.json()).items.find((t: Record<string, unknown>) => t.name === 'Test Company');
     await page.evaluate((id) => localStorage.setItem('stjorna_current_tenant', id), seedTenant.id);
 
     await page.goto(ctx.frontendUrl + '/media');
@@ -229,9 +230,9 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     const authHeader = { Authorization: token };
 
     const usersRes = await request.get(`${ctx.pbUrl}/api/collections/users/records?perPage=500`, { headers: authHeader });
-    const testUser = (await usersRes.json()).items.find((u: any) => u.email === ctx.credentials.userEmail);
+    const testUser = (await usersRes.json()).items.find((u: Record<string, unknown>) => u.email === ctx.credentials.userEmail);
     const rolesRes = await request.get(`${ctx.pbUrl}/api/collections/roles/records?perPage=20`, { headers: authHeader });
-    const editorRole = (await rolesRes.json()).items.find((r: any) => r.name === 'editor');
+    const editorRole = (await rolesRes.json()).items.find((r: Record<string, unknown>) => r.name === 'editor');
 
     const stamp = Date.now();
     const newTenantRes = await request.post(`${ctx.pbUrl}/api/collections/tenants/records`, {
@@ -250,7 +251,7 @@ test.describe('Tenant switch refresh — page + sidebar badges', () => {
     await page.waitForSelector('h1:has-text("Dashboard")');
 
     const tenantsRes = await request.get(`${ctx.pbUrl}/api/collections/tenants/records?perPage=500`, { headers: authHeader });
-    const seedTenant = (await tenantsRes.json()).items.find((t: any) => t.name === 'Test Company');
+    const seedTenant = (await tenantsRes.json()).items.find((t: Record<string, unknown>) => t.name === 'Test Company');
     await page.evaluate((id) => localStorage.setItem('stjorna_current_tenant', id), seedTenant.id);
 
     await page.goto(ctx.frontendUrl + '/media');

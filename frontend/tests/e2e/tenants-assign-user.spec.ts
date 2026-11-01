@@ -132,10 +132,10 @@ test.describe('TenantSettings — Add User is a dropdown, not a create form', ()
 
     const tenantsRes = await request.get(`${ctx.pbUrl}/api/collections/tenants/records?perPage=500`, { headers: authHeader });
     const allTenants = (await tenantsRes.json()).items;
-    const newTenant = allTenants.find((t: any) => t.name === tName);
+    const newTenant = allTenants.find((t: Record<string, unknown>) => t.name === tName);
     expect(newTenant, `tenant ${tName} exists`).toBeTruthy();
 
-    const newLinks = linksAfter.filter((l: any) => l.tenant === newTenant.id);
+    const newLinks = linksAfter.filter((l: Record<string, unknown>) => l.tenant === newTenant.id);
     expect(newLinks.length, `user_tenants links for new tenant`).toBe(1);
   });
 

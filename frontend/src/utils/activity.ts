@@ -1,5 +1,7 @@
-import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
+import { pb, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
+import type { RecordModel } from 'pocketbase';
+import { errorMessage } from '~/utils/errors';
 
 export type ActivityType = 'tenant' | 'user' | 'product' | 'media' | 'category';
 // Note: 'deleted' is reserved for a future real audit-log implementation.
@@ -21,7 +23,7 @@ export interface ActivityEvent {
   tenantName?: string;
 }
 
-const getItemName = (item: any, type: ActivityType): string => {
+const getItemName = (item: RecordModel, type: ActivityType): string => {
   switch (type) {
     case 'tenant': return item.name;
     case 'user': return item.email;
@@ -70,12 +72,12 @@ async function fetchCollectionEvents(
   const events: ActivityEvent[] = [];
   // For type==='tenant' the affected tenant IS the entity itself, so
   // resolve the name straight from the item rather than the lookup map.
-  const resolveName = (item: any): string | undefined => {
+  const resolveName = (item: RecordModel): string | undefined => {
     if (type === 'tenant') return item.name;
     if (item.tenant && tenantMap) return tenantMap.get(item.tenant);
     return undefined;
   };
-  byCreated.items.forEach((item: any) => {
+  byCreated.items.forEach((item) => {
     events.push({
       type,
       action: 'created',
@@ -86,7 +88,7 @@ async function fetchCollectionEvents(
       tenantName: resolveName(item),
     });
   });
-  byUpdated.items.forEach((item: any) => {
+  byUpdated.items.forEach((item) => {
     if (item.updated && item.updated !== item.created) {
       events.push({
         type,
@@ -112,8 +114,8 @@ async function fetchTenantNameMap(): Promise<Map<string, string> | undefined> {
     const m = new Map<string, string>();
     for (const t of items) m.set(t.id, t.name || t.id);
     return m;
-  } catch (e: any) {
-    console.warn('[fetchActivity] failed to load tenant names:', e?.message);
+  } catch (e: unknown) {
+    console.warn('[fetchActivity] failed to load tenant names:', errorMessage(e));
     return undefined;
   }
 }

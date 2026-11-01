@@ -7,6 +7,9 @@ import { pb } from '~/services/pocketbase';
 // into the main bundle. Vite returns the resolved asset URL.
 import swaggerCss from 'swagger-ui-dist/swagger-ui.css?url';
 import { getConfiguredPbUrl } from '~/services/config';
+import { errorMessage } from '~/utils/errors';
+
+type SwaggerUIBundleFn = (config: Record<string, unknown>) => { shutdown?: () => void };
 
 // Builds the OpenAPI spec URL without triggering mixed-content in HTTPS
 // deployments.
@@ -59,8 +62,10 @@ export default function ApiDocs() {
     try {
       // Lazy-load the swagger-ui JS chunk — it's ~1MB so we don't want
       // it in the main bundle.
-      const mod: any = await import('swagger-ui-dist/swagger-ui-bundle.js');
-      const SwaggerUIBundle = mod.SwaggerUIBundle || mod.default || mod;
+      const mod = await import('swagger-ui-dist/swagger-ui-bundle.js');
+      const SwaggerUIBundle = (((mod as { SwaggerUIBundle?: unknown }).SwaggerUIBundle
+        ?? (mod as { default?: unknown }).default
+        ?? mod) as SwaggerUIBundleFn);
 
       // Inject the swagger CSS once (Vite returns the hashed asset URL).
       if (!document.querySelector(`link[data-swagger-css]`)) {
@@ -90,12 +95,12 @@ export default function ApiDocs() {
         deepLinking: true,
         docExpansion: 'list',
         filter: true,
-        requestInterceptor: (req: any) => {
+        requestInterceptor: (req: { headers: Record<string, string> }) => {
           const token = pb.authStore.token;
           if (token) req.headers['Authorization'] = token;
           return req;
         },
-        responseInterceptor: (res: any) => res,
+        responseInterceptor: (res: unknown) => res,
       });
 
       cleanup = () => {
@@ -109,8 +114,8 @@ export default function ApiDocs() {
       darkObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
       setLoading(false);
-    } catch (e: any) {
-      setError(e?.message || i18nStore.t('apiDocs.failedToLoad'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('apiDocs.failedToLoad')));
       setLoading(false);
     }
   });

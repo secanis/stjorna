@@ -1,16 +1,17 @@
 import { createSignal, Show, For, createEffect, on } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
-import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info, Shield, ChevronRight, ChevronDown } from 'lucide-solid';
+import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info, Shield, ChevronRight, ChevronDown, type LucideIcon } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
 import { i18nStore } from '~/i18n';
 import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
+import { errorMessage } from '~/utils/errors';
 
 type NavItem = {
     path?: string;
     label: string;
-    icon?: any;
+    icon: LucideIcon;
     roles?: readonly ('editor' | 'admin' | 'pb_admin')[];
     showCount?: boolean;
     children?: Omit<NavItem, 'icon' | 'children' | 'showCount'>[];
@@ -70,28 +71,28 @@ export default function Sidebar() {
             try {
                 const tenants = await pb.collection('tenants').getList(1, 1);
                 ok() && setTenantsCount(tenants.totalItems);
-            } catch (e: any) {
-                console.warn('[Sidebar] tenants count:', e?.message);
+            } catch (e: unknown) {
+                console.warn('[Sidebar] tenants count:', errorMessage(e));
             }
             try {
                 const ut = await pb.collection('user_tenants').getList(1, 1);
                 ok() && setUsersCount(ut.totalItems);
-            } catch (e: any) {
-                console.warn('[Sidebar] users count:', e?.message);
+            } catch (e: unknown) {
+                console.warn('[Sidebar] users count:', errorMessage(e));
             }
             try {
                 const products = await pb.collection('products').getList(1, 1);
                 ok() && setProductsCount(products.totalItems);
-            } catch (e: any) {
-                console.warn('[Sidebar] products count:', e?.message);
+            } catch (e: unknown) {
+                console.warn('[Sidebar] products count:', errorMessage(e));
             }
             try {
                 // Custom hook — totalItems in the response body, same shape as the
                 // SDK's getList result so the UI doesn't need a new component.
                 const r = await pb.send('/api/stjorna/api-keys', { method: 'GET', query: { perPage: '1' } });
                 ok() && setApiKeysCount(Number(r?.totalItems ?? 0));
-            } catch (e: any) {
-                console.warn('[Sidebar] api keys count:', e?.message);
+            } catch (e: unknown) {
+                console.warn('[Sidebar] api keys count:', errorMessage(e));
             }
         } else {
             const filter = tenantFilter(tenant);
@@ -99,27 +100,27 @@ export default function Sidebar() {
                 try {
                     const media = await pb.collection('media').getList(1, 1, { filter });
                     ok() && setMediaCount(media.totalItems);
-                } catch (e: any) {
-                    console.warn('[Sidebar] media count:', e?.message);
+                } catch (e: unknown) {
+                    console.warn('[Sidebar] media count:', errorMessage(e));
                 }
                 try {
                     const categories = await pb.collection('categories').getList(1, 1, { filter });
                     ok() && setCategoriesCount(categories.totalItems);
-                } catch (e: any) {
-                    console.warn('[Sidebar] categories count:', e?.message);
+                } catch (e: unknown) {
+                    console.warn('[Sidebar] categories count:', errorMessage(e));
                 }
                 try {
                     const products = await pb.collection('products').getList(1, 1, { filter });
                     ok() && setProductsCount(products.totalItems);
-                } catch (e: any) {
-                    console.warn('[Sidebar] products count:', e?.message);
+                } catch (e: unknown) {
+                    console.warn('[Sidebar] products count:', errorMessage(e));
                 }
             }
             try {
                 const ut = await pb.collection('user_tenants').getList(1, 1, { filter });
                 ok() && setUsersCount(ut.totalItems);
-            } catch (e: any) {
-                console.warn('[Sidebar] users count:', e?.message);
+            } catch (e: unknown) {
+                console.warn('[Sidebar] users count:', errorMessage(e));
             }
         }
     };

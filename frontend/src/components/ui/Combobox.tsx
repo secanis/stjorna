@@ -179,7 +179,7 @@ export default function Combobox(props: ComboboxProps) {
     window.removeEventListener('resize', onScrollOrResize);
   });
 
-  const renderOption = props.renderOption ?? defaultHighlight;
+  const renderOption = () => props.renderOption ?? defaultHighlight;
 
   return (
     <div ref={rootRef} class={`relative ${props.class ?? ''}`}>
@@ -263,7 +263,7 @@ export default function Combobox(props: ComboboxProps) {
                   onClick={() => pick(opt.value)}
                   onMouseEnter={() => setActiveIdx(i())}
                 >
-                  {opt.value === '' ? opt.label : renderOption(opt.label, query())}
+                  {opt.value === '' ? opt.label : renderOption()(opt.label, query())}
                 </li>
               )}
             </For>

@@ -3,6 +3,7 @@ import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 import { Save, Send, Mail } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
@@ -20,9 +21,8 @@ interface SmtpForm {
   senderAddress: string;
 }
 
-function describeError(err: any): string {
-  if (!err) return i18nStore.t('smtp.operationFailed');
-  return err.response?.message || err.message || i18nStore.t('smtp.operationFailed');
+function describeError(err: unknown): string {
+  return errorMessage(err, i18nStore.t('smtp.operationFailed'));
 }
 
 export default function SmtpSettings() {
@@ -74,7 +74,7 @@ export default function SmtpSettings() {
         senderName: meta.senderName || '',
         senderAddress: meta.senderAddress || '',
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(describeError(e));
     } finally {
       setLoading(false);
@@ -93,7 +93,7 @@ export default function SmtpSettings() {
     setSuccess('');
 
     try {
-      const smtp: any = {
+      const smtp: Record<string, unknown> = {
         enabled: form().enabled,
         host: form().host,
         port: Number(form().port),
@@ -115,7 +115,7 @@ export default function SmtpSettings() {
       });
       showSuccess(i18nStore.t('smtp.saved'));
       setForm((f) => ({ ...f, password: '' }));
-    } catch (e: any) {
+    } catch (e: unknown) {
       setError(describeError(e));
     } finally {
       setSaving(false);
@@ -139,7 +139,7 @@ export default function SmtpSettings() {
       });
       setTestSuccess(i18nStore.t('smtp.testSent', { email }));
       setTimeout(() => setTestSuccess(''), 5000);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setTestError(describeError(e));
     } finally {
       setTesting(false);

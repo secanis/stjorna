@@ -1,20 +1,20 @@
-import { createSignal, For, Show, JSX } from 'solid-js';
+import { For, Show, JSX } from 'solid-js';
 import { i18nStore } from '~/i18n';
 
 export interface Column {
   key: string;
   label: string;
   sortable?: boolean;
-  render?: (value: any, row: any) => JSX.Element;
+  render?: (value: unknown, row: Record<string, unknown>) => JSX.Element;
 }
 
 interface TableProps {
   columns: Column[];
-  data: any[];
+  data: Record<string, unknown>[];
   onSort?: (key: string, dir: 'asc' | 'desc') => void;
   sortKey?: string;
   sortDir?: 'asc' | 'desc';
-  onRowClick?: (row: any) => void;
+  onRowClick?: (row: Record<string, unknown>) => void;
   emptyMessage?: string;
 }
 

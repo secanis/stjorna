@@ -364,7 +364,7 @@ test.describe('Media Upload', () => {
       headers: { Authorization: token },
     });
     const { items } = await list.json();
-    const stored = items.find((i: any) => i.filename === 'e2e-video.mp4');
+    const stored = items.find((i: Record<string, unknown>) => i.filename === 'e2e-video.mp4');
     expect(stored, 'uploaded record should be in media collection').toBeTruthy();
     expect(stored.size).toBe(490 * 1024 * 1024);
   });

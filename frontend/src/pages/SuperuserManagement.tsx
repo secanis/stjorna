@@ -1,4 +1,4 @@
-import { createSignal, createResource, Show, For, onMount, createMemo } from 'solid-js';
+import { createSignal, createResource, Show, onMount, createMemo } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
@@ -8,6 +8,7 @@ import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { Shield, Plus, KeyRound, Trash2 } from 'lucide-solid';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 
 interface Superuser {
   id: string;
@@ -22,12 +23,12 @@ async function fetchSuperusers(): Promise<Superuser[]> {
       sort: 'email',
       fields: 'id,email,active',
     });
-    return items.map((r: any) => ({
+    return items.map((r) => ({
       id: r.id,
       email: r.email || '',
       active: r.active !== false,
     }));
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('Failed to load superusers:', e);
     return [];
   }
@@ -87,8 +88,8 @@ export default function SuperuserManagement() {
       setNewPasswordConfirm('');
       sidebarStore.bump();
       refetch();
-    } catch (err: any) {
-      setError(err.message || i18nStore.t('superusers.failedToCreate'));
+    } catch (err: unknown) {
+      setError(errorMessage(err, i18nStore.t('superusers.failedToCreate')));
     } finally {
       setCreating(false);
     }
@@ -98,8 +99,8 @@ export default function SuperuserManagement() {
     try {
       await pb.collection('_superusers').update(su.id, { active: !su.active });
       refetch();
-    } catch (err: any) {
-      void alertDialog(i18nStore.t('superusers.failedToUpdateStatus', { msg: err?.message }));
+    } catch (err: unknown) {
+      void alertDialog(i18nStore.t('superusers.failedToUpdateStatus', { msg: errorMessage(err) }));
     }
   };
 
@@ -119,8 +120,8 @@ export default function SuperuserManagement() {
       setShowPassword(null);
       setPassword('');
       setPasswordConfirm('');
-    } catch (err: any) {
-      setError(err.message || i18nStore.t('superusers.failedToChangePassword'));
+    } catch (err: unknown) {
+      setError(errorMessage(err, i18nStore.t('superusers.failedToChangePassword')));
     } finally {
       setSavingPassword(false);
     }
@@ -132,8 +133,8 @@ export default function SuperuserManagement() {
       await pb.collection('_superusers').delete(id);
       sidebarStore.bump();
       refetch();
-    } catch (err: any) {
-      void alertDialog(i18nStore.t('superusers.failedToDelete', { msg: err?.message }));
+    } catch (err: unknown) {
+      void alertDialog(i18nStore.t('superusers.failedToDelete', { msg: errorMessage(err) }));
     }
   };
 
@@ -142,37 +143,43 @@ export default function SuperuserManagement() {
     {
       key: 'active',
       label: i18nStore.t('common.active'),
-      render: (_v, row: Superuser) => (
-        <label class="inline-flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={row.active}
-            onChange={() => toggleActive(row)}
-          />
-          <span class="text-gray-900 dark:text-white">{row.active ? i18nStore.t('common.enabled') : i18nStore.t('common.disabled')}</span>
-        </label>
-      ),
+      render: (_v, row) => {
+        const su = row as unknown as Superuser;
+        return (
+          <label class="inline-flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={su.active}
+              onChange={() => toggleActive(su)}
+            />
+            <span class="text-gray-900 dark:text-white">{su.active ? i18nStore.t('common.enabled') : i18nStore.t('common.disabled')}</span>
+          </label>
+        );
+      },
     },
     {
       key: 'actions',
       label: i18nStore.t('common.actions'),
-      render: (_v, row: Superuser) => (
-        <div class="flex items-center gap-3">
-          <button
-            onClick={() => { setShowPassword(row.id); setPassword(''); setPasswordConfirm(''); setError(''); }}
-            class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
-            title={i18nStore.t('superusers.changePassword')}
-          >
-            <KeyRound size={14} /> {i18nStore.t('superusers.password')}
-          </button>
-          <button
-            onClick={() => handleDelete(row.id, row.email)}
-            class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
-          >
-            <Trash2 size={14} /> {i18nStore.t('common.delete')}
-          </button>
-        </div>
-      ),
+      render: (_v, row) => {
+        const su = row as unknown as Superuser;
+        return (
+          <div class="flex items-center gap-3">
+            <button
+              onClick={() => { setShowPassword(su.id); setPassword(''); setPasswordConfirm(''); setError(''); }}
+              class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+              title={i18nStore.t('superusers.changePassword')}
+            >
+              <KeyRound size={14} /> {i18nStore.t('superusers.password')}
+            </button>
+            <button
+              onClick={() => handleDelete(su.id, su.email)}
+              class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
+            >
+              <Trash2 size={14} /> {i18nStore.t('common.delete')}
+            </button>
+          </div>
+        );
+      },
     },
   ]);
 
@@ -310,7 +317,7 @@ export default function SuperuserManagement() {
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns()}
-            data={superusers() || []}
+            data={(superusers() || []) as unknown as Record<string, unknown>[]}
             emptyMessage={i18nStore.t('superusers.empty')}
           />
         </div>

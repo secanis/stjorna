@@ -1,13 +1,16 @@
 import { createSignal, createResource, Show, onMount } from 'solid-js';
+import type { ParentProps } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { KeyRound, Copy, Trash2, Plus, AlertTriangle, CheckCircle2 } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
+import { ClientResponseError } from 'pocketbase';
 import { authStore } from '~/stores/auth';
 import Table, { Column } from '~/components/ui/Table';
 import Combobox from '~/components/ui/Combobox';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 
 // PB-side enum of API key records. Plaintext NEVER appears here — it's only
 // emitted in the issue endpoint response and never persisted.
@@ -33,13 +36,16 @@ async function listKeys(): Promise<ApiKeyRow[]> {
     try {
         const r = await pb.send('/api/stjorna/api-keys', { method: 'GET' });
         return (r?.items || []) as ApiKeyRow[];
-    } catch (e: any) {
+    } catch (e: unknown) {
         // The pocketbase SDK wraps the response; surface the actual server
         // message so the user can debug from the FE (e.g. "list query
         // failed: …") instead of just "Something went wrong".
-        const detail = e?.response?.message || e?.message || 'unknown error';
-        const url = e?.url || '/api/stjorna/api-keys';
-        throw new Error(`${e?.status || ''} ${url}: ${detail}`);
+        const status = e instanceof ClientResponseError ? e.status : undefined;
+        const url = e instanceof ClientResponseError ? e.url : '/api/stjorna/api-keys';
+        const detail = e instanceof ClientResponseError
+            ? e.response?.message || e.message || 'unknown error'
+            : errorMessage(e, 'unknown error');
+        throw new Error(`${status || ''} ${url}: ${detail}`);
     }
 }
 
@@ -113,8 +119,8 @@ export default function ApiKeys() {
             setNewName('');
             setNewExpires('');
             await refetch();
-        } catch (e: any) {
-            setFormError(e?.message || i18nStore.t('apiKeys.failedToIssue'));
+        } catch (e: unknown) {
+            setFormError(errorMessage(e, i18nStore.t('apiKeys.failedToIssue')));
         } finally {
             setCreating(false);
         }
@@ -125,8 +131,8 @@ export default function ApiKeys() {
         try {
             await revokeKey(id);
             await refetch();
-        } catch (e: any) {
-            void alertDialog(i18nStore.t('apiKeys.failedToRevoke', { msg: e.message }));
+        } catch (e: unknown) {
+            void alertDialog(i18nStore.t('apiKeys.failedToRevoke', { msg: errorMessage(e) }));
         }
     }
 
@@ -157,7 +163,7 @@ export default function ApiKeys() {
         {
             key: 'prefix',
             label: i18nStore.t('apiKeys.prefix'),
-            render: (v) => <code class="text-xs text-gray-700 dark:text-gray-300">{v}</code>,
+            render: (v) => <code class="text-xs text-gray-700 dark:text-gray-300">{String(v)}</code>,
         },
         {
             key: 'revoked',
@@ -167,34 +173,37 @@ export default function ApiKeys() {
         {
             key: 'last_used',
             label: i18nStore.t('apiKeys.lastUsed'),
-            render: (v) => (v ? new Date(v).toLocaleString() : '—'),
+            render: (v) => (v ? new Date(v as string).toLocaleString() : '—'),
         },
         {
             key: 'expires',
             label: i18nStore.t('apiKeys.expiresCol'),
-            render: (v) => (v ? new Date(v).toLocaleString() : i18nStore.t('apiKeys.never')),
+            render: (v) => (v ? new Date(v as string).toLocaleString() : i18nStore.t('apiKeys.never')),
         },
         {
             key: 'created',
             label: i18nStore.t('common.created'),
             sortable: true,
-            render: (v) => (v ? new Date(v).toLocaleString() : '—'),
+            render: (v) => (v ? new Date(v as string).toLocaleString() : '—'),
         },
         {
             key: 'actions',
             label: '',
-            render: (_, row: any) => (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (!row.revoked) handleRevoke(row.id, row.name);
-                    }}
-                    disabled={row.revoked}
-                    class={`text-sm ${row.revoked ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 dark:text-red-400 hover:underline'}`}
-                >
-                    <Trash2 size={14} class="inline -mt-0.5" /> {i18nStore.t('apiKeys.revoke')}
-                </button>
-            ),
+            render: (_, row) => {
+                const key = row as unknown as ApiKeyRow;
+                return (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (!key.revoked) handleRevoke(key.id, key.name);
+                        }}
+                        disabled={key.revoked}
+                        class={`text-sm ${key.revoked ? 'text-gray-400 cursor-not-allowed' : 'text-red-600 dark:text-red-400 hover:underline'}`}
+                    >
+                        <Trash2 size={14} class="inline -mt-0.5" /> {i18nStore.t('apiKeys.revoke')}
+                    </button>
+                );
+            },
         },
     ];
 
@@ -270,11 +279,11 @@ export default function ApiKeys() {
                 <Show when={keys.error}>
                     <div class="bg-red-500/10 border border-red-500 rounded p-4 text-red-600 dark:text-red-400 text-sm mb-3">
                         <div class="font-medium mb-1">{i18nStore.t('apiKeys.failedToLoad')}</div>
-                        <code class="text-xs break-all">{String((keys.error as any)?.message || keys.error)}</code>
+                        <code class="text-xs break-all">{String(keys.error?.message || keys.error)}</code>
                     </div>
                 </Show>
                 <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
-                    <Table columns={columns} data={keys() || []} emptyMessage={i18nStore.t('apiKeys.empty')} />
+                    <Table columns={columns} data={(keys() || []) as unknown as Record<string, unknown>[]} emptyMessage={i18nStore.t('apiKeys.empty')} />
                 </div>
             </Show>
 
@@ -336,9 +345,9 @@ export default function ApiKeys() {
     );
 }
 
-function Modal(props: { onClose: () => void; children: any }) {
+function Modal(props: ParentProps & { onClose: () => void }) {
     return (
-        <div class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4" onClick={props.onClose}>
+        <div class="fixed inset-0 z-40 bg-black/50 flex items-center justify-center p-4" onClick={() => props.onClose()}>
             <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg shadow-2xl max-w-xl w-full p-6" onClick={(e) => e.stopPropagation()}>
                 {props.children}
             </div>

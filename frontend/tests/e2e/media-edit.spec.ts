@@ -1,3 +1,4 @@
+import type { APIRequestContext } from '@playwright/test';
 import { test, expect, getContext } from './helpers/test-context';
 
 test.describe('Media Edit Page', () => {
@@ -9,7 +10,7 @@ test.describe('Media Edit Page', () => {
     await ctx.waitForDashboard();
   });
 
-  async function getAdminToken(request: any) {
+  async function getAdminToken(request: APIRequestContext) {
     const authRes = await request.post(`${ctx.pbUrl}/api/collections/_superusers/auth-with-password`, {
       data: { identity: ctx.credentials.adminEmail, password: ctx.credentials.adminPassword },
     });
@@ -44,7 +45,6 @@ test.describe('Media Edit Page', () => {
       },
     });
     expect(categoryRes.ok()).toBeTruthy();
-    const category = await categoryRes.json();
 
     const productRes = await request.post(`${ctx.pbUrl}/api/collections/products/records`, {
       headers: { Authorization: token },

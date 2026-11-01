@@ -7,6 +7,7 @@ import { tenantTheme } from '~/stores/tenantTheme';
 import { i18nStore } from '~/i18n';
 import type { Tenant, TenantThemeConfig } from '~/types';
 import { parseThemeConfig, buildThemeConfig, asTrimmedString } from '~/utils/themeConfig';
+import { errorMessage } from '~/utils/errors';
 import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeConfigFields';
 import BackupSection from '~/components/backup/BackupSection';
 import Combobox from '~/components/ui/Combobox';
@@ -56,8 +57,8 @@ export default function Settings() {
         headerBgDark: asTrimmedString(cfg.headerBgDark),
       });
       setThemeExtra(cfg);
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('settings.failedToLoad'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('settings.failedToLoad')));
     } finally {
       setLoading(false);
     }
@@ -103,8 +104,8 @@ export default function Settings() {
       void tenantTheme.refresh(tenantId);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('settings.failedToSave'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('settings.failedToSave')));
     } finally {
       setSaving(false);
     }

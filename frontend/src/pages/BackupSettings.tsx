@@ -1,8 +1,9 @@
-import { createSignal, createMemo, Show, onMount, For } from 'solid-js';
+import { createSignal, createMemo, Show, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
 import Table, { Column } from '~/components/ui/Table';
@@ -57,8 +58,8 @@ export default function BackupSettings() {
       setAutoEnabled(!!backupsCfg.cron);
       setCron(backupsCfg.cron || '0 0 * * *');
       setCronMaxKeep(backupsCfg.cronMaxKeep ?? 3);
-    } catch (e: any) {
-      console.warn('Failed to load backup settings:', e.message);
+    } catch (e: unknown) {
+      console.warn('Failed to load backup settings:', errorMessage(e));
     }
   });
 
@@ -68,8 +69,8 @@ export default function BackupSettings() {
     try {
       const list = await pb.backups.getFullList();
       setBackups(list as Backup[]);
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('backup.failedToLoad'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('backup.failedToLoad')));
     } finally {
       setLoading(false);
     }
@@ -95,8 +96,8 @@ export default function BackupSettings() {
       await pb.backups.create(`stjorna_backup_${ts}.zip`);
       await loadBackups();
       showSuccess(i18nStore.t('backup.created'));
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('backup.failedToCreate'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('backup.failedToCreate')));
     } finally {
       setCreating(false);
     }
@@ -108,8 +109,8 @@ export default function BackupSettings() {
       const token = await pb.files.getToken();
       const url = pb.backups.getDownloadURL(token, key);
       window.location.href = url;
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('backup.failedToDownload'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('backup.failedToDownload')));
     }
   };
 
@@ -120,8 +121,8 @@ export default function BackupSettings() {
       await pb.backups.delete(key);
       await loadBackups();
       showSuccess(i18nStore.t('backup.deleted'));
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('backup.failedToDelete'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('backup.failedToDelete')));
     }
   };
 
@@ -139,8 +140,8 @@ export default function BackupSettings() {
         },
       });
       showSuccess(i18nStore.t('backup.savedAuto'));
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('backup.failedToSaveAuto'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('backup.failedToSaveAuto')));
     } finally {
       setSavingAuto(false);
     }
@@ -151,34 +152,37 @@ export default function BackupSettings() {
     {
       key: 'size',
       label: i18nStore.t('common.size'),
-      render: (_v, row) => formatBytes(row.size),
+      render: (_v, row) => formatBytes(row.size as number),
     },
     {
       key: 'modified',
       label: i18nStore.t('common.created'),
-      render: (_v, row) => formatDate(row.modified),
+      render: (_v, row) => formatDate(row.modified as string),
     },
     {
       key: 'actions',
       label: i18nStore.t('common.actions'),
-      render: (_v, row) => (
-        <div class="flex items-center gap-3">
-          <button
-            onClick={() => handleDownload(row.key)}
-            class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
-            title={i18nStore.t('backup.download')}
-          >
-            <Download size={14} /> {i18nStore.t('backup.download')}
-          </button>
-          <button
-            onClick={() => handleDelete(row.key)}
-            class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
-            title={i18nStore.t('common.delete')}
-          >
-            <Trash2 size={14} /> {i18nStore.t('common.delete')}
-          </button>
-        </div>
-      ),
+      render: (_v, row) => {
+        const key = String(row.key);
+        return (
+          <div class="flex items-center gap-3">
+            <button
+              onClick={() => handleDownload(key)}
+              class="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1"
+              title={i18nStore.t('backup.download')}
+            >
+              <Download size={14} /> {i18nStore.t('backup.download')}
+            </button>
+            <button
+              onClick={() => handleDelete(key)}
+              class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 flex items-center gap-1"
+              title={i18nStore.t('common.delete')}
+            >
+              <Trash2 size={14} /> {i18nStore.t('common.delete')}
+            </button>
+          </div>
+        );
+      },
     },
   ]);
 
@@ -224,7 +228,7 @@ export default function BackupSettings() {
         </Show>
 
         <Show when={!loading()}>
-          <Table columns={columns()} data={backups()} emptyMessage={i18nStore.t('backup.empty')} />
+          <Table columns={columns()} data={backups() as unknown as Record<string, unknown>[]} emptyMessage={i18nStore.t('backup.empty')} />
         </Show>
       </div>
 

@@ -1,9 +1,10 @@
-import { createSignal, Show, onMount, onCleanup, createEffect } from 'solid-js';
+import { createSignal, Show, onMount, onCleanup, createEffect, untrack } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import PocketBase, { BaseAuthStore } from 'pocketbase';
+import PocketBase, { BaseAuthStore, ClientResponseError } from 'pocketbase';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { getConfiguredPbUrl } from '~/services/config';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 import CornerLanguageSwitcher from '~/components/ui/CornerLanguageSwitcher';
 
 type Step = 'admin' | 'storage' | 'tenant' | 'link' | 'done';
@@ -57,7 +58,7 @@ export default function Setup() {
   // keeps the superuser JWT in memory only — the SDK's default
   // LocalAuthStore would persist it to localStorage where it outlives the
   // wizard. The store is cleared on finish and on unmount.
-  const setupPb = new PocketBase(pbUrl(), new BaseAuthStore());
+  const setupPb = untrack(() => new PocketBase(pbUrl(), new BaseAuthStore()));
   onCleanup(() => setupPb.authStore.clear());
 
   onMount(async () => {
@@ -153,7 +154,8 @@ export default function Setup() {
     // would fail). PB does not return the secret, so it is left as is.
     let previousS3: Record<string, unknown> | null = null;
     try {
-      const { secret: _secret, ...rest } = ((await setupPb.settings.getAll()) as any)?.s3 || {};
+      const allSettings = await setupPb.settings.getAll();
+      const { secret: _secret, ...rest } = (allSettings?.s3 ?? {}) as Record<string, unknown>;
       previousS3 = rest;
     } catch {}
     try {
@@ -174,11 +176,11 @@ export default function Setup() {
       formData.append('mime_type', 'image/png');
       formData.append('size', String(testFile.size));
 
-      let testRecord: any;
+      let testRecord: Record<string, unknown> | null = null;
       try {
         testRecord = await setupPb.collection('media').create(formData);
-        testRecordId = testRecord.id;
-      } catch (e: any) {
+        testRecordId = String(testRecord!.id);
+      } catch (e: unknown) {
         throw new Error(i18nStore.t('setup.s3UploadFailed', { msg: categorizeS3Error(e) }));
       }
 
@@ -187,27 +189,27 @@ export default function Setup() {
       let fileToken: string;
       try {
         fileToken = await setupPb.files.getToken();
-      } catch (e: any) {
-        throw new Error(i18nStore.t('setup.s3FileTokenFailed', { msg: e?.message || e }));
+      } catch (e: unknown) {
+        throw new Error(i18nStore.t('setup.s3FileTokenFailed', { msg: errorMessage(e, String(e)) }));
       }
-      const fileUrl = setupPb.files.getURL(testRecord, testRecord.file, { token: fileToken });
+      const fileUrl = setupPb.files.getURL(testRecord!, String(testRecord!.file), { token: fileToken });
       let fileRes: Response;
       try {
         fileRes = await fetch(fileUrl);
-      } catch (e: any) {
-        throw new Error(i18nStore.t('setup.s3FileUrlUnreachable', { msg: e?.message || e }));
+      } catch (e: unknown) {
+        throw new Error(i18nStore.t('setup.s3FileUrlUnreachable', { msg: errorMessage(e, String(e)) }));
       }
       if (!fileRes.ok) {
         throw new Error(i18nStore.t('setup.s3FileNotAccessible', { status: fileRes.status }));
       }
 
       try {
-        await setupPb.collection('media').delete(testRecord.id);
+        await setupPb.collection('media').delete(String(testRecord!.id));
         testRecordId = null;
-      } catch (e: any) {
+      } catch {
         setS3TestStatus('success');
         setS3TestMessage(
-          i18nStore.t('setup.s3VerifiedButNotDeleted', { id: testRecord.id })
+          i18nStore.t('setup.s3VerifiedButNotDeleted', { id: String(testRecord!.id) })
         );
         setS3TestPassed(true);
         return;
@@ -222,7 +224,7 @@ export default function Setup() {
         })
       );
       setS3TestPassed(true);
-    } catch (e: any) {
+    } catch (e: unknown) {
       setS3TestStatus('error');
       setS3TestMessage(categorizeS3Error(e));
       if (testRecordId) {
@@ -236,30 +238,32 @@ export default function Setup() {
     }
   };
 
-  const categorizeS3Error = (e: any): string => {
-    const data = e?.data;
-    if (data && typeof data === 'object') {
+  const categorizeS3Error = (e: unknown): string => {
+    const errData = (e as { data?: unknown })?.data;
+    if (errData && typeof errData === 'object') {
+      const data = errData as Record<string, unknown>;
       const fileErr = data.file;
       if (fileErr && typeof fileErr === 'object') {
-        if (fileErr.code === 'validation_invalid_mime_type') {
+        const fe = fileErr as Record<string, unknown>;
+        if (fe.code === 'validation_invalid_mime_type') {
           return i18nStore.t('setup.s3MimeType');
         }
-        if (fileErr.code === 'validation_required') {
+        if (fe.code === 'validation_required') {
           return i18nStore.t('setup.s3MissingFile');
         }
-        if (fileErr.message) {
-          return i18nStore.t('setup.s3ValidationFailed', { msg: fileErr.message });
+        if (fe.message) {
+          return i18nStore.t('setup.s3ValidationFailed', { msg: String(fe.message) });
         }
       }
       for (const key of Object.keys(data)) {
         const val = data[key];
-        if (val && typeof val === 'object' && val.message) {
-          return `${key}: ${val.message}`;
+        if (val && typeof val === 'object' && (val as Record<string, unknown>).message) {
+          return `${key}: ${String((val as Record<string, unknown>).message)}`;
         }
       }
     }
 
-    const raw = e?.message || i18nStore.t('setup.s3TestFailed');
+    const raw = errorMessage(e, i18nStore.t('setup.s3TestFailed'));
     const lower = raw.toLowerCase();
     if (lower.includes('failed to authenticate') || lower.includes('invalidaccesskeyid') || lower.includes('signaturedoesnotmatch')) {
       return i18nStore.t('setup.s3AuthFailed');
@@ -339,8 +343,8 @@ export default function Setup() {
       // by every later step (no more re-auth with the raw password).
       await setupPb.collection('_superusers').authWithPassword(adminEmail(), adminPassword());
       setStep('storage');
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('setup.loginFailed'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('setup.loginFailed')));
     } finally {
       setLoading(false);
     }
@@ -356,8 +360,8 @@ export default function Setup() {
     if (storageType() === 's3') {
       try {
         await saveS3Settings(setupPb);
-      } catch (e: any) {
-        setError(i18nStore.t('setup.couldNotSaveS3', { msg: e?.message || e }));
+      } catch (e: unknown) {
+        setError(i18nStore.t('setup.couldNotSaveS3', { msg: errorMessage(e, String(e)) }));
         return;
       }
     }
@@ -374,13 +378,13 @@ export default function Setup() {
       // superuser) reuses the tenant with this slug instead of creating a
       // duplicate. UNIQUE(tenant, slug) on the child collections (T-02)
       // makes duplicates actively harmful.
-      let tenant: any = null;
+      let tenant: Record<string, unknown> | null = null;
       try {
         tenant = await setupPb.collection('tenants').getFirstListItem(
           setupPb.filter('slug = {:slug}', { slug })
         );
-      } catch (e: any) {
-        if (e?.status !== 404) throw e;
+      } catch (e: unknown) {
+        if (!(e instanceof ClientResponseError) || e.status !== 404) throw e;
       }
       if (tenant) {
         setTenantReused(true);
@@ -392,10 +396,10 @@ export default function Setup() {
           plan: 'starter',
         });
       }
-      setTenantId(tenant.id);
+      setTenantId(String(tenant!.id));
       setStep('link');
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('setup.createTenantFailed'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('setup.createTenantFailed')));
     } finally {
       setLoading(false);
     }
@@ -411,13 +415,13 @@ export default function Setup() {
       // Tenant-admin `users` account. Reused if it already exists (e.g. the
       // wizard is being re-run); otherwise it gets its own password —
       // never the superuser one.
-      let adminUser: any = null;
+      let adminUser: Record<string, unknown> | null = null;
       try {
         adminUser = await setupPb.collection('users').getFirstListItem(
           setupPb.filter('email = {:email}', { email: adminEmail() })
         );
-      } catch (e: any) {
-        if (e?.status !== 404) throw e;
+      } catch (e: unknown) {
+        if (!(e instanceof ClientResponseError) || e.status !== 404) throw e;
       }
 
       if (!adminUser) {
@@ -442,17 +446,17 @@ export default function Setup() {
 
       // Idempotent membership: UNIQUE(user, tenant) exists since T-02, so
       // look before creating.
-      let membership: any = null;
+      let membership: Record<string, unknown> | null = null;
       try {
         membership = await setupPb.collection('user_tenants').getFirstListItem(
-          setupPb.filter('user = {:user} && tenant = {:tenant}', { user: adminUser.id, tenant: tenantId() })
+          setupPb.filter('user = {:user} && tenant = {:tenant}', { user: String(adminUser!.id), tenant: tenantId() })
         );
-      } catch (e: any) {
-        if (e?.status !== 404) throw e;
+      } catch (e: unknown) {
+        if (!(e instanceof ClientResponseError) || e.status !== 404) throw e;
       }
       if (!membership) {
         await setupPb.collection('user_tenants').create({
-          user: adminUser.id,
+          user: String(adminUser!.id),
           tenant: tenantId(),
           role: adminRole.id,
           source: 'manual',
@@ -485,8 +489,8 @@ export default function Setup() {
       setUserPasswordConfirm('');
       setStep('done');
       setTimeout(() => navigate('/login'), 1500);
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('setup.linkAdminFailed'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('setup.linkAdminFailed')));
     } finally {
       setLoading(false);
     }
@@ -593,7 +597,7 @@ export default function Setup() {
             <button
               type="submit"
               disabled={loading() || !statusChecked() || !adminEmail() || !adminPassword() || (bootstrapMode() && (!adminPasswordConfirm() || !setupToken()))}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class={`w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
             >
               {loading()
                 ? (bootstrapMode() ? i18nStore.t('setup.creating') : i18nStore.t('setup.loggingIn'))
@@ -756,7 +760,7 @@ export default function Setup() {
             <button
               type="submit"
               disabled={!isS3Valid() || (storageType() === 's3' && !s3TestPassed())}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class={`w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
             >
               {i18nStore.t('setup.continue')}
             </button>
@@ -793,7 +797,7 @@ export default function Setup() {
             <button
               type="submit"
               disabled={loading() || !tenantName() || !tenantSlug()}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class={`w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
             >
               {loading() ? i18nStore.t('setup.saving') : i18nStore.t('setup.continue')}
             </button>
@@ -841,7 +845,7 @@ export default function Setup() {
             <button
               type="submit"
               disabled={loading()}
-              class="w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50"
+              class={`w-full ${PRIMARY_BUTTON_CLASSES} text-gray-900 dark:text-white font-medium py-2 px-4 rounded disabled:opacity-50`}
             >
               {loading() ? i18nStore.t('setup.linking') : i18nStore.t('setup.completeSetup')}
             </button>

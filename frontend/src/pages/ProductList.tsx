@@ -10,9 +10,10 @@ import ActiveBadge from '~/components/ui/ActiveBadge';
 import Combobox from '~/components/ui/Combobox';
 import { ImageOff } from 'lucide-solid';
 import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
-import type { Product, Category } from '~/types';
+import type { Product, Category, Media } from '~/types';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 
 const PER_PAGE = 50;
 
@@ -86,8 +87,8 @@ export default function ProductList() {
       await pb.collection('products').delete(id);
       sidebarStore.bump();
       refetch();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('common.failedToDelete', { msg: e.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('common.failedToDelete', { msg: errorMessage(e) }));
     }
   };
 
@@ -96,8 +97,8 @@ export default function ProductList() {
       await pb.collection('products').update(id, { active: !currentActive });
       sidebarStore.bump();
       refetch();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('common.failedToUpdate', { msg: e.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('common.failedToUpdate', { msg: errorMessage(e) }));
     }
   };
 
@@ -106,32 +107,35 @@ export default function ProductList() {
       key: 'media',
       label: i18nStore.t('products.thumb'),
       render: (_, row) => {
-        const expanded = (row as any).expand?.media;
-        const list: any[] = Array.isArray(expanded) ? expanded : (expanded ? [expanded] : []);
-        if (list.length === 0) {
-          return (
-            <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center" title={i18nStore.t('products.noMedia')}>
-              <ImageOff size={16} class="text-gray-600 dark:text-gray-500" />
-            </div>
-          );
-        }
+        const expand = row.expand as Record<string, unknown> | undefined;
+        const expanded = expand?.media as Media | Media[] | undefined;
+        const list: Media[] = Array.isArray(expanded) ? expanded : expanded ? [expanded] : [];
         const shown = list.slice(0, 3);
         const overflow = list.length - shown.length;
         return (
-          <div class="flex -space-x-2">
-            <For each={shown}>
-              {(m) => (
-                <div class="w-12 h-12 rounded overflow-hidden bg-gray-900 dark:bg-black ring-2 ring-gray-200 dark:ring-gray-800">
-                  <MediaThumb media={m} thumb="100x100" class="w-12 h-12 object-cover" />
+          <Show
+            when={list.length > 0}
+            fallback={
+              <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center" title={i18nStore.t('products.noMedia')}>
+                <ImageOff size={16} class="text-gray-600 dark:text-gray-500" />
+              </div>
+            }
+          >
+            <div class="flex -space-x-2">
+              <For each={shown}>
+                {(m) => (
+                  <div class="w-12 h-12 rounded overflow-hidden bg-gray-900 dark:bg-black ring-2 ring-gray-200 dark:ring-gray-800">
+                    <MediaThumb media={m} thumb="100x100" class="w-12 h-12 object-cover" />
+                  </div>
+                )}
+              </For>
+              {overflow > 0 && (
+                <div class="w-12 h-12 rounded bg-gray-50 dark:bg-gray-700 ring-2 ring-gray-200 dark:ring-gray-800 flex items-center justify-center text-xs text-gray-800 dark:text-gray-200 font-medium">
+                  +{overflow}
                 </div>
               )}
-            </For>
-            {overflow > 0 && (
-              <div class="w-12 h-12 rounded bg-gray-50 dark:bg-gray-700 ring-2 ring-gray-200 dark:ring-gray-800 flex items-center justify-center text-xs text-gray-800 dark:text-gray-200 font-medium">
-                +{overflow}
-              </div>
-            )}
-          </div>
+            </div>
+          </Show>
         );
       },
     },
@@ -144,13 +148,13 @@ export default function ProductList() {
     {
       key: 'category',
       label: i18nStore.t('common.category'),
-      render: (v) => v || '-',
+      render: (v) => (v as string | null | undefined) || '-',
     },
     {
       key: 'price',
       label: i18nStore.t('common.price'),
       sortable: true,
-      render: (v) => v != null ? `${v.toFixed(2)}` : '-',
+      render: (v) => v != null ? `${(v as number).toFixed(2)}` : '-',
     },
     {
       key: 'active',
@@ -160,7 +164,7 @@ export default function ProductList() {
         <ActiveBadge
           active={!!v}
           size="sm"
-          onClick={() => handleToggleActive(row.id, v)}
+          onClick={() => handleToggleActive(String(row.id), !!v)}
         />
       ),
     },
@@ -168,13 +172,13 @@ export default function ProductList() {
       key: 'sort_order',
       label: i18nStore.t('common.sortOrder'),
       sortable: true,
-      render: (v) => v ?? '-',
+      render: (v) => (v as number | null | undefined) ?? '-',
     },
     {
       key: 'created',
       label: i18nStore.t('common.created'),
       sortable: true,
-      render: (v) => v ? new Date(v).toLocaleDateString() : '-',
+      render: (v) => v ? new Date(v as string | number).toLocaleDateString() : '-',
     },
     {
       key: 'actions',
@@ -189,7 +193,7 @@ export default function ProductList() {
           </button>
           <Show when={authStore.isEditorOrAbove()}>
             <button
-              onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
+              onClick={(e) => { e.stopPropagation(); handleDelete(String(row.id)); }}
               class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
             >
               {i18nStore.t('common.delete')}
@@ -262,7 +266,7 @@ export default function ProductList() {
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns()}
-            data={data()?.items || []}
+            data={(data()?.items || []) as unknown as Record<string, unknown>[]}
             sortKey={sortKey()}
             sortDir={sortDir()}
             onSort={handleSort}

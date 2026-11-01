@@ -1,6 +1,8 @@
-import { createSignal, Show, onMount, createEffect, on } from 'solid-js';
+import { createSignal, Show, onMount, createEffect, on, For } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
 import { useNavigate, useParams, A } from '@solidjs/router';
 import { Package, Folder, Image, Users, HardDrive, Clock, BarChart3, RefreshCw, ArrowLeft } from 'lucide-solid';
+import type { LucideIcon } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { fetchTenantStats, type StatsSnapshot, StatsFormatting } from '~/services/stats';
 import { pb } from '~/services/pocketbase';
@@ -30,10 +32,10 @@ export default function TenantStats() {
                 fetchTenantStats(id),
             ]);
             if (!isCurrent()) return;
-            if (tenant) setTenantName(String((tenant as any).name || id));
+            if (tenant) setTenantName(String(tenant.name || id));
             setSnapshot(snap);
-        } catch (e: any) {
-            if (isCurrent()) setError(String(e?.message || e));
+        } catch (e: unknown) {
+            if (isCurrent()) setError(e instanceof Error ? e.message : String(e));
         } finally {
             if (isCurrent()) setLoading(false);
         }
@@ -98,9 +100,19 @@ export default function TenantStats() {
 }
 
 function SnapshotView(props: { s: StatsSnapshot; fmt: (n: number) => string; friendly: (m: string) => string }) {
-    const s = props.s;
-    const maxMimeBytes = () => s.storage.by_mime_type.reduce((m, x) => Math.max(m, x.bytes), 0) || 1;
-    const maxMimeCount = () => s.storage.by_mime_type.reduce((m, x) => Math.max(m, x.count), 0) || 1;
+    const s = () => props.s;
+    const maxMimeBytes = () => s().storage.by_mime_type.reduce((m, x) => Math.max(m, x.bytes), 0) || 1;
+    const maxMimeCount = () => s().storage.by_mime_type.reduce((m, x) => Math.max(m, x.count), 0) || 1;
+    const largestValue = () => {
+        const lm = s().storage.largest_media;
+        return lm ? props.fmt(lm.bytes) : '—';
+    };
+    const largestSub = () => {
+        const lm = s().storage.largest_media;
+        return lm
+            ? `${lm.filename || i18nStore.t('stats.unnamed')} · ${props.friendly(lm.mime_type)}`
+            : i18nStore.t('stats.noMediaUploaded');
+    };
 
     return (
         <>
@@ -108,10 +120,10 @@ function SnapshotView(props: { s: StatsSnapshot; fmt: (n: number) => string; fri
             <section>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{i18nStore.t('stats.records')}</h2>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <CountCard icon={Package} label={i18nStore.t('common.products')} value={s.counts.products} colorClass="text-blue-600 dark:text-blue-400" />
-                    <CountCard icon={Folder} label={i18nStore.t('common.categories')} value={s.counts.categories} colorClass="text-green-600 dark:text-green-400" />
-                    <CountCard icon={Image} label={i18nStore.t('common.media')} value={s.counts.media} colorClass="text-purple-600 dark:text-purple-400" />
-                    <CountCard icon={Users} label={i18nStore.t('common.users')} value={s.counts.users} colorClass="text-orange-600 dark:text-orange-400" />
+                    <CountCard icon={Package} label={i18nStore.t('common.products')} value={s().counts.products} colorClass="text-blue-600 dark:text-blue-400" />
+                    <CountCard icon={Folder} label={i18nStore.t('common.categories')} value={s().counts.categories} colorClass="text-green-600 dark:text-green-400" />
+                    <CountCard icon={Image} label={i18nStore.t('common.media')} value={s().counts.media} colorClass="text-purple-600 dark:text-purple-400" />
+                    <CountCard icon={Users} label={i18nStore.t('common.users')} value={s().counts.users} colorClass="text-orange-600 dark:text-orange-400" />
                 </div>
             </section>
 
@@ -119,21 +131,21 @@ function SnapshotView(props: { s: StatsSnapshot; fmt: (n: number) => string; fri
             <section>
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">{i18nStore.t('stats.storage')}</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <BigStat icon={HardDrive} label={i18nStore.t('stats.totalMedia')} value={props.fmt(s.storage.media_bytes)} sub={i18nStore.t('stats.files', { n: s.storage.media_count })} />
-                    <BigStat icon={BarChart3} label={i18nStore.t('stats.averageFileSize')} value={props.fmt(s.storage.avg_media_bytes)} sub={i18nStore.t('stats.across', { n: s.storage.media_count })} />
+                    <BigStat icon={HardDrive} label={i18nStore.t('stats.totalMedia')} value={props.fmt(s().storage.media_bytes)} sub={i18nStore.t('stats.files', { n: s().storage.media_count })} />
+                    <BigStat icon={BarChart3} label={i18nStore.t('stats.averageFileSize')} value={props.fmt(s().storage.avg_media_bytes)} sub={i18nStore.t('stats.across', { n: s().storage.media_count })} />
                     <BigStat
                         icon={Image}
                         label={i18nStore.t('stats.largestFile')}
-                        value={s.storage.largest_media ? props.fmt(s.storage.largest_media.bytes) : '—'}
-                        sub={s.storage.largest_media ? `${s.storage.largest_media.filename || i18nStore.t('stats.unnamed')} · ${props.friendly(s.storage.largest_media.mime_type)}` : i18nStore.t('stats.noMediaUploaded')}
+                        value={largestValue()}
+                        sub={largestSub()}
                     />
                 </div>
 
-                <Show when={s.storage.by_mime_type.length > 0}>
+                <Show when={s().storage.by_mime_type.length > 0}>
                     <div class="bg-white dark:bg-gray-800 rounded-lg p-4 mt-4">
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">{i18nStore.t('stats.byFileType')}</h3>
                         <div class="space-y-2">
-                            {s.storage.by_mime_type.map((m) => (
+                            <For each={s().storage.by_mime_type}>{(m) => (
                                 <div>
                                     <div class="flex items-center justify-between text-xs mb-1">
                                         <span class="text-gray-900 dark:text-gray-100">{props.friendly(m.mime_type)}</span>
@@ -146,7 +158,7 @@ function SnapshotView(props: { s: StatsSnapshot; fmt: (n: number) => string; fri
                                         <div class="bg-blue-300 dark:bg-blue-700 h-2 rounded-r" style={{ width: `${Math.max(0, (m.count / maxMimeCount()) * 100 - (m.bytes / maxMimeBytes()) * 100)}%`, 'min-width': '0' }} title={i18nStore.t('stats.files', { n: m.count })} />
                                     </div>
                                 </div>
-                            ))}
+                            )}</For>
                         </div>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-3">{i18nStore.t('stats.solidBarLegendAlt')}</p>
                     </div>
@@ -159,22 +171,21 @@ function SnapshotView(props: { s: StatsSnapshot; fmt: (n: number) => string; fri
                     <Clock size={16} /> {i18nStore.t('stats.last30Days')}
                 </h2>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <CountCard icon={Package} label={i18nStore.t('stats.productsCreated')} value={s.activity_30d.products_created} colorClass="text-blue-600 dark:text-blue-400" />
-                    <CountCard icon={Package} label={i18nStore.t('stats.productsUpdated')} value={s.activity_30d.products_updated} colorClass="text-blue-400 dark:text-blue-500" />
-                    <CountCard icon={Image} label={i18nStore.t('stats.mediaUploaded')} value={s.activity_30d.media_uploaded} colorClass="text-purple-600 dark:text-purple-400" />
-                    <CountCard icon={Folder} label={i18nStore.t('stats.categoriesCreated')} value={s.activity_30d.categories_created} colorClass="text-green-600 dark:text-green-400" />
+                    <CountCard icon={Package} label={i18nStore.t('stats.productsCreated')} value={s().activity_30d.products_created} colorClass="text-blue-600 dark:text-blue-400" />
+                    <CountCard icon={Package} label={i18nStore.t('stats.productsUpdated')} value={s().activity_30d.products_updated} colorClass="text-blue-400 dark:text-blue-500" />
+                    <CountCard icon={Image} label={i18nStore.t('stats.mediaUploaded')} value={s().activity_30d.media_uploaded} colorClass="text-purple-600 dark:text-purple-400" />
+                    <CountCard icon={Folder} label={i18nStore.t('stats.categoriesCreated')} value={s().activity_30d.categories_created} colorClass="text-green-600 dark:text-green-400" />
                 </div>
             </section>
         </>
     );
 }
 
-function CountCard(props: { icon: any; label: string; value: number; colorClass: string }) {
-    const Icon = props.icon;
+function CountCard(props: { icon: LucideIcon; label: string; value: number; colorClass: string }) {
     return (
         <div class="bg-white dark:bg-gray-800 rounded-lg p-4">
             <div class="flex items-center gap-3">
-                <Icon size={22} class={props.colorClass} />
+                <Dynamic component={props.icon} size={22} class={props.colorClass} />
                 <div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{props.value}</div>
                     <div class="text-xs text-gray-500 dark:text-gray-400">{props.label}</div>
@@ -184,12 +195,11 @@ function CountCard(props: { icon: any; label: string; value: number; colorClass:
     );
 }
 
-function BigStat(props: { icon: any; label: string; value: string; sub: string }) {
-    const Icon = props.icon;
+function BigStat(props: { icon: LucideIcon; label: string; value: string; sub: string }) {
     return (
         <div class="bg-white dark:bg-gray-800 rounded-lg p-4">
             <div class="flex items-center gap-3">
-                <Icon size={22} class="text-gray-500 dark:text-gray-400" />
+                <Dynamic component={props.icon} size={22} class="text-gray-500 dark:text-gray-400" />
                 <div class="min-w-0">
                     <div class="text-xs text-gray-500 dark:text-gray-400">{props.label}</div>
                     <div class="text-xl font-semibold text-gray-900 dark:text-white truncate">{props.value}</div>

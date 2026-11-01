@@ -1,21 +1,35 @@
-import { createSignal, Show, onMount } from 'solid-js';
+import { createSignal, Show, onMount, For } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { User, Lock, Sun, Moon, Monitor, Shield, Mail, KeyRound } from 'lucide-solid';
 import { pb } from '~/services/pocketbase';
+import type { AuthMethodsList, AuthCollectionModel } from 'pocketbase';
 import { authStore } from '~/stores/auth';
 import { themeStore, type ThemeMode } from '~/stores/theme';
 import { i18nStore } from '~/i18n';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { errorMessage } from '~/utils/errors';
 
-function describeApiError(err: any): string {
+interface ApiErrorLike {
+  status?: number;
+  isAbort?: boolean;
+  message?: string;
+  response?: {
+    status?: number;
+    message?: string;
+    data?: Record<string, unknown>;
+  };
+}
+
+function describeApiError(err: unknown): string {
   if (!err) return i18nStore.t('profile.operationFailed');
-  if (err.status === 0 || err.isAbort) {
+  const e = err as ApiErrorLike;
+  if (e.status === 0 || e.isAbort) {
     return i18nStore.t('profile.cannotReachServer');
   }
-  const status = err.status ?? err.response?.status;
-  const msg = err.response?.message || err.message || i18nStore.t('profile.operationFailed');
-  if (err.response?.data) {
-    const fields = Object.keys(err.response.data).join(', ');
+  const status = e.status ?? e.response?.status;
+  const msg = e.response?.message || e.message || i18nStore.t('profile.operationFailed');
+  if (e.response?.data) {
+    const fields = Object.keys(e.response.data).join(', ');
     if (fields) return `${msg} (${fields})`;
   }
   return status ? `${msg} (HTTP ${status})` : msg;
@@ -57,8 +71,8 @@ export default function Profile() {
   const [pwSuccess, setPwSuccess] = createSignal('');
 
   // ── Security / MFA ───────────────────────────────────────────────────
-  const [authMethods, setAuthMethods] = createSignal<any>(null);
-  const [collectionConfig, setCollectionConfig] = createSignal<any>(null);
+  const [authMethods, setAuthMethods] = createSignal<AuthMethodsList | null>(null);
+  const [collectionConfig, setCollectionConfig] = createSignal<AuthCollectionModel | null>(null);
   const [secLoading, setSecLoading] = createSignal(true);
   const [secSaving, setSecSaving] = createSignal(false);
   const [secError, setSecError] = createSignal('');
@@ -71,11 +85,11 @@ export default function Profile() {
     try {
       const colName = collectionName();
       const methods = await pb.collection(colName).listAuthMethods();
-      const config = await pb.collections.getOne(colName);
+      const config = await pb.collections.getOne<AuthCollectionModel>(colName);
       setAuthMethods(methods);
       setCollectionConfig(config);
-    } catch (e: any) {
-      console.warn('[Profile] failed to load security settings:', e.message);
+    } catch (e: unknown) {
+      console.warn('[Profile] failed to load security settings:', errorMessage(e));
     } finally {
       setSecLoading(false);
     }
@@ -88,7 +102,7 @@ export default function Profile() {
     setSecError('');
     setSecSuccess('');
     try {
-      const col = collectionConfig();
+      const col = collectionConfig()!;
       await pb.collections.update(col.id, {
         otp: {
           enabled: !!col.otp?.enabled,
@@ -104,7 +118,7 @@ export default function Profile() {
       setSecSuccess(i18nStore.t('profile.securitySettingsSaved'));
       setTimeout(() => setSecSuccess(''), 3000);
       await loadSecurity();
-    } catch (e: any) {
+    } catch (e: unknown) {
       setSecError(describeApiError(e));
     } finally {
       setSecSaving(false);
@@ -156,7 +170,7 @@ export default function Profile() {
       setCurrentPw('');
       setNewPw('');
       setConfirmPw('');
-    } catch (e: any) {
+    } catch (e: unknown) {
       setPwError(describeApiError(e));
     } finally {
       setPwSaving(false);
@@ -325,29 +339,29 @@ export default function Profile() {
         <Show when={!secLoading() && authMethods()}>
           <div class="space-y-4">
             <div class="flex flex-wrap gap-2">
-              <Show when={authMethods().password?.enabled}>
+              <Show when={authMethods()?.password?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                   <Lock size={12} /> {i18nStore.t('profile.passwordBadge')}
                 </span>
               </Show>
-              <Show when={authMethods().otp?.enabled}>
+              <Show when={authMethods()?.otp?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
                   <Mail size={12} /> {i18nStore.t('profile.emailOtpBadge')}
                 </span>
               </Show>
-              <Show when={authMethods().oauth2?.enabled}>
+              <Show when={authMethods()?.oauth2?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
                   <KeyRound size={12} /> {i18nStore.t('profile.ssoBadge')}
                 </span>
               </Show>
-              <Show when={authMethods().mfa?.enabled}>
+              <Show when={authMethods()?.mfa?.enabled}>
                 <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                   <Shield size={12} /> {i18nStore.t('profile.mfaBadge')}
                 </span>
               </Show>
             </div>
 
-            <Show when={!authMethods().password?.enabled && !authMethods().oauth2?.enabled}>
+            <Show when={!authMethods()?.password?.enabled && !authMethods()?.oauth2?.enabled}>
               <p class="text-sm text-red-600 dark:text-red-400">
                 {i18nStore.t('profile.noLoginMethod')}
               </p>
@@ -372,10 +386,9 @@ export default function Profile() {
                     type="checkbox"
                     checked={!!collectionConfig()?.otp?.enabled}
                     onChange={(e) =>
-                      setCollectionConfig((c: any) => ({
-                        ...c,
-                        otp: { ...(c.otp || { duration: 180, length: 8 }), enabled: e.currentTarget.checked },
-                      }))
+                      setCollectionConfig((c) =>
+                        c ? { ...c, otp: { ...c.otp, enabled: e.currentTarget.checked } } : c
+                      )
                     }
                     class="h-4 w-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
@@ -396,10 +409,9 @@ export default function Profile() {
                     checked={!!collectionConfig()?.mfa?.enabled}
                     disabled={!collectionConfig()?.passwordAuth?.enabled || !collectionConfig()?.otp?.enabled}
                     onChange={(e) =>
-                      setCollectionConfig((c: any) => ({
-                        ...c,
-                        mfa: { ...(c.mfa || { duration: 1800, rule: '' }), enabled: e.currentTarget.checked },
-                      }))
+                      setCollectionConfig((c) =>
+                        c ? { ...c, mfa: { ...c.mfa, enabled: e.currentTarget.checked } } : c
+                      )
                     }
                     class="h-4 w-4 mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
                   />
@@ -444,7 +456,7 @@ export default function Profile() {
         </p>
 
         <div role="radiogroup" aria-label={i18nStore.t('profile.theme')} class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
-          {(['light', 'dark', 'system'] as ThemeMode[]).map((m) => {
+          <For each={['light', 'dark', 'system'] as ThemeMode[]}>{(m) => {
             const isActive = () => themeStore.mode === m;
             const label = i18nStore.t(themeModeKey(m));
             const Icon = m === 'light' ? Sun : m === 'dark' ? Moon : Monitor;
@@ -466,7 +478,7 @@ export default function Profile() {
                 {label}
               </button>
             );
-          })}
+          }}</For>
         </div>
 
         <p class="text-xs text-gray-600 dark:text-gray-400 mt-3">

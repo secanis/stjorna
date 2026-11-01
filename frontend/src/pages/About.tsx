@@ -1,7 +1,8 @@
-import { createSignal, onMount, Show } from 'solid-js';
+import { createSignal, onMount, Show, For } from 'solid-js';
 import { Code, Globe, Hash, Calendar, Info } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 
 type VersionInfo = {
     version: string;
@@ -137,8 +138,8 @@ export default function About() {
                 commit: String(data.commit ?? 'unknown'),
                 buildTime: String(data.buildTime ?? ''),
             });
-        } catch (e: any) {
-            setLoadError(e?.message || String(e));
+        } catch (e: unknown) {
+            setLoadError(errorMessage(e, String(e)));
         }
     });
 
@@ -226,7 +227,7 @@ export default function About() {
                 <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">{i18nStore.t('about.ossDeps')}</h2>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">{i18nStore.t('about.ossDepsHint')}</p>
                 <ul class="divide-y divide-gray-100 dark:divide-gray-700">
-                    {DEPENDENCIES.map((d) => (
+                    <For each={DEPENDENCIES}>{(d) => (
                         <li class="py-3 flex items-start gap-3">
                             <span class="text-xs uppercase tracking-wide text-gray-400 dark:text-gray-500 w-24 shrink-0 pt-0.5">{i18nStore.t(ROLE_LABEL[d.role] || d.role)}</span>
                             <div class="flex-1 min-w-0">
@@ -237,7 +238,7 @@ export default function About() {
                             </div>
                             <span class="text-xs font-mono text-gray-500 dark:text-gray-400 shrink-0 pt-0.5">{d.license}</span>
                         </li>
-                    ))}
+                    )}</For>
                 </ul>
             </div>
 

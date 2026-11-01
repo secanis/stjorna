@@ -1,10 +1,12 @@
 import { createSignal, createResource, For, Show, onMount } from 'solid-js';
 import { useNavigate, useParams, useLocation } from '@solidjs/router';
+import { ClientResponseError } from 'pocketbase';
 import { pb, getCurrentTenant, tenantFilter } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { slugify } from '~/utils/slug';
 import { getMediaFileUrl, isAwaitingFileToken } from '~/utils/mediaUrl';
+import { errorMessage } from '~/utils/errors';
 import MediaThumb from '~/components/media/MediaThumb';
 import ActiveBadge from '~/components/ui/ActiveBadge';
 import type { Media } from '~/types';
@@ -74,9 +76,9 @@ export default function CategoryEdit() {
           media: category.media || '',
         });
         setSlugManuallyEdited(true);
-      } catch (e: any) {
+      } catch (e: unknown) {
         setLoadFailed(true);
-        setError(e.message || i18nStore.t('categories.failedToLoad'));
+        setError(errorMessage(e, i18nStore.t('categories.failedToLoad')));
       }
     }
     setLoading(false);
@@ -128,7 +130,7 @@ export default function CategoryEdit() {
     const isNewCategory = params.id === 'new' || location.pathname.endsWith('/new');
 
     try {
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         name: formData().name,
         slug: formData().slug,
         description: formData().description,
@@ -158,11 +160,12 @@ export default function CategoryEdit() {
       sidebarStore.bump();
       setSuccess(true);
       setTimeout(() => navigate('/categories'), 1500);
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Show the actual PB error response (e.response.message has the real
       // server-side reason, e.message is usually the generic SDK fallback).
-      const detail = e?.response?.message || e?.message || i18nStore.t('common.failedToSave');
-      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+      const detail = errorMessage(e, i18nStore.t('common.failedToSave'));
+      const responseData = e instanceof ClientResponseError ? e.response?.data : undefined;
+      const fields = responseData ? ` (${Object.keys(responseData).join(', ')})` : '';
       setError(`${detail}${fields}`);
     } finally {
       setSaving(false);
@@ -352,7 +355,7 @@ export default function CategoryEdit() {
 
             <Show when={media.loading}>
               <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm py-4">
-                <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+                <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full animate-spin" />
                 {i18nStore.t('categories.loadingMediaLibrary')}
               </div>
             </Show>

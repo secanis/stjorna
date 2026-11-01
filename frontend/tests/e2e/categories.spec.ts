@@ -31,7 +31,7 @@ async function getAdminPb(): Promise<PocketBase> {
     await expect(page).toHaveScreenshot('categories-list.png', { fullPage: true });
   });
 
-  test('category with media shows thumbnail in table', async ({ page, request }) => {
+  test('category with media shows thumbnail in table', async ({ page }) => {
     const tenantId = getTenantId();
     if (!tenantId) test.skip();
 
@@ -74,7 +74,7 @@ async function getAdminPb(): Promise<PocketBase> {
     await pb.collection('media').delete(media.id);
   });
 
-  test('category without media shows placeholder', async ({ page, request }) => {
+  test('category without media shows placeholder', async ({ page }) => {
     const tenantId = getTenantId();
     if (!tenantId) test.skip();
 

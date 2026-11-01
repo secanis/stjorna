@@ -1,24 +1,24 @@
-import { createSignal, Show, onMount } from 'solid-js';
+import { createSignal, Show, onMount, type JSX } from 'solid-js';
 import { pb } from '~/services/pocketbase';
 import { i18nStore } from '~/i18n';
 import { Save, Shield } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
+import { errorMessage } from '~/utils/errors';
 
 interface AuthCollection {
   id: string;
   name: string;
   passwordAuth?: { enabled: boolean };
-  otp?: { enabled: boolean; duration: number; length: number; emailTemplate?: any };
+  otp?: { enabled: boolean; duration: number; length: number; emailTemplate?: Record<string, unknown> };
   mfa?: { enabled: boolean; duration: number; rule: string };
   oauth2?: { enabled: boolean };
 }
 
-function describeError(err: any): string {
-  if (!err) return i18nStore.t('security.operationFailed');
-  return err.response?.message || err.message || i18nStore.t('security.operationFailed');
+function describeError(err: unknown): string {
+  return errorMessage(err, i18nStore.t('security.operationFailed'));
 }
 
-function Section(props: { title: string; children: any }) {
+function Section(props: { title: string; children: JSX.Element }) {
   return (
     <div class="border-t border-gray-200 dark:border-gray-700 pt-6 mt-6">
       <h3 class="text-md font-semibold text-gray-900 dark:text-white mb-4">{props.title}</h3>
@@ -38,15 +38,15 @@ export default function SecuritySettings() {
   onMount(async () => {
     try {
       const su = await pb.collections.getOne('_superusers');
-      setSuperusers(su as any);
-    } catch (e: any) {
-      console.warn('[SecuritySettings] failed to load _superusers:', e.message);
+      setSuperusers(su as AuthCollection);
+    } catch (e: unknown) {
+      console.warn('[SecuritySettings] failed to load _superusers:', errorMessage(e));
     }
     try {
       const u = await pb.collections.getOne('users');
-      setUsers(u as any);
-    } catch (e: any) {
-      console.warn('[SecuritySettings] failed to load users:', e.message);
+      setUsers(u as AuthCollection);
+    } catch (e: unknown) {
+      console.warn('[SecuritySettings] failed to load users:', errorMessage(e));
     }
     setLoading(false);
   });
@@ -57,7 +57,10 @@ export default function SecuritySettings() {
   };
 
   const saveCollection = async (col: AuthCollection) => {
-    const payload: any = {
+    const payload: {
+      otp: { enabled: boolean; duration: number; length: number; emailTemplate?: Record<string, unknown> };
+      mfa: { enabled: boolean; duration: number; rule: string };
+    } = {
       otp: {
         enabled: !!col.otp?.enabled,
         duration: col.otp?.duration ?? 180,
@@ -85,7 +88,7 @@ export default function SecuritySettings() {
       if (superusers()) await saveCollection(superusers()!);
       if (users()) await saveCollection(users()!);
       showSuccess(i18nStore.t('security.saved'));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(describeError(err));
     } finally {
       setSaving(false);

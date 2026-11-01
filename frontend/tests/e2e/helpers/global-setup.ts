@@ -3,6 +3,8 @@ import { promisify } from 'util';
 import * as nodeFs from 'node:fs';
 import * as nodePath from 'node:path';
 import PocketBase from 'pocketbase';
+import type { RecordModel } from 'pocketbase';
+import { errorMessage } from '../../../src/utils/errors';
 
 const execAsync = promisify(exec);
 
@@ -95,8 +97,10 @@ export async function startPBContainer(): Promise<PocketBase> {
         { encoding: 'utf8' },
       );
       state = out.trim();
-    } catch (e: any) {
-      state = `inspect failed: ${e?.stderr?.toString?.().trim() || e?.message}`;
+    } catch (e: unknown) {
+      const stderr = (e as { stderr?: unknown } | null)?.stderr;
+      const stderrText = stderr == null ? '' : String(stderr).trim();
+      state = `inspect failed: ${stderrText || errorMessage(e, '')}`;
     }
     if (state.startsWith('true')) return;
     const logs = await containerLogs();
@@ -146,7 +150,7 @@ export async function startPBContainer(): Promise<PocketBase> {
       pb = testPb;
       console.log('[Setup] PocketBase setup complete');
       return pb;
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (e instanceof ContainerExitedError) throw e;
       lastError = e;
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -171,8 +175,8 @@ async function setupInstanceSettings(pb: PocketBase): Promise<void> {
       await pb.collection('instance_settings').create({ setup_done: true });
     }
     console.log('[Setup] instance_settings ready');
-  } catch (e: any) {
-    console.warn('[Setup] instance_settings error:', e.message);
+  } catch (e: unknown) {
+    console.warn('[Setup] instance_settings error:', errorMessage(e));
   }
 }
 
@@ -192,7 +196,7 @@ async function setupTestTenantAndUser(pb: PocketBase): Promise<void> {
   });
   testTenantId = tenant.id;
 
-  let testUser: any;
+  let testUser: RecordModel | undefined;
   try {
     const existing = await pb.collection('users').getList(1, 1, {
       filter: `email = "${REGULAR_USER_EMAIL}"`,
@@ -261,7 +265,7 @@ export async function cleanup(): Promise<void> {
     containerId = null;
   }
   clearE2EState();
-  pb = undefined as any;
+  pb = undefined as unknown as PocketBase;
 }
 
 export function getTestCredentials() {

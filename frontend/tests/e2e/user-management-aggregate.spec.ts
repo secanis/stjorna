@@ -52,7 +52,7 @@ test.describe('User Management table — aggregate by user', () => {
     // (we just added one).
     const allTenantsRes = await request.get(`${ctx.pbUrl}/api/collections/tenants/records?perPage=500`, { headers: authHeader });
     const allTenants = (await allTenantsRes.json()).items;
-    const newTenant = allTenants.find((t: any) => t.name === `Agg T ${stamp}`);
+    const newTenant = allTenants.find((t: Record<string, unknown>) => t.name === `Agg T ${stamp}`);
     expect(newTenant).toBeTruthy();
 
     const linksForUserRes = await request.get(
@@ -218,7 +218,7 @@ test.describe('User Management table — aggregate by user', () => {
     // Find the membership for the new tenant via data-membership-tenant-id.
     const tenantsRes = await request.get(`${ctx.pbUrl}/api/collections/tenants/records?perPage=500`, { headers: authHeader });
     const allTenants = (await tenantsRes.json()).items;
-    const newTenant = allTenants.find((t: any) => t.name === secondTenant);
+    const newTenant = allTenants.find((t: Record<string, unknown>) => t.name === secondTenant);
     expect(newTenant, `tenant ${secondTenant}`).toBeTruthy();
     expect(beforeIds, 'memberships include new tenant before removal').toContain(newTenant.id);
 

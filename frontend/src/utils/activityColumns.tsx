@@ -9,7 +9,7 @@
  * in one place.
  */
 
-import { JSX } from 'solid-js';
+import { JSX, Show } from 'solid-js';
 import { ENTITY_TYPE_COLORS, ACTION_COLORS, ENTITY_TYPE_TEXT_COLORS } from '~/styles/colors';
 import type { Column } from '~/components/ui/Table';
 import type { ActivityType, ActivityAction, ActivityEvent } from '~/utils/activity';
@@ -21,24 +21,25 @@ import { i18nStore } from '~/i18n';
 // ─────────────────────────────────────────
 
 export function TypeBadge(props: { value: unknown }): JSX.Element {
-  const type = props.value as ActivityType;
-  const bg = ENTITY_TYPE_COLORS[type] ?? 'bg-gray-100 dark:bg-gray-600';
+  const type = () => props.value as ActivityType;
+  const bg = () => ENTITY_TYPE_COLORS[type()] ?? 'bg-gray-100 dark:bg-gray-600';
   return (
-    <span class={`px-2 py-1 rounded text-xs font-medium ${bg} text-white`}>
-      {i18nStore.t(`activity.${type}`) ?? String(props.value)}
+    <span class={`px-2 py-1 rounded text-xs font-medium ${bg()} text-white`}>
+      {i18nStore.t(`activity.${type()}`) ?? String(props.value)}
     </span>
   );
 }
 
 export function ActionBadge(props: { value: unknown }): JSX.Element {
-  const a = props.value as ActivityAction;
-  const c = ACTION_COLORS[a] ?? {
-    bg: 'bg-gray-100 dark:bg-gray-600',
-    text: 'text-gray-700 dark:text-gray-300',
-  };
+  const a = () => props.value as ActivityAction;
+  const c = () =>
+    ACTION_COLORS[a()] ?? {
+      bg: 'bg-gray-100 dark:bg-gray-600',
+      text: 'text-gray-700 dark:text-gray-300',
+    };
   return (
-    <span class={`px-2 py-1 rounded text-xs font-medium ${c.bg} ${c.text}`}>
-      {i18nStore.t(`activities.${a}`)}
+    <span class={`px-2 py-1 rounded text-xs font-medium ${c().bg} ${c().text}`}>
+      {i18nStore.t(`activities.${a()}`)}
     </span>
   );
 }
@@ -68,22 +69,24 @@ export function recordHref(e: ActivityEvent): string | null {
 function TenantCell(props: { value: unknown; row: ActivityEvent }): JSX.Element {
   const name = () => String(props.value ?? '');
   const id = () => props.row.tenant;
+  const isAdminLink = () => authStore.isPBAdmin && id();
   // Type==='tenant' events still resolve a tenantName (= the entity name),
   // so admins can scan the row and click through.
-  if (!name()) {
-    return <span class="text-gray-400 dark:text-gray-600">—</span>;
-  }
-  if (authStore.isPBAdmin && id()) {
-    return (
-      <a
-        href={`/tenants/${id()}`}
-        class="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+  return (
+    <Show when={name()} fallback={<span class="text-gray-400 dark:text-gray-600">—</span>}>
+      <Show
+        when={isAdminLink()}
+        fallback={<span class="text-gray-900 dark:text-white text-sm">{name()}</span>}
       >
-        {name()}
-      </a>
-    );
-  }
-  return <span class="text-gray-900 dark:text-white text-sm">{name()}</span>;
+        <a
+          href={`/tenants/${id()}`}
+          class="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+        >
+          {name()}
+        </a>
+      </Show>
+    </Show>
+  );
 }
 
 // ─────────────────────────────────────────
@@ -103,20 +106,27 @@ function getActivityColumns(): Column[] {
     cols.push({
       key: 'tenantName',
       label: i18nStore.t('activity.tenant'),
-      render: (v, row) => <TenantCell value={v} row={row as ActivityEvent} />,
+      render: (v, row) => <TenantCell value={v} row={row as unknown as ActivityEvent} />,
     });
   }
   cols.push({
     key: 'id',
     label: i18nStore.t('activity.record'),
     render: (v, row) => {
-      const e = row as ActivityEvent;
-      const href = recordHref(e);
-      if (!href) return <span class="text-gray-600 dark:text-gray-500 text-xs font-mono">{String(v).slice(0, 8)}</span>;
+      const href = recordHref(row as unknown as ActivityEvent);
+      const shortId = String(v).slice(0, 8);
       return (
-        <a href={href} class="text-blue-600 dark:text-blue-400 hover:underline text-xs font-mono">
-          {String(v).slice(0, 8)}
-        </a>
+        <Show
+          when={href}
+          keyed
+          fallback={<span class="text-gray-600 dark:text-gray-500 text-xs font-mono">{shortId}</span>}
+        >
+          {(h) => (
+            <a href={h} class="text-blue-600 dark:text-blue-400 hover:underline text-xs font-mono">
+              {shortId}
+            </a>
+          )}
+        </Show>
       );
     },
   });

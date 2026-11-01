@@ -6,6 +6,7 @@ import { i18nStore } from '~/i18n';
 import { Save } from 'lucide-solid';
 import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
+import { errorMessage } from '~/utils/errors';
 
 interface InstanceSettings {
   id?: string;
@@ -41,8 +42,8 @@ export default function InstanceSettings() {
       setFormData({ instance_name: settings.meta?.appName || 'STJÓRNA' });
       const ips = Array.isArray(settings.superuserIPs) ? settings.superuserIPs : [];
       setSuperuserIPs(ips.join('\n'));
-    } catch (e: any) {
-      console.warn('Failed to load instance settings:', e.message);
+    } catch (e: unknown) {
+      console.warn('Failed to load instance settings:', errorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -71,8 +72,8 @@ export default function InstanceSettings() {
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('common.failedToSave'));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('common.failedToSave')));
     } finally {
       setSaving(false);
     }

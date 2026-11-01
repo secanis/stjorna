@@ -1,4 +1,4 @@
-import { createSignal, createMemo, Show, type Accessor } from 'solid-js';
+import { createSignal, createMemo, Show, type Accessor, For } from 'solid-js';
 import { ImageCropper } from '@ark-ui/solid';
 import type { Api } from '@zag-js/image-cropper';
 import {
@@ -15,6 +15,7 @@ import {
 } from 'lucide-solid';
 import clsx from 'clsx';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 
 interface AspectRatioOption {
   label: string;
@@ -73,8 +74,8 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
         return;
       }
       await props.onApply(result);
-    } catch (e: any) {
-      setProcessingError(e.message || i18nStore.t('imageCropper.croppingFailed'));
+    } catch (e: unknown) {
+      setProcessingError(errorMessage(e, i18nStore.t('imageCropper.croppingFailed')));
     } finally {
       setIsProcessing(false);
     }
@@ -132,7 +133,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
             <p class="text-red-300 mb-2">{imageError()}</p>
             <button
               type="button"
-              onClick={props.onCancel}
+              onClick={() => props.onCancel()}
               class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded"
             >
               {i18nStore.t('imageCropper.close')}
@@ -152,7 +153,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
 
             <div class="flex flex-wrap items-center gap-2">
               <span class="text-sm text-gray-500 dark:text-gray-400 mr-1">{i18nStore.t('imageCropper.aspect')}</span>
-              {ASPECT_RATIOS.map((ratio) => (
+              <For each={ASPECT_RATIOS}>{(ratio) => (
                 <button
                   type="button"
                   onClick={() => setAspectRatio(ratio.value)}
@@ -161,7 +162,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
                 >
                   {ratio.label}
                 </button>
-              ))}
+              )}</For>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
@@ -233,7 +234,7 @@ export default function ImageCropperComponent(props: ImageCropperProps) {
             <div class="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={props.onCancel}
+                onClick={() => props.onCancel()}
                 disabled={isProcessing()}
                 class="px-4 py-2 rounded bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50"
               >

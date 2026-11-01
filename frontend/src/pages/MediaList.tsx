@@ -1,4 +1,4 @@
-import { createSignal, createResource, createMemo, Show, For, onMount } from 'solid-js';
+import { createSignal, createResource, createMemo, Show, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
 import { FileText, Video } from 'lucide-solid';
 import Table, { Column } from '~/components/ui/Table';
@@ -12,6 +12,7 @@ import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import Combobox from '~/components/ui/Combobox';
 import type { Media } from '~/types';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
+import { errorMessage } from '~/utils/errors';
 
 const PER_PAGE = 50;
 
@@ -74,8 +75,8 @@ export default function MediaList() {
       await pb.collection('media').delete(id);
       sidebarStore.bump();
       refetch();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('common.failedToDelete', { msg: e.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('common.failedToDelete', { msg: errorMessage(e) }));
     }
   };
 
@@ -83,34 +84,38 @@ export default function MediaList() {
     {
       key: 'file',
       label: i18nStore.t('media.preview'),
-      render: (v, row) => (
-        <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-gray-900 dark:bg-black">
-          <Show when={row.mime_type?.startsWith('image/') && v}>
-            <img
-              src={getMediaFileUrl(row.id, v, { thumb: '100x100' })}
-              alt={row.filename || ''}
-              class="w-full h-full object-cover"
-              onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
-            />
-          </Show>
-          <Show when={row.mime_type?.startsWith('video/') && v && !row.mime_type?.startsWith('image/')}>
-            <div class="relative w-full h-full flex items-center justify-center">
-              <video
-                src={getMediaFileUrl(row.id, v)}
+      render: (v, row) => {
+        const m = row as unknown as Media;
+        const file = v as string;
+        return (
+          <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-gray-900 dark:bg-black">
+            <Show when={m.mime_type?.startsWith('image/') && file}>
+              <img
+                src={getMediaFileUrl(m.id, file, { thumb: '100x100' })}
+                alt={m.filename || ''}
                 class="w-full h-full object-cover"
-                muted
-                playsinline
-                preload="metadata"
-                onError={(e) => { const el = e.currentTarget as HTMLVideoElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
+                onError={(e) => { const el = e.currentTarget as HTMLImageElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
               />
-              <Video size={20} class="absolute text-gray-900 dark:text-white drop-shadow pointer-events-none" />
-            </div>
-          </Show>
-          <Show when={!v || (!row.mime_type?.startsWith('image/') && !row.mime_type?.startsWith('video/'))}>
-            <FileText size={16} class="text-gray-500 dark:text-gray-400" />
-          </Show>
-        </div>
-      ),
+            </Show>
+            <Show when={m.mime_type?.startsWith('video/') && file && !m.mime_type?.startsWith('image/')}>
+              <div class="relative w-full h-full flex items-center justify-center">
+                <video
+                  src={getMediaFileUrl(m.id, file)}
+                  class="w-full h-full object-cover"
+                  muted
+                  playsinline
+                  preload="metadata"
+                  onError={(e) => { const el = e.currentTarget as HTMLVideoElement; if (!isAwaitingFileToken(el.src)) el.style.display = 'none'; }}
+                />
+                <Video size={20} class="absolute text-gray-900 dark:text-white drop-shadow pointer-events-none" />
+              </div>
+            </Show>
+            <Show when={!file || (!m.mime_type?.startsWith('image/') && !m.mime_type?.startsWith('video/'))}>
+              <FileText size={16} class="text-gray-500 dark:text-gray-400" />
+            </Show>
+          </div>
+        );
+      },
     },
     { key: 'filename', label: i18nStore.t('media.filename'), sortable: true },
     { key: 'mime_type', label: i18nStore.t('common.type') },
@@ -118,13 +123,13 @@ export default function MediaList() {
       key: 'size',
       label: i18nStore.t('common.size'),
       sortable: true,
-      render: (v) => v ? `${(v / 1024).toFixed(1)} KB` : '-',
+      render: (v) => v ? `${(Number(v) / 1024).toFixed(1)} KB` : '-',
     },
     {
       key: 'created',
       label: i18nStore.t('common.created'),
       sortable: true,
-      render: (v) => v ? new Date(v).toLocaleDateString() : '-',
+      render: (v) => v ? new Date(v as string | number).toLocaleDateString() : '-',
     },
     {
       key: 'actions',
@@ -139,7 +144,7 @@ export default function MediaList() {
           </button>
           <Show when={authStore.isEditorOrAbove()}>
             <button
-              onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
+              onClick={(e) => { e.stopPropagation(); handleDelete(String(row.id)); }}
               class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
             >
               {i18nStore.t('common.delete')}
@@ -199,7 +204,7 @@ export default function MediaList() {
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns()}
-            data={data()?.items || []}
+            data={(data()?.items || []) as unknown as Record<string, unknown>[]}
             sortKey={sortKey()}
             sortDir={sortDir()}
             onSort={handleSort}

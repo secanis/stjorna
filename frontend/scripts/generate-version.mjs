@@ -71,5 +71,4 @@ const payload = {
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify(payload, null, 2) + '\n');
 
-// eslint-disable-next-line no-console
 console.log(`[generate-version] wrote ${outPath} → ${JSON.stringify(payload)}`);

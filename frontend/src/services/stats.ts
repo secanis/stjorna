@@ -1,4 +1,5 @@
 import { pb } from './pocketbase';
+import { errorMessage } from '~/utils/errors';
 
 export interface StatsTenant {
     id: string;
@@ -76,8 +77,8 @@ export async function fetchMyStats(): Promise<StatsSnapshot> {
     try {
         const r = await pb.send('/api/stjorna/stats', { method: 'GET' });
         return r as StatsSnapshot;
-    } catch (e: any) {
-        const detail = e?.response?.message || e?.message || 'unknown error';
+    } catch (e: unknown) {
+        const detail = errorMessage(e, 'unknown error');
         throw new Error(`stats (me): ${detail}`);
     }
 }
@@ -86,8 +87,8 @@ export async function fetchTenantStats(tenantId: string): Promise<StatsSnapshot>
     try {
         const r = await pb.send('/api/stjorna/stats?tenant=' + encodeURIComponent(tenantId), { method: 'GET' });
         return r as StatsSnapshot;
-    } catch (e: any) {
-        const detail = e?.response?.message || e?.message || 'unknown error';
+    } catch (e: unknown) {
+        const detail = errorMessage(e, 'unknown error');
         throw new Error(`stats (${tenantId}): ${detail}`);
     }
 }

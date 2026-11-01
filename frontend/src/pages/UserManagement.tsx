@@ -11,6 +11,7 @@ import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import { X, ExternalLink, Search, UserPlus } from 'lucide-solid';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
 
 // One row per tenant membership of a given user.
 interface UserMembership {
@@ -92,8 +93,8 @@ async function withMemberDetails(rows: RawUserTenant[], tenantId: string): Promi
   try {
     const r = await pb.send(`/api/stjorna/tenants/${encodeURIComponent(tenantId)}/members`, { method: 'GET' });
     members = r?.members || [];
-  } catch (e: any) {
-    console.warn('[fetchUsers] member details unavailable:', e?.message);
+  } catch (e: unknown) {
+    console.warn('[fetchUsers] member details unavailable:', errorMessage(e));
     return rows;
   }
   const byId = new Map(members.map((m) => [m.id, m]));
@@ -127,7 +128,7 @@ async function fetchUsers(): Promise<AggregatedUser[]> {
       if (tenant) raw = await withMemberDetails(raw, tenant);
     }
     return aggregateUserTenants(raw);
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[fetchUsers] error:', e);
     return [];
   }
@@ -177,7 +178,7 @@ export default function UserManagement() {
 
   const getRoleId = async (roleName: string): Promise<string> => {
     const roles = await pb.collection('roles').getList(1, 10);
-    const role = roles.items.find((r: any) => r.name === roleName);
+    const role = roles.items.find((r) => r.name === roleName);
     return role?.id || '';
   };
 
@@ -213,8 +214,8 @@ export default function UserManagement() {
       resetInvite();
       sidebarStore.bump();
       refetch();
-    } catch (err: any) {
-      setError(err.message || i18nStore.t('users.failedToInvite'));
+    } catch (err: unknown) {
+      setError(errorMessage(err, i18nStore.t('users.failedToInvite')));
     } finally {
       setInviting(false);
     }
@@ -254,8 +255,8 @@ export default function UserManagement() {
       if ((res.users || []).length === 0) {
         setError(i18nStore.t('users.noUserFound'));
       }
-    } catch (err: any) {
-      setError(err.message || i18nStore.t('users.searchFailed'));
+    } catch (err: unknown) {
+      setError(errorMessage(err, i18nStore.t('users.searchFailed')));
       setSearchResults([]);
     } finally {
       setSearching(false);
@@ -287,8 +288,8 @@ export default function UserManagement() {
       setShowInvite(false);
       sidebarStore.bump();
       refetch();
-    } catch (err: any) {
-      setError(err.message || i18nStore.t('users.failedToAdd'));
+    } catch (err: unknown) {
+      setError(errorMessage(err, i18nStore.t('users.failedToAdd')));
     } finally {
       setAddingExisting(false);
     }
@@ -299,8 +300,8 @@ export default function UserManagement() {
       const roleId = await getRoleId(newRole);
       await pb.collection('user_tenants').update(userTenantId, { role: roleId });
       refetch();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('users.failedToUpdateRole', { msg: e?.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('users.failedToUpdateRole', { msg: errorMessage(e) }));
     }
   };
 
@@ -310,8 +311,8 @@ export default function UserManagement() {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       refetch();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('users.failedToRemove', { msg: e?.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('users.failedToRemove', { msg: errorMessage(e) }));
     }
   };
 
@@ -370,7 +371,7 @@ export default function UserManagement() {
       key: 'hasSSO',
       label: i18nStore.t('users.auth'),
       render: (_v, row) => {
-        const user = row as AggregatedUser;
+        const user = row as unknown as AggregatedUser;
         return (
           <span
             class={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
@@ -387,7 +388,7 @@ export default function UserManagement() {
     {
       key: 'memberships',
       label: i18nStore.t('users.memberships'),
-      render: (_v, row) => renderMembershipCell(row as AggregatedUser),
+      render: (_v, row) => renderMembershipCell(row as unknown as AggregatedUser),
     },
   ]);
 
@@ -611,7 +612,7 @@ export default function UserManagement() {
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns()}
-            data={users() || []}
+            data={(users() || []) as unknown as Record<string, unknown>[]}
             emptyMessage={i18nStore.t('users.empty')}
           />
         </div>

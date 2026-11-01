@@ -30,7 +30,7 @@ export default function ImageCropperModal(props: ImageCropperModalProps) {
     <Show when={props.open}>
       <div
         class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
-        onClick={props.onClose}
+        onClick={() => props.onClose()}
         role="dialog"
         aria-modal="true"
         aria-label={i18nStore.t('imageCropper.ariaLabel')}
@@ -45,7 +45,7 @@ export default function ImageCropperModal(props: ImageCropperModalProps) {
             </h2>
             <button
               type="button"
-              onClick={props.onClose}
+              onClick={() => props.onClose()}
               class="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
               aria-label={i18nStore.t('imageCropper.closeCropper')}
             >

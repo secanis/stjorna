@@ -1,6 +1,7 @@
 import { createSignal, Show, For, onMount } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
 import { pb } from '~/services/pocketbase';
+import type { AuthCollectionModel } from 'pocketbase';
 import { authStore } from '~/stores/auth';
 import { i18nStore } from '~/i18n';
 import { Save, Copy, Check, Info } from 'lucide-solid';
@@ -8,6 +9,7 @@ import { PRIMARY_BUTTON_CLASSES } from '~/styles/colors';
 import DescriptionBlock from '~/components/settings/DescriptionBlock';
 import Combobox from '~/components/ui/Combobox';
 import { getConfiguredPbUrl } from '~/services/config';
+import { errorMessage } from '~/utils/errors';
 
 interface OidcFormData {
   enabled: boolean;
@@ -33,6 +35,26 @@ interface OidcFormData {
 
 const DEFAULT_ROLE_MAPPING = '_admin:admin,_editor:editor,_viewer:viewer';
 
+interface OidcProviderConfig {
+  name?: string;
+  displayName?: string;
+  clientId?: string;
+  clientSecret?: string;
+  authURL?: string;
+  tokenURL?: string;
+  userInfoURL?: string;
+  scopes?: string[] | string;
+  pkce?: boolean;
+  enabled?: boolean;
+  extra?: Record<string, unknown>;
+}
+
+interface OidcOAuth2Config {
+  enabled?: boolean;
+  mappedFields?: Record<string, string>;
+  providers?: OidcProviderConfig[];
+}
+
 
 
 function parseRoleMapping(input: string): Record<string, string> {
@@ -44,12 +66,6 @@ function parseRoleMapping(input: string): Record<string, string> {
     }
   }
   return out;
-}
-
-function formatRoleMapping(mapping: Record<string, string>): string {
-  return Object.entries(mapping)
-    .map(([k, v]) => `${k}:${v}`)
-    .join(',');
 }
 
 // OIDC configuration section. Now rendered as a standalone settings sub-page.
@@ -158,9 +174,9 @@ export default function OidcSettings() {
       }
 
       // Load the actual OIDC provider config from the users auth collection.
-      const usersColl: any = await pb.collections.getOne('users');
-      const oauth2: any = usersColl.oauth2 || { enabled: false, mappedFields: {}, providers: [] };
-      const provider = (oauth2.providers || []).find((p: any) =>
+      const usersColl = await pb.collections.getOne<AuthCollectionModel>('users');
+      const oauth2 = usersColl.oauth2 as unknown as OidcOAuth2Config;
+      const provider = (oauth2.providers ?? []).find((p) =>
         p.name === providerName || p.name === 'oidc'
       );
       if (provider) {
@@ -180,15 +196,14 @@ export default function OidcSettings() {
       }
 
       // Reflect current password auth state.
-      const passwordAuth: any = usersColl.passwordAuth || {};
-      setForm((f) => ({ ...f, disablePasswordLogin: passwordAuth.enabled === false }));
-    } catch (e: any) {
-      setError(e.message || i18nStore.t('oidc.failedToLoad'));
+      setForm((f) => ({ ...f, disablePasswordLogin: usersColl.passwordAuth.enabled === false }));
+    } catch (e: unknown) {
+      setError(errorMessage(e, i18nStore.t('oidc.failedToLoad')));
     } finally {
       // Tenant slugs for the group-format preview box (superuser-only page).
       try {
         const tenantsRes = await pb.collection('tenants').getList(1, 50, { sort: 'name' });
-        setTenantSlugs(tenantsRes.items.map((t: any) => String(t.slug || '')).filter(Boolean));
+        setTenantSlugs(tenantsRes.items.map((t) => String(t.slug || '')).filter(Boolean));
       } catch {
         /* preview falls back to a placeholder slug */
       }
@@ -267,13 +282,13 @@ export default function OidcSettings() {
       }
 
       // Update the OIDC provider config on the users auth collection.
-      const usersColl: any = await pb.collections.getOne('users');
-      const oauth2: any = usersColl.oauth2 || { enabled: false, mappedFields: {}, providers: [] };
-      const mappedFields = oauth2.mappedFields || { id: '', name: 'name', username: '', avatarURL: '' };
+      const usersColl = await pb.collections.getOne<AuthCollectionModel>('users');
+      const oauth2 = usersColl.oauth2 as unknown as OidcOAuth2Config;
+      const mappedFields = oauth2.mappedFields ?? { id: '', name: 'name', username: '', avatarURL: '' };
 
-      const providers = (oauth2.providers || []).filter((p: any) => p.name !== f.providerName);
+      const providers = (oauth2.providers ?? []).filter((p) => p.name !== f.providerName);
 
-      const newProvider: any = {
+      const newProvider: OidcProviderConfig = {
         name: f.providerName,
         clientId: f.clientId,
         authURL: f.authUrl,
@@ -310,8 +325,8 @@ export default function OidcSettings() {
       setHasExistingSecret(f.enabled && (!!f.clientSecret || hasExistingSecret()));
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (err: any) {
-      setError(err.message || i18nStore.t('oidc.failedToSave'));
+    } catch (err: unknown) {
+      setError(errorMessage(err, i18nStore.t('oidc.failedToSave')));
     } finally {
       setSaving(false);
     }

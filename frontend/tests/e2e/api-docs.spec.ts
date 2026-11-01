@@ -10,12 +10,12 @@ test.describe('API documentation', () => {
 
         expect(spec.openapi).toBe('3.0.3');
         expect(Array.isArray(spec.tags)).toBe(true);
-        const tagNames = spec.tags.map((t: any) => t.name);
+        const tagNames = spec.tags.map((t: Record<string, unknown>) => t.name);
         expect(tagNames).toEqual(['Public']);
 
         // No operations from Private or Admin tiers
-        for (const path of Object.values<any>(spec.paths)) {
-            for (const op of Object.values<any>(path)) {
+        for (const path of Object.values(spec.paths)) {
+            for (const op of Object.values(path)) {
                 if (op && Array.isArray(op.tags)) {
                     expect(op.tags).toEqual(['Public']);
                 }
@@ -46,7 +46,7 @@ test.describe('API documentation', () => {
         expect(res.status()).toBe(200);
         const spec = await res.json();
 
-        const tagNames = spec.tags.map((t: any) => t.name);
+        const tagNames = spec.tags.map((t: Record<string, unknown>) => t.name);
         expect(tagNames).toEqual(['Public']);
         expect(spec.paths['/collections/user_tenants/records']).toBeUndefined();
     });
@@ -66,7 +66,7 @@ test.describe('API documentation', () => {
         expect(res.status()).toBe(200);
         const spec = await res.json();
 
-        const tagNames = spec.tags.map((t: any) => t.name);
+        const tagNames = spec.tags.map((t: Record<string, unknown>) => t.name);
         expect(tagNames).toEqual(['Public', 'Private']);
 
         // Admin paths must be absent
@@ -74,8 +74,8 @@ test.describe('API documentation', () => {
         expect(spec.paths['/stjorna/api-keys']).toBeUndefined();
 
         // No operation should be tagged Admin
-        for (const path of Object.values<any>(spec.paths)) {
-            for (const op of Object.values<any>(path)) {
+        for (const path of Object.values(spec.paths)) {
+            for (const op of Object.values(path)) {
                 if (op && Array.isArray(op.tags)) {
                     expect(op.tags.every((t: string) => t !== 'Admin')).toBe(true);
                 }
@@ -114,7 +114,7 @@ test.describe('API documentation', () => {
         expect(spec.info.title).toBe('STJÓRNA API');
         expect(spec.info.version).toBeTruthy();
 
-        const tagNames = spec.tags.map((t: any) => t.name);
+        const tagNames = spec.tags.map((t: Record<string, unknown>) => t.name);
         expect(tagNames).toContain('Public');
         expect(tagNames).toContain('Private');
         expect(tagNames).toContain('Admin');

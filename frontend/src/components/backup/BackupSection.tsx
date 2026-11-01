@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js';
+import { createSignal, Show, For } from 'solid-js';
 import type { ImportResult } from '~/services/backup';
 import { downloadTenantBackup, importBackup } from '~/services/backup';
 import { i18nStore } from '~/i18n';
@@ -156,9 +156,9 @@ export default function BackupSection(props: Props) {
           </Show>
           <Show when={result()!.stats.warnings.length > 0}>
             <div class="text-yellow-700 dark:text-yellow-300 text-xs pl-6 space-y-0.5">
-              {result()!.stats.warnings.map((w) => (
+              <For each={result()!.stats.warnings}>{(w) => (
                 <div>⚠ {w}</div>
-              ))}
+              )}</For>
             </div>
           </Show>
         </div>

@@ -34,7 +34,7 @@ test.describe('Products', () => {
     await expect(page).toHaveScreenshot('products-list.png', { fullPage: true });
   });
 
-  test('product with multiple media shows stacked thumbs + overflow counter', async ({ page, request }) => {
+  test('product with multiple media shows stacked thumbs + overflow counter', async ({ page }) => {
     const tenantId = getTenantId();
     if (!tenantId) test.skip();
 

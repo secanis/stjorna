@@ -13,7 +13,7 @@ export default function MfaBanner() {
     async () => {
       try {
         const su = await pb.collections.getOne('_superusers');
-        return !!(su as any).mfa?.enabled;
+        return !!su.mfa?.enabled;
       } catch {
         // Unknown state (network/permission) — don't nag.
         return true;

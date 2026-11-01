@@ -33,7 +33,7 @@ function TenantAvatar(props: { name?: string; themeConfig?: TenantThemeConfig })
     void (async () => {
       try {
         const m = await pb.collection('media').getOne(mediaId);
-        const file = String((m as any).file || '');
+        const file = String(m.file || '');
         if (!cancelled && file) setMedia({ id: m.id, file });
       } catch {
         // unknown/deleted media or no read access → fall through to initials

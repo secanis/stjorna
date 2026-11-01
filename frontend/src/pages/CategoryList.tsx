@@ -12,6 +12,8 @@ import { ENTITY_TYPE_BUTTON_CLASSES } from '~/styles/colors';
 import Combobox from '~/components/ui/Combobox';
 import { confirmDialog, alertDialog } from '~/components/ui/ConfirmDialog';
 import { i18nStore } from '~/i18n';
+import { errorMessage } from '~/utils/errors';
+import type { Media } from '~/types';
 
 const PER_PAGE = 50;
 
@@ -74,8 +76,8 @@ export default function CategoryList() {
       await pb.collection('categories').delete(id);
       sidebarStore.bump();
       refetch();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('common.failedToDelete', { msg: e.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('common.failedToDelete', { msg: errorMessage(e) }));
     }
   };
 
@@ -84,8 +86,8 @@ export default function CategoryList() {
       await pb.collection('categories').update(id, { active: !currentActive });
       sidebarStore.bump();
       refetch();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('common.failedToUpdate', { msg: e.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('common.failedToUpdate', { msg: errorMessage(e) }));
     }
   };
 
@@ -94,18 +96,21 @@ export default function CategoryList() {
       key: 'media',
       label: i18nStore.t('categories.thumb'),
       render: (_, row) => {
-        const m: any = (row as any).expand?.media;
-        if (!m || !m.file) {
-          return (
-            <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center" title={i18nStore.t('categories.noMedia')}>
-              <ImageOff size={16} class="text-gray-600 dark:text-gray-500" />
-            </div>
-          );
-        }
+        const expand = row.expand as Record<string, unknown> | undefined;
+        const m = expand?.media as Media | undefined;
         return (
-          <div class="w-12 h-12 rounded overflow-hidden bg-gray-900 dark:bg-black">
-            <MediaThumb media={m} thumb="100x100" class="w-12 h-12 object-cover" />
-          </div>
+          <Show
+            when={m?.file}
+            fallback={
+              <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center" title={i18nStore.t('categories.noMedia')}>
+                <ImageOff size={16} class="text-gray-600 dark:text-gray-500" />
+              </div>
+            }
+          >
+            <div class="w-12 h-12 rounded overflow-hidden bg-gray-900 dark:bg-black">
+              <MediaThumb media={m!} thumb="100x100" class="w-12 h-12 object-cover" />
+            </div>
+          </Show>
         );
       },
     },
@@ -120,7 +125,7 @@ export default function CategoryList() {
         <ActiveBadge
           active={!!v}
           size="sm"
-          onClick={() => handleToggleActive(row.id, v)}
+          onClick={() => handleToggleActive(String(row.id), !!v)}
         />
       ),
     },
@@ -128,13 +133,13 @@ export default function CategoryList() {
       key: 'sort_order',
       label: i18nStore.t('common.sortOrder'),
       sortable: true,
-      render: (v) => v ?? '-',
+      render: (v) => (v as number | null | undefined) ?? '-',
     },
     {
       key: 'created',
       label: i18nStore.t('common.created'),
       sortable: true,
-      render: (v) => v ? new Date(v).toLocaleDateString() : '-',
+      render: (v) => v ? new Date(v as string | number).toLocaleDateString() : '-',
     },
     {
       key: 'actions',
@@ -149,7 +154,7 @@ export default function CategoryList() {
           </button>
           <Show when={authStore.isEditorOrAbove()}>
             <button
-              onClick={(e) => { e.stopPropagation(); handleDelete(row.id); }}
+              onClick={(e) => { e.stopPropagation(); handleDelete(String(row.id)); }}
               class="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm"
             >
               {i18nStore.t('common.delete')}
@@ -209,7 +214,7 @@ export default function CategoryList() {
         <div class="bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
           <Table
             columns={columns()}
-            data={data()?.items || []}
+            data={(data()?.items || []) as unknown as Record<string, unknown>[]}
             sortKey={sortKey()}
             sortDir={sortDir()}
             onSort={handleSort}

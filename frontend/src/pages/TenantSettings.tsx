@@ -1,11 +1,13 @@
 import { createSignal, Show, onMount, For } from 'solid-js';
 import { useNavigate, useParams, useLocation, A } from '@solidjs/router';
+import { ClientResponseError } from 'pocketbase';
 import { pb } from '~/services/pocketbase';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantTheme } from '~/stores/tenantTheme';
 import type { Tenant, TenantThemeConfig } from '~/types';
 import { parseThemeConfig, buildThemeConfig, asTrimmedString } from '~/utils/themeConfig';
+import { errorMessage } from '~/utils/errors';
 import ThemeConfigFields, { type ThemeFields } from '~/components/tenants/ThemeConfigFields';
 import { ArrowLeft, Save, UserPlus, X, BarChart3 } from 'lucide-solid';
 import BackupSection from '~/components/backup/BackupSection';
@@ -70,7 +72,7 @@ export default function TenantSettings() {
 
   const getRoleId = async (roleName: string): Promise<string> => {
     const roles = await pb.collection('roles').getList(1, 10);
-    const role = roles.items.find((r: any) => r.name === roleName);
+    const role = roles.items.find((r) => r.name === roleName);
     return role?.id || '';
   };
 
@@ -83,7 +85,7 @@ export default function TenantSettings() {
         filter: pb.filter('tenant = {:tenant}', { tenant: tenantId() }),
         expand: 'user,role',
       });
-      const users: TenantUser[] = items.map((ut: any) => ({
+      const users: TenantUser[] = items.map((ut) => ({
         id: ut.expand?.user?.id || ut.user,
         userTenantId: ut.id,
         name: ut.expand?.user?.name || '',
@@ -92,7 +94,7 @@ export default function TenantSettings() {
         roleId: ut.expand?.role?.id || ut.role,
       }));
       setTenantUsers(users);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to load tenant users:', e);
     } finally {
       setUsersLoading(false);
@@ -125,14 +127,14 @@ export default function TenantSettings() {
         rows = res.users || [];
       } else {
         const page = await pb.collection('users').getList(1, AVAILABLE_LIMIT, { fields: 'id,email,name', sort: 'email' });
-        rows = page.items.map((u: any) => ({ id: u.id, email: u.email || '', name: u.name || '' }));
+        rows = page.items.map((u) => ({ id: u.id, email: u.email || '', name: u.name || '' }));
         more = page.totalItems > page.items.length;
       }
       if (seq !== availableSeq) return;
       const takenIds = new Set(tenantUsers().map((u) => u.id));
       setAvailableUsers(rows.filter((u) => !takenIds.has(u.id)));
       setAvailableTruncated(more);
-    } catch (e: any) {
+    } catch (e: unknown) {
       if (seq === availableSeq) console.error('Failed to load available users:', e);
     } finally {
       if (seq === availableSeq) setAvailableLoading(false);
@@ -177,11 +179,11 @@ export default function TenantSettings() {
         headerBgDark: asTrimmedString(cfg.headerBgDark),
       });
       setThemeExtra(cfg);
-    } catch (e: any) {
-      if (e.status === 404) {
+    } catch (e: unknown) {
+      if (e instanceof ClientResponseError && e.status === 404) {
         setNotFound(true);
       } else {
-        setError(e.message || i18nStore.t('tenants.failedToLoad'));
+        setError(errorMessage(e, i18nStore.t('tenants.failedToLoad')));
       }
     } finally {
       setLoading(false);
@@ -222,11 +224,12 @@ export default function TenantSettings() {
         setSuccess(true);
         setTimeout(() => setSuccess(false), 3000);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Show the real PB error message — the same pattern CategoryEdit
       // uses (e.response.message holds the server-side reason).
-      const detail = e?.response?.message || e?.message || i18nStore.t('common.failedToSave');
-      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+      const detail = errorMessage(e, i18nStore.t('common.failedToSave'));
+      const responseData = e instanceof ClientResponseError ? e.response?.data : undefined;
+      const fields = responseData ? ` (${Object.keys(responseData).join(', ')})` : '';
       setError(`${detail}${fields}`);
     } finally {
       setSaving(false);
@@ -255,9 +258,10 @@ export default function TenantSettings() {
       setNewUserRole('editor');
       sidebarStore.bump();
       await loadTenantUsers();
-    } catch (e: any) {
-      const detail = e?.response?.message || e?.message || i18nStore.t('tenants.failedToAddUser');
-      const fields = e?.response?.data ? ` (${Object.keys(e.response.data).join(', ')})` : '';
+    } catch (e: unknown) {
+      const detail = errorMessage(e, i18nStore.t('tenants.failedToAddUser'));
+      const responseData = e instanceof ClientResponseError ? e.response?.data : undefined;
+      const fields = responseData ? ` (${Object.keys(responseData).join(', ')})` : '';
       setError(`${detail}${fields}`);
     } finally {
       setAddingUser(false);
@@ -270,8 +274,8 @@ export default function TenantSettings() {
       await pb.collection('user_tenants').delete(userTenantId);
       sidebarStore.bump();
       await loadTenantUsers();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('tenants.failedToRemoveUser', { msg: e.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('tenants.failedToRemoveUser', { msg: errorMessage(e) }));
     }
   };
 
@@ -281,8 +285,8 @@ export default function TenantSettings() {
       await pb.collection('user_tenants').update(userTenantId, { role: roleId });
       setEditingUserId(null);
       await loadTenantUsers();
-    } catch (e: any) {
-      void alertDialog(i18nStore.t('tenants.failedToUpdateRole', { msg: e.message }));
+    } catch (e: unknown) {
+      void alertDialog(i18nStore.t('tenants.failedToUpdateRole', { msg: errorMessage(e) }));
     }
   };
 

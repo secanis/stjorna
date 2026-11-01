@@ -5,6 +5,8 @@
  * `[object Object]` and saving never writes a stringified object back.
  */
 
+import { errorMessage } from '~/utils/errors';
+
 export type CustomFields = Record<string, unknown>;
 
 /** Convert the stored JSON value into editable text. */
@@ -36,8 +38,8 @@ export function parseCustomFields(text: string): ParseResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(trimmed);
-  } catch (e: any) {
-    return { ok: false, error: `Custom fields must be valid JSON: ${e?.message ?? 'parse error'}` };
+  } catch (e: unknown) {
+    return { ok: false, error: `Custom fields must be valid JSON: ${errorMessage(e, 'parse error')}` };
   }
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
     return { ok: false, error: 'Custom fields must be a JSON object, e.g. {"key": "value"}' };

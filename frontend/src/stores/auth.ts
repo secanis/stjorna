@@ -1,12 +1,14 @@
-import { createSignal, createMemo, createRoot } from 'solid-js';
+import { createSignal, createMemo, createRoot, untrack } from 'solid-js';
 import { pbInstance as pb, setCurrentTenant, getCurrentTenant, clearAuth } from '~/services/pocketbase';
 import type { Role, UserTenant, TenantThemeConfig } from '~/types';
 import { parseThemeConfig } from '~/utils/themeConfig';
 import { tenantStore } from '~/stores/tenant';
+import { ClientResponseError, type RecordModel } from 'pocketbase';
+import { errorMessage } from '~/utils/errors';
 
 // Only trust a persisted record when its token is still valid (not
 // expired). A stale localStorage entry must not look "logged in".
-const [user, setUser] = createSignal<Record<string, any> | null>(
+const [user, setUser] = createSignal<RecordModel | null>(
   pb.authStore.isValid ? pb.authStore.record : null
 );
 const [tenants, setTenants] = createSignal<UserTenant[]>([]);
@@ -20,18 +22,19 @@ const [error, setError] = createSignal<string | null>(null);
 
 // Derived state lives in an explicit root so the memos are owned (no
 // "computations created outside a createRoot" leak) for the app lifetime.
-const derived = createRoot(() => ({
-  isAuthenticated: createMemo(() => user() !== null),
-  isEditorOrAbove: createMemo(() => {
+const derived = createRoot(() => {
+  const isAuthenticated = createMemo(() => user() !== null);
+  const isEditorOrAbove = createMemo(() => {
     if (isPBAdmin()) return true;
     const r = role();
     return r === 'editor' || r === 'admin';
-  }),
-  isAdminOrAbove: createMemo(() => {
+  });
+  const isAdminOrAbove = createMemo(() => {
     if (isPBAdmin()) return true;
     return role() === 'admin';
-  }),
-}));
+  });
+  return { isAuthenticated, isEditorOrAbove, isAdminOrAbove };
+});
 
 function resetState() {
   setUser(null);
@@ -56,8 +59,8 @@ async function doInit(): Promise<void> {
   const collection = pb.authStore.isSuperuser ? '_superusers' : 'users';
   try {
     await pb.collection(collection).authRefresh();
-  } catch (e: any) {
-    if (e?.status === 401 || e?.status === 403 || e?.status === 404) {
+  } catch (e: unknown) {
+    if (e instanceof ClientResponseError && (e.status === 401 || e.status === 403 || e.status === 404)) {
       clearAuth();
       resetState();
       return;
@@ -76,7 +79,7 @@ async function doInit(): Promise<void> {
 // tab, 401 handler, expiry) or replaced (authRefresh, login).
 pb.authStore.onChange((token, record) => {
   if (!token || !record) {
-    if (user() !== null) {
+    if (untrack(() => user()) !== null) {
       resetState();
       tenantStore.bump();
     }
@@ -150,9 +153,10 @@ export const authStore = {
 
       await this.loadTenants();
       initPromise = Promise.resolve();
-    } catch (e: any) {
-      if (!e.message?.includes('superuser')) {
-        setError(e.message || 'Login failed');
+    } catch (e: unknown) {
+      const msg = errorMessage(e, 'Login failed');
+      if (!msg.includes('superuser')) {
+        setError(msg);
       }
       throw e;
     } finally {
@@ -171,8 +175,8 @@ export const authStore = {
       setRole(null);
       await this.loadAllTenantsForPBAdmin();
       initPromise = Promise.resolve();
-    } catch (e: any) {
-      setError(e.message || 'Admin login failed');
+    } catch (e: unknown) {
+      setError(errorMessage(e, 'Admin login failed'));
       throw e;
     } finally {
       setIsLoading(false);
@@ -185,8 +189,8 @@ export const authStore = {
     try {
       const result = await pb.collection('_superusers').requestOTP(email);
       return result.otpId as string;
-    } catch (e: any) {
-      setError(e.message || 'Failed to send OTP');
+    } catch (e: unknown) {
+      setError(errorMessage(e, 'Failed to send OTP'));
       throw e;
     } finally {
       setIsLoading(false);
@@ -204,8 +208,8 @@ export const authStore = {
       setRole(null);
       await this.loadAllTenantsForPBAdmin();
       initPromise = Promise.resolve();
-    } catch (e: any) {
-      setError(e.message || 'OTP verification failed');
+    } catch (e: unknown) {
+      setError(errorMessage(e, 'OTP verification failed'));
       throw e;
     } finally {
       setIsLoading(false);
@@ -218,8 +222,8 @@ export const authStore = {
     try {
       const result = await pb.collection('users').requestOTP(email);
       return result.otpId as string;
-    } catch (e: any) {
-      setError(e.message || 'Failed to send OTP');
+    } catch (e: unknown) {
+      setError(errorMessage(e, 'Failed to send OTP'));
       throw e;
     } finally {
       setIsLoading(false);
@@ -234,8 +238,8 @@ export const authStore = {
       setUser(authData.record);
       await this.loadTenants();
       initPromise = Promise.resolve();
-    } catch (e: any) {
-      setError(e.message || 'OTP verification failed');
+    } catch (e: unknown) {
+      setError(errorMessage(e, 'OTP verification failed'));
       throw e;
     } finally {
       setIsLoading(false);
@@ -272,8 +276,8 @@ export const authStore = {
       setIsPBAdmin(false);
       await this.loadTenants();
       initPromise = Promise.resolve();
-    } catch (e: any) {
-      setError(e.message || 'OIDC login failed');
+    } catch (e: unknown) {
+      setError(errorMessage(e, 'OIDC login failed'));
       throw e;
     } finally {
       setIsLoading(false);
@@ -290,7 +294,7 @@ export const authStore = {
         expand: 'tenant,role',
       });
 
-      const tenantList: UserTenant[] = await Promise.all(items.map(async (r: any) => {
+      const tenantList: UserTenant[] = await Promise.all(items.map(async (r: RecordModel) => {
         let tenantName = r.expand?.tenant?.name;
         let themeConfig: TenantThemeConfig = parseThemeConfig(r.expand?.tenant?.theme_config);
         let roleName = r.expand?.role?.name;
@@ -343,7 +347,7 @@ export const authStore = {
         const t = tenantList.find(t => t.tenant === targetTenant);
         if (t) setRole(t.role);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to load tenants:', e);
     }
   },
@@ -351,7 +355,7 @@ export const authStore = {
   async loadAllTenantsForPBAdmin() {
     try {
       const items = await pb.collection('tenants').getFullList({ batch: 500, sort: 'name' });
-      const allTenants: UserTenant[] = items.map((t: any) => ({
+      const allTenants: UserTenant[] = items.map((t: RecordModel) => ({
         id: t.id,
         tenant: t.id,
         tenantName: t.name || t.id,
@@ -359,7 +363,7 @@ export const authStore = {
         themeConfig: parseThemeConfig(t.theme_config),
       }));
       setTenants(allTenants);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Failed to load tenants for PB admin:', e);
     }
   },
@@ -397,5 +401,5 @@ export const authStore = {
 
 // Debug handle for local development only; never exposed in production.
 if (import.meta.env.DEV && typeof window !== 'undefined') {
-  (window as any).__authStore = authStore;
+  (window as unknown as { __authStore: typeof authStore }).__authStore = authStore;
 }
