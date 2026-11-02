@@ -329,7 +329,7 @@ describe('T-05: API keys — token-mint, no plaintext, scoped, revocable', () =>
     it('right shape, wrong secret → 401', async () => {
       const { plaintext } = await issueKey(tenantA, 'tamper-' + Date.now());
       const [prefix, secret] = plaintext.split('.');
-      const tampered = prefix + '.' + ((secret === 'a' ? 'b' : 'a') + secret.slice(1));
+      const tampered = prefix + '.' + (secret[0] === 'a' ? 'b' : 'a') + secret.slice(1);
       const res = await fetch(getPbUrl() + '/api/stjorna/api-keys/exchange', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tampered },
