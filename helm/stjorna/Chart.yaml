@@ -6,6 +6,7 @@ version: 3.0.0-rc1
 appVersion: "v3.0.0-rc1"
 kubeVersion: ">=1.20.0-0"
 home: https://github.com/secanis/stjorna
+icon: https://raw.githubusercontent.com/secanis/stjorna/main/site/public/logo.png
 keywords:
   - pocketbase
   - cms
