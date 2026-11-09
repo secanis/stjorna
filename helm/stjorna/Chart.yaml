@@ -16,8 +16,8 @@ maintainers:
   - name: secanis
     email: support@secanis.ch
 annotations:
-  category: CMS
-  licenses: AGPL-3.0-or-later
+  artifacthub.io/category: web-applications
+  artifacthub.io/license: AGPL-3.0-or-later
 dependencies:
   - name: garage
     # Chart version (matches the garage chart's Chart.yaml).
