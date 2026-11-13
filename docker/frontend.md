@@ -31,7 +31,7 @@ Open <http://localhost:8080>. The frontend discovers the backend via the `localS
 | | |
 |---|---|
 | Base build | `node:24-alpine` |
-| Base runtime | `nginxinc/nginx-unprivileged:1.25-alpine` |
+| Base runtime | `nginxinc/nginx-unprivileged:1.31-alpine` (base packages upgraded at build time) |
 | User | `nginx` (uid 101) |
 | Port | `8080` (HTTP) |
 | Built with | `STJORNA_VERSION` + `STJORNA_COMMIT` args, stamped into `/version.json` |

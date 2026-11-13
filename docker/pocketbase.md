@@ -25,7 +25,7 @@ start with an empty or placeholder password such as `changeme`).
 | | |
 |---|---|
 | Base | `alpine:3.19` |
-| PocketBase | v0.40.4 |
+| PocketBase | v0.40.6 |
 | User | `pocketbase` (uid 1000) |
 | Port | `8090` (HTTP) |
 | Volume | `/app/pb_data` (SQLite + uploads) |

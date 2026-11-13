@@ -17,7 +17,7 @@ Tenants own categories, products and media (images/videos); a REST API
 
 | Layer               | Tech                                             | Location                              |
 | ------------------- | ------------------------------------------------ | ------------------------------------- |
-| Backend             | PocketBase **v0.40.4** (Go, SQLite, JSVM hooks)  | `pocketbase/`                         |
+| Backend             | PocketBase **v0.40.6** (Go, SQLite, JSVM hooks)  | `pocketbase/`                         |
 | Frontend (admin UI) | SolidJS + Vite + Tailwind, PB JS SDK `^0.28`     | `frontend/`                           |
 | Demo consumer       | SolidJS + Vite, API-key → exchange → JWT         | `demo/`                               |
 | Deploy              | Docker Compose + Helm chart (kind-tested)        | `docker-compose.yml`, `helm/stjorna/` |
