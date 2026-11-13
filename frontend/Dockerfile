@@ -21,8 +21,16 @@ COPY . .
 RUN STJORNA_VERSION=${STJORNA_VERSION} STJORNA_COMMIT=${STJORNA_COMMIT} npm run build
 
 # Stage 2: Serve with nginx-unprivileged (designed to run as non-root on port 8080)
-# 1.25 is EOL; 1.27 is the current non-EOL mainline branch.
-FROM docker.io/nginxinc/nginx-unprivileged:1.27-alpine
+# 1.27 is EOL; 1.31 is the current mainline branch (Alpine 3.24 base).
+FROM docker.io/nginxinc/nginx-unprivileged:1.31-alpine
+
+# The published image lags the Alpine package index, so an image that is only a
+# few weeks old still ships known-vulnerable packages (e.g. brotli, curl,
+# openssl). Upgrade the base packages at build time so every release picks up
+# the current security patches. Root is required for apk; drop back afterwards.
+USER root
+RUN apk upgrade --no-cache
+USER nginx
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

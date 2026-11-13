@@ -5,7 +5,7 @@ description: PocketBase v0.40 JavaScript VM hooks — the module pattern used by
 
 # PocketBase v0.40 JSVM Hooks — STJÓRNA Module Pattern
 
-STJÓRNA runs PocketBase **v0.40.4** (see `pocketbase/Dockerfile`). Hooks are
+STJÓRNA runs PocketBase **v0.40.6** (see `pocketbase/Dockerfile`). Hooks are
 baked into the PB image (`COPY pb_hooks /app/pb_hooks`); the Helm chart does
 not mount them. Older docs/code in this repo built handlers as strings with
 `new Function("e", BODY)` — that v0.22-era workaround is **gone**; do not

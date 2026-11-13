@@ -2,7 +2,7 @@
 # this stage; the final image never ships them.
 FROM docker.io/alpine:3.22 AS download
 
-ARG PB_VERSION=0.40.4
+ARG PB_VERSION=0.40.6
 # Set automatically by BuildKit / buildx (amd64, arm64, arm, ...). Defaults
 # to amd64 for legacy builders that don't populate it.
 ARG TARGETARCH=amd64
@@ -38,7 +38,10 @@ FROM docker.io/alpine:3.22
 
 # ca-certificates: outbound TLS (S3, SMTP, OIDC). busybox (part of the
 # base image) still provides `wget` for the docker-compose healthcheck.
-RUN apk add --no-cache ca-certificates \
+# `apk upgrade` applies the current Alpine security patches (the published
+# base image can lag the package index by weeks).
+RUN apk upgrade --no-cache \
+    && apk add --no-cache ca-certificates \
     && adduser -D -u 1000 -s /bin/sh pocketbase
 
 WORKDIR /app
