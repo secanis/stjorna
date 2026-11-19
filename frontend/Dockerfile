@@ -1,5 +1,18 @@
-# Stage 1: Build
-FROM docker.io/node:24-alpine AS builder
+# BuildKit auto-injects these from the `platforms:` list in release.yml.
+# BUILDPLATFORM is the runner's native arch (always linux/amd64); TARGETPLATFORM
+# is the arch of the image leg being produced (amd64 or arm64).
+ARG BUILDPLATFORM
+ARG TARGETPLATFORM
+
+# Stage 1: Build.
+#
+# Pinned to BUILDPLATFORM (amd64) so the node toolchain — `npm ci`, tsc,
+# esbuild and `vite build` — always runs NATIVELY and exactly once. The JS
+# bundle in dist/ is arch-independent, so there is nothing to gain from
+# running it per-target; before this pin the arm64 leg ran the whole build
+# under QEMU user-mode emulation, which stretched this single step to ~9
+# minutes per release.
+FROM --platform=$BUILDPLATFORM docker.io/node:24-alpine AS builder
 
 # Optional build args used by scripts/generate-version.mjs to stamp
 # public/version.json with the release tag. Defaults are safe for
@@ -21,8 +34,10 @@ COPY . .
 RUN STJORNA_VERSION=${STJORNA_VERSION} STJORNA_COMMIT=${STJORNA_COMMIT} npm run build
 
 # Stage 2: Serve with nginx-unprivileged (designed to run as non-root on port 8080)
-# 1.27 is EOL; 1.31 is the current mainline branch (Alpine 3.24 base).
-FROM docker.io/nginxinc/nginx-unprivileged:1.31-alpine
+# 1.27 is EOL; 1.31 is the current mainline branch (Alpine 3.24 base). Built
+# for the target platform so amd64 and arm64 each get a native base image; the
+# arch-independent dist/ is copied straight in from the builder.
+FROM --platform=$TARGETPLATFORM docker.io/nginxinc/nginx-unprivileged:1.31-alpine
 
 # The published image lags the Alpine package index, so an image that is only a
 # few weeks old still ships known-vulnerable packages (e.g. brotli, curl,
