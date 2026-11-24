@@ -135,6 +135,7 @@ if [[ "$MODE" == "lint" ]]; then
   trap 'rm -rf "$RENDER_TMP"' EXIT
 
   RENDER_OUT="$RENDER_TMP/rendered.yaml"
+  CHART_UNDER_TEST="$HELM_CHART"
   if helm template stjorna "$HELM_CHART" \
       --set "ingress.hosts[0].host=stjorna.example.com" \
       > "$RENDER_OUT" 2>/dev/null; then
@@ -148,7 +149,16 @@ if [[ "$MODE" == "lint" ]]; then
       --set "ingress.hosts[0].host=stjorna.example.com" \
       > "$RENDER_OUT" \
       || fail "helm template failed even without the garage dep"
+    CHART_UNDER_TEST="$RENDER_TMP/chart"
   fi
+
+  # The values schema must reject broken overrides, otherwise it is either
+  # missing from the package or too permissive to catch typos.
+  if helm template stjorna "$CHART_UNDER_TEST" \
+      --set "pocketbase.replicaCount=2" >/dev/null 2>&1; then
+    fail "values.schema.json did not reject pocketbase.replicaCount=2 (SQLite is single-replica only)"
+  fi
+  log "  values schema rejects invalid overrides"
 
   log "  rendered $(grep -c '^kind:' "$RENDER_OUT") resources"
   # Sanity assertions on the rendered output

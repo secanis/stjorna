@@ -19,9 +19,13 @@ spec:
   {{- end }}
   {{- if .Values.ingress.tls }}
   tls:
+    {{- $hostNames := list }}
+    {{- range .Values.ingress.hosts }}
+      {{- $hostNames = append $hostNames .host }}
+    {{- end }}
     {{- range .Values.ingress.tls }}
     - hosts:
-        {{- range .hosts }}
+        {{- range (.hosts | default $hostNames) }}
         - {{ . | quote }}
         {{- end }}
       secretName: {{ .secretName | quote }}
@@ -32,7 +36,8 @@ spec:
     - host: {{ .host | quote }}
       http:
         paths:
-          {{- range .paths }}
+          {{- $paths := .paths | default (list (dict "path" "/" "pathType" "Prefix")) }}
+          {{- range $paths }}
           - path: {{ .path | quote }}
             pathType: {{ .pathType | default "Prefix" }}
             backend:

@@ -309,13 +309,15 @@ ingress:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt
     traefik.ingress.kubernetes.io/router.entrypoints: websecure
-  # -- Ingress hosts. Override the `host` field at install time.
+  # -- Ingress hosts. Override the `host` field at install time; `paths`
+  # defaults to a single `/` Prefix path when omitted.
   hosts:
     - host: stjorna.example.com
       paths:
         - path: /
           pathType: Prefix
   # -- TLS configuration. The cert-manager annotation above issues the cert.
+  # `hosts` defaults to the hostnames listed under `ingress.hosts`.
   tls:
     - hosts:
         - stjorna.example.com
