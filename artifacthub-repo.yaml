@@ -2,16 +2,14 @@
 # Artifact Hub repository configuration.
 # Reference: https://artifacthub.io/docs/topics/repositories/helm-charts
 #
-# This file is OPTIONAL. It's used by Artifact Hub to verify ownership of
-# a Helm repository. Once the chart is published to gh-pages, add the
-# gh-pages URL (https://secanis.github.io/stjorna/) to Artifact Hub via
-# the "Add Source" UI.
+# This file is used by Artifact Hub to verify ownership of the repository.
+# It MUST be served from the same path as the chart `index.yaml`, i.e.
+# https://stjorna.secanis.ch/artifacthub-repo.yaml (Pages + gh-pages).
 #
-# After registration, Artifact Hub will:
-#   1. Crawl the gh-pages branch
-#   2. Verify the URL in this file matches the registered URL
-#   3. Periodically re-index new releases
-repositoryID: 00000000-0000-0000-0000-000000000000
+# `repositoryID` is the identifier Artifact Hub shows on the repository card
+# in its control panel. It is public, not a secret, and it must match exactly
+# or the "Verified publisher" flag is never enabled.
+repositoryID: 0249197a-9755-498b-b36b-eb11baa4e31b
 owners:
   - name: secanis
     email: support@secanis.ch

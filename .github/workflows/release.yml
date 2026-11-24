@@ -482,8 +482,9 @@ jobs:
     steps:
       - name: Ping Artifact Hub
         run: |
-          # Replace with the actual Helm repo URL once configured on AH
-          REPO="https://secanis.github.io/stjorna/"
+          # Must match the URL the repository was registered with on Artifact Hub
+          # (custom domain, not the secanis.github.io Pages URL).
+          REPO="https://stjorna.secanis.ch/"
           echo "Notifying Artifact Hub to re-index $REPO"
           curl -fsS -X POST \
             -H "Content-Type: application/json" \
