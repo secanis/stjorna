@@ -331,6 +331,23 @@ frontend:
     tag: v3.0.0-rc1
 ```
 
+### Values schema
+
+`helm/stjorna/values.schema.json` validates the chart values before anything is
+rendered, so typos (`pocketbase.replicaCont`) and out-of-range values
+(`pocketbase.replicaCount: 2`, an unknown `image.pullPolicy`, a malformed PVC
+size) fail with a schema error instead of a broken release. It also powers the
+values form Artifact Hub renders for the chart.
+
+Two conveniences come with it:
+
+- `ingress.hosts[i].paths` is optional and defaults to a single `/` `Prefix`
+  path, so `--set ingress.hosts[0].host=stjorna.example.org` is enough.
+- `ingress.tls[i].hosts` is optional and defaults to the hostnames listed in
+  `ingress.hosts`, so `--set ingress.tls[0].secretName=stjorna-tls` is enough.
+
+`make lint-helm` asserts the schema is present and rejects an invalid override.
+
 ### Security, probes and networking values
 
 | Value | Default | Description |

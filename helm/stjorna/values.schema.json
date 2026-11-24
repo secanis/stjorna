@@ -1,0 +1,525 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "STJÓRNA Helm chart values",
+  "description": "Values for the STJÓRNA chart (PocketBase backend + SolidJS frontend on nginx).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "nameOverride": {
+      "type": "string",
+      "description": "Override the chart name (used in resource naming)."
+    },
+    "fullnameOverride": {
+      "type": "string",
+      "description": "Override the fully-qualified app name (used in resource naming)."
+    },
+    "namespace": {
+      "type": "object",
+      "description": "Namespace the chart installs into. The chart can optionally create it.",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "description": "Create the namespace. Uses a `lookup` expression, so re-running on an existing namespace is a no-op."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the namespace to install into."
+        }
+      },
+      "required": ["create", "name"]
+    },
+    "image": {
+      "type": "object",
+      "description": "Settings shared by both container images.",
+      "additionalProperties": false,
+      "properties": {
+        "pullSecrets": {
+          "type": "array",
+          "description": "Image pull secrets (referenced by name). Empty list for docker.io public images.",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "pullPolicy": {
+          "type": "string",
+          "description": "Default image pull policy applied to both containers unless overridden per image.",
+          "enum": ["Always", "IfNotPresent", "Never"]
+        }
+      },
+      "required": ["pullSecrets", "pullPolicy"]
+    },
+    "serviceAccount": {
+      "type": "object",
+      "description": "ServiceAccount used by both pods. No RBAC is attached by default.",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean",
+          "description": "Create a ServiceAccount."
+        },
+        "name": {
+          "type": "string",
+          "description": "ServiceAccount name. If empty, the chart uses the fullname."
+        }
+      },
+      "required": ["create", "name"]
+    },
+    "pocketbase": {
+      "type": "object",
+      "description": "PocketBase backend (single replica; SQLite is not HA-capable).",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": {
+          "type": "integer",
+          "const": 1,
+          "description": "Must stay 1 — PocketBase stores its data in SQLite on a ReadWriteOnce PVC."
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PocketBase image repository."
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "description": "PocketBase image tag. Should match the STJÓRNA release (e.g. v3.2.4)."
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Per-image pull policy. Empty falls back to `image.pullPolicy`.",
+              "enum": ["", "Always", "IfNotPresent", "Never"]
+            }
+          },
+          "required": ["repository", "tag", "pullPolicy"]
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Kubernetes service type for PocketBase.",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"]
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port exposed by the PocketBase service.",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": ["type", "port"]
+        },
+        "persistence": {
+          "type": "object",
+          "description": "PVC for /app/pb_data (SQLite database + local media when S3 is not used).",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Create a PVC for the PocketBase data directory."
+            },
+            "size": {
+              "type": "string",
+              "description": "PVC size. 1-2Gi is enough when media is stored in S3; size to fit your media library otherwise.",
+              "pattern": "^[0-9]+(\\.[0-9]+)?(Ki|Mi|Gi|Ti|Pi|Ei|k|M|G|T|P|E)?$"
+            },
+            "storageClass": {
+              "type": "string",
+              "description": "StorageClass name. The class should use reclaimPolicy: Retain so data survives PVC deletion or `helm uninstall`."
+            },
+            "accessModes": {
+              "type": "array",
+              "description": "PVC access modes.",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany", "ReadWriteOncePod"]
+              }
+            }
+          },
+          "required": ["enabled", "size", "storageClass", "accessModes"]
+        },
+        "resources": {
+          "type": "object",
+          "description": "Container resources. PocketBase holds the SQLite page cache, JSVM pools and in-flight uploads/backups (up to 500 MB) in memory, so leave headroom above 256Mi.",
+          "additionalProperties": true,
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "healthcheck": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "HTTP path used by the readiness/liveness probes (PocketBase exposes /api/health).",
+              "minLength": 1
+            }
+          },
+          "required": ["path"]
+        },
+        "startupProbe": {
+          "type": "object",
+          "description": "Gives the first boot (migrations, superuser upsert) up to failureThreshold * periodSeconds before the liveness probe takes over.",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": ["periodSeconds", "failureThreshold"]
+        },
+        "superuserIps": {
+          "type": "string",
+          "description": "Space-separated IPs/CIDRs allowed to sign in as superuser (PB_SUPERUSER_IPS). Empty = no restriction. Behind an ingress, configure PocketBase trusted proxies first."
+        },
+        "automigrate": {
+          "type": "boolean",
+          "description": "PB_AUTOMIGRATE. Keep false: the root filesystem is read-only and shipped migrations are always applied on start."
+        },
+        "secret": {
+          "type": "object",
+          "description": "Source of PB_SECRET. Supply an existing Secret, or leave empty to auto-generate one.",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret containing PB_SECRET. Empty = chart-managed Secret."
+            },
+            "existingSecretKey": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Key inside `existingSecret` that holds PB_SECRET."
+            }
+          },
+          "required": ["existingSecret", "existingSecretKey"]
+        },
+        "superuser": {
+          "type": "object",
+          "description": "First superuser credentials, created headlessly on first boot.",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret holding the superuser email and password. Empty = generated on install."
+            },
+            "existingSecretEmailKey": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Key inside `existingSecret` that holds the email value."
+            },
+            "existingSecretPasswordKey": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Key inside `existingSecret` that holds the password value."
+            }
+          },
+          "required": ["existingSecret", "existingSecretEmailKey", "existingSecretPasswordKey"]
+        },
+        "setupToken": {
+          "type": "object",
+          "description": "Optional fixed setup token for the setup-bootstrap route. Only relevant when the headless superuser upsert did not run.",
+          "additionalProperties": false,
+          "properties": {
+            "existingSecret": {
+              "type": "string",
+              "description": "Name of an existing Secret holding the token. Empty = generated at boot and printed to the pod log."
+            },
+            "existingSecretKey": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Key inside `existingSecret` that holds the token value."
+            }
+          },
+          "required": ["existingSecret", "existingSecretKey"]
+        },
+        "logOtp": {
+          "type": "string",
+          "description": "DEV ONLY: log generated superuser OTP codes to stdout. Enabling this means OTP mails are never sent, even with SMTP configured.",
+          "enum": ["", "1", "true", "yes"]
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "description": "Pod-level securityContext (passed through to Kubernetes).",
+          "additionalProperties": true
+        },
+        "containerSecurityContext": {
+          "type": "object",
+          "description": "Container-level securityContext (passed through to Kubernetes).",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "replicaCount",
+        "image",
+        "service",
+        "persistence",
+        "resources",
+        "healthcheck",
+        "startupProbe",
+        "superuserIps",
+        "automigrate",
+        "secret",
+        "superuser",
+        "setupToken",
+        "logOtp",
+        "podSecurityContext",
+        "containerSecurityContext"
+      ]
+    },
+    "frontend": {
+      "type": "object",
+      "description": "SolidJS frontend served by nginx (unprivileged image).",
+      "additionalProperties": false,
+      "properties": {
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of frontend replicas."
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Frontend image repository."
+            },
+            "tag": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Frontend image tag. Should match the STJÓRNA release."
+            },
+            "pullPolicy": {
+              "type": "string",
+              "description": "Per-image pull policy. Empty falls back to `image.pullPolicy`.",
+              "enum": ["", "Always", "IfNotPresent", "Never"]
+            }
+          },
+          "required": ["repository", "tag", "pullPolicy"]
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Kubernetes service type for the frontend.",
+              "enum": ["ClusterIP", "NodePort", "LoadBalancer", "ExternalName"]
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port exposed by the frontend service. 8080 matches nginx-unprivileged; use 80 only with an image holding NET_BIND_SERVICE.",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "required": ["type", "port"]
+        },
+        "resources": {
+          "type": "object",
+          "description": "Container resources (passed through to Kubernetes).",
+          "additionalProperties": true,
+          "properties": {
+            "requests": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "limits": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "podSecurityContext": {
+          "type": "object",
+          "description": "Pod-level securityContext (passed through to Kubernetes).",
+          "additionalProperties": true
+        },
+        "containerSecurityContext": {
+          "type": "object",
+          "description": "Container-level securityContext (passed through to Kubernetes).",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "replicaCount",
+        "image",
+        "service",
+        "resources",
+        "podSecurityContext",
+        "containerSecurityContext"
+      ]
+    },
+    "networkPolicy": {
+      "type": "object",
+      "description": "NetworkPolicies. Requires a CNI that enforces them (Calico, Cilium); otherwise inert.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Create the NetworkPolicies."
+        },
+        "pocketbase": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "extraFrom": {
+              "type": "array",
+              "description": "Additional `from` peers allowed to reach PocketBase (NetworkPolicy peer syntax), e.g. a monitoring namespace or a backup job.",
+              "items": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "required": ["extraFrom"]
+        }
+      },
+      "required": ["enabled", "pocketbase"]
+    },
+    "garage": {
+      "type": "object",
+      "description": "Optional Garage S3 subchart. Values are passed through to the Garage chart; the keys documented here are the ones STJÓRNA sets. Requires `helm dep build` with the garage chart available as a sibling directory.",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Install the Garage S3 subchart."
+        },
+        "replicaCount": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Garage replicas. 3 is the minimum for production; use 1 only for dev/test."
+        },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Storage for Garage metadata and data volumes."
+        },
+        "ingress": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Optional ingress for the Garage S3 API."
+        }
+      },
+      "required": ["enabled"]
+    },
+    "ingress": {
+      "type": "object",
+      "description": "Ingress for the frontend. Defaults to Traefik + cert-manager.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Create an Ingress resource."
+        },
+        "className": {
+          "type": "string",
+          "description": "IngressClass name."
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Ingress annotations (e.g. cert-manager issuer, Traefik entrypoints).",
+          "additionalProperties": {
+            "type": ["string", "number", "boolean"]
+          }
+        },
+        "hosts": {
+          "type": "array",
+          "description": "Ingress hosts. Override `host` at install time. May be empty when `enabled` is false.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Hostname served by the ingress."
+              },
+              "paths": {
+                "type": "array",
+                "description": "HTTP paths for this host. Defaults to a single `/` Prefix path when omitted.",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "pathType": {
+                      "type": "string",
+                      "enum": ["Prefix", "Exact", "ImplementationSpecific"]
+                    }
+                  },
+                  "required": ["path", "pathType"]
+                }
+              }
+            },
+            "required": ["host"]
+          }
+        },
+        "tls": {
+          "type": "array",
+          "description": "TLS configuration. The cert-manager annotation issues the certificate.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "hosts": {
+                "type": "array",
+                "description": "Hostnames covered by the certificate. Defaults to the hosts defined under `ingress.hosts` when omitted.",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "secretName": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Name of the Secret holding the TLS certificate."
+              }
+            },
+            "required": ["secretName"]
+          }
+        }
+      },
+      "required": ["enabled", "className", "annotations", "hosts", "tls"]
+    }
+  },
+  "required": [
+    "nameOverride",
+    "fullnameOverride",
+    "namespace",
+    "image",
+    "serviceAccount",
+    "pocketbase",
+    "frontend",
+    "networkPolicy",
+    "garage",
+    "ingress"
+  ]
+}
