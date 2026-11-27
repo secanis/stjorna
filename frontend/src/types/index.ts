@@ -45,6 +45,7 @@ export interface Media {
   width: number;
   height: number;
   createdUser: string;
+  public: boolean;
   created: string;
   updated: string;
 }

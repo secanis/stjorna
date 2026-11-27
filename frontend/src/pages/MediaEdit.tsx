@@ -2,6 +2,7 @@ import { createSignal, Show, For, onMount, onCleanup } from 'solid-js';
 import { useNavigate, useParams } from '@solidjs/router';
 import { ClientResponseError } from 'pocketbase';
 import { pb, getCurrentTenant } from '~/services/pocketbase';
+import { getConfiguredPbUrl } from '~/services/config';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { getMediaFileUrl, getMediaFileUrlAbsolute } from '~/utils/mediaUrl';
@@ -27,6 +28,7 @@ export default function MediaEdit() {
     original_name: '',
     mime_type: '',
     size: 0,
+    public: false,
   });
 
   // Server-populated URL info (read-only display).
@@ -42,7 +44,7 @@ export default function MediaEdit() {
   const [dragOver, setDragOver] = createSignal(false);
   const [imageError, setImageError] = createSignal<string | null>(null);
   const [loadError, setLoadError] = createSignal<string | null>(null);
-  const [copied, setCopied] = createSignal<'file' | 'thumb' | null>(null);
+  const [copied, setCopied] = createSignal<'file' | 'thumb' | 'public' | null>(null);
   const [cropperOpen, setCropperOpen] = createSignal(false);
   const [usedInProducts, setUsedInProducts] = createSignal<Product[]>([]);
   const [usedInCategories, setUsedInCategories] = createSignal<Category[]>([]);
@@ -172,6 +174,7 @@ export default function MediaEdit() {
       original_name: record.original_name || '',
       mime_type: record.mime_type || '',
       size: record.size || 0,
+      public: !!record.public,
     });
     if (record.file) {
       setFileUrl(getMediaFileUrlAbsolute(record.id, record.file));
@@ -210,8 +213,17 @@ export default function MediaEdit() {
     }
   };
 
-  const copyUrl = async (kind: 'file' | 'thumb') => {
-    const url = kind === 'file' ? fileUrl() : thumbUrl();
+  // Stable, token-free URL for embedding a public file on an external site.
+  // Only meaningful once the record is saved and marked public.
+  const publicUrl = () => {
+    if (!isEditing() || !params.id) return '';
+    const origin = getConfiguredPbUrl();
+    const path = `/api/stjorna/media/${params.id}/file`;
+    return origin ? `${origin}${path}` : path;
+  };
+
+  const copyUrl = async (kind: 'file' | 'thumb' | 'public') => {
+    const url = kind === 'file' ? fileUrl() : kind === 'thumb' ? thumbUrl() : publicUrl();
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
@@ -259,6 +271,7 @@ export default function MediaEdit() {
           filename: formData().filename,
           original_name: formData().original_name,
           tenant,
+          public: formData().public,
         };
 
         if (pendingFile()) {
@@ -564,6 +577,43 @@ export default function MediaEdit() {
                     </Show>
                   </button>
                 </div>
+              </div>
+            </Show>
+
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+              <label class="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData().public}
+                  onChange={(e) => setFormData(d => ({ ...d, public: e.currentTarget.checked }))}
+                  class="mt-0.5"
+                />
+                <span>
+                  <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">{i18nStore.t('media.public')}</span>
+                  <span class="block text-xs text-gray-500 dark:text-gray-400">{i18nStore.t('media.publicHint')}</span>
+                </span>
+              </label>
+            </div>
+
+            <Show when={isEditing() && formData().public}>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  {i18nStore.t('media.publicUrl')}
+                </label>
+                <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
+                  <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={publicUrl()}>{publicUrl()}</code>
+                  <button
+                    type="button"
+                    onClick={() => copyUrl('public')}
+                    class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
+                    title={i18nStore.t('media.copyUrl')}
+                  >
+                    <Show when={copied() === 'public'} fallback={<Copy size={14} />}>
+                      <Check size={14} class="text-green-600 dark:text-green-400" />
+                    </Show>
+                  </button>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('media.publicUrlHint')}</p>
               </div>
             </Show>
           </div>
