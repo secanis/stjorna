@@ -101,6 +101,7 @@ export const dict: RawDictionary = {
     statistics: 'Statistiken',
     activities: 'Aktivitäten',
     apiDocs: 'API-Dokumentation',
+    developers: 'Entwickler',
     users: 'Benutzer',
     tenants: 'Mandanten',
     apiKeys: 'API-Schlüssel',
@@ -112,6 +113,18 @@ export const dict: RawDictionary = {
     smtp: 'SMTP',
     security: 'Sicherheit',
     about: 'Über STJÓRNA',
+  },
+
+  developers: {
+    title: 'Entwickler',
+    intro: 'STJÓRNA-Medien und Katalogdaten in eine externe Website integrieren.',
+    baseUrl: 'Basis-URL',
+    storefront: 'Storefront (vollständiger Katalog)',
+    storefrontHint: 'Einen API-Schlüssel ausstellen, gegen ein kurzlebiges Token eintauschen und dann Produkte samt Medien lesen.',
+    publicEmbed: 'Öffentliche Einbettung (einzelne Datei)',
+    publicEmbedHint: 'Ein Medium als öffentlich markieren und die stabile URL ohne Token verwenden.',
+    docs: 'Vollständige Anleitung',
+    demo: 'demo/ Storefront',
   },
 
   header: {

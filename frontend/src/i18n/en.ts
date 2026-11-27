@@ -100,6 +100,7 @@ export const dict = {
     statistics: 'Statistics',
     activities: 'Activities',
     apiDocs: 'API Docs',
+    developers: 'Developers',
     users: 'Users',
     tenants: 'Tenants',
     apiKeys: 'API Keys',
@@ -111,6 +112,18 @@ export const dict = {
     smtp: 'SMTP',
     security: 'Security',
     about: 'About STJÓRNA',
+  },
+
+  developers: {
+    title: 'Developers',
+    intro: 'Integrate STJÓRNA media and catalog data into an external website.',
+    baseUrl: 'Base URL',
+    storefront: 'Storefront (full catalog)',
+    storefrontHint: 'Issue an API key, exchange it for a short-lived token, then read products with their media.',
+    publicEmbed: 'Public embed (single file)',
+    publicEmbedHint: 'Mark a media item public and use its stable, token-free URL.',
+    docs: 'Full guide',
+    demo: 'demo/ storefront',
   },
 
   header: {
