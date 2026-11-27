@@ -61,6 +61,13 @@ function publicFileHandler(e) {
 
         var thumb = "";
         try { thumb = String(e.request.url.query().get("thumb") || "").trim(); } catch (_) {}
+        // Defense-in-depth: only accept a thumbnail size of the form WxH
+        // (optionally with a t/b/f modifier). Anything else is ignored and the
+        // original is served — this also keeps arbitrary strings out of the
+        // thumb file path below.
+        if (thumb && !/^\d+x\d+[tbf]?$/.test(thumb)) {
+            thumb = "";
+        }
         if (thumb) {
             var thumbPath = basePath + "/thumbs_" + filename + "/" + thumb + "_" + filename;
             try {

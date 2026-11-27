@@ -96,4 +96,27 @@ describe('public media: GET /api/stjorna/media/{id}/file', () => {
     const res = await fetch(url);
     expect([401, 403, 404]).toContain(res.status);
   });
+
+  it('multipart update with public="false" (string) un-publishes', async () => {
+    // Mirrors the frontend's update-with-file path, which sends the boolean
+    // via form.append(key, String(value)) → the string "false". PB must coerce
+    // that back to boolean false, not treat it as truthy.
+    const fd0 = new FormData();
+    fd0.append('tenant', tenant);
+    fd0.append('file', new Blob([tinyPng], { type: 'image/png' }), 'coerce.png');
+    const created = await adminPb.collection('media').create(fd0);
+    await adminPb.collection('media').update(created.id, { public: true });
+
+    // Re-upload with public="false" as a multipart string.
+    const fd = new FormData();
+    fd.append('file', new Blob([tinyPng], { type: 'image/png' }), 'coerce-2.png');
+    fd.append('public', 'false');
+    await adminPb.collection('media').update(created.id, fd);
+
+    const updated = await adminPb.collection('media').getOne(created.id);
+    expect(updated.public).toBe(false);
+
+    const res = await fetch(getPbUrl() + `/api/stjorna/media/${created.id}/file`);
+    expect(res.status).toBe(404);
+  });
 });

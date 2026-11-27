@@ -28,7 +28,7 @@ A superuser issues a key in the admin GUI (**API Keys**) or via the API:
 curl -X POST https://pb.example.com/api/stjorna/api-keys \
   -H "Authorization: <superuser-token>" \
   -H "Content-Type: application/json" \
-  -d '{"tenantId": "<tenant-id>", "name": "storefront"}'
+  -d '{"tenant": "<tenant-id>", "name": "storefront"}'
 ```
 
 The plaintext key (`stjorna_<tenant>_<key>.<secret>`) is returned **exactly

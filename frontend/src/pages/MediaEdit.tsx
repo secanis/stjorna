@@ -5,7 +5,7 @@ import { pb, getCurrentTenant } from '~/services/pocketbase';
 import { getConfiguredPbUrl } from '~/services/config';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
-import { getMediaFileUrl, getMediaFileUrlAbsolute } from '~/utils/mediaUrl';
+import { getMediaFileUrl } from '~/utils/mediaUrl';
 import { errorMessage } from '~/utils/errors';
 import { Upload, X, AlertTriangle, Copy, Check, Scissors, Trash2, ExternalLink } from 'lucide-solid';
 import { ImageCropperModal } from '~/components/media';
@@ -31,10 +31,6 @@ export default function MediaEdit() {
     public: false,
   });
 
-  // Server-populated URL info (read-only display).
-  const [fileUrl, setFileUrl] = createSignal('');
-  const [thumbUrl, setThumbUrl] = createSignal('');
-
   const [pendingFile, setPendingFile] = createSignal<File | null>(null);
   const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
   const [loading, setLoading] = createSignal(true);
@@ -44,7 +40,7 @@ export default function MediaEdit() {
   const [dragOver, setDragOver] = createSignal(false);
   const [imageError, setImageError] = createSignal<string | null>(null);
   const [loadError, setLoadError] = createSignal<string | null>(null);
-  const [copied, setCopied] = createSignal<'file' | 'thumb' | 'public' | null>(null);
+  const [copied, setCopied] = createSignal(false);
   const [cropperOpen, setCropperOpen] = createSignal(false);
   const [usedInProducts, setUsedInProducts] = createSignal<Product[]>([]);
   const [usedInCategories, setUsedInCategories] = createSignal<Category[]>([]);
@@ -103,9 +99,6 @@ export default function MediaEdit() {
       mime_type: d.mime_type || file.type,
       size: d.size || file.size,
     }));
-    // Reset stale URL info — it will be re-populated after save.
-    setFileUrl('');
-    setThumbUrl('');
   };
 
   const handleFileSelect = (e: Event) => {
@@ -176,13 +169,6 @@ export default function MediaEdit() {
       size: record.size || 0,
       public: !!record.public,
     });
-    if (record.file) {
-      setFileUrl(getMediaFileUrlAbsolute(record.id, record.file));
-      setThumbUrl(getMediaFileUrlAbsolute(record.id, record.file, { thumb: '200x200' }));
-    } else {
-      setFileUrl('');
-      setThumbUrl('');
-    }
     fetchUsage(record.id);
   };
 
@@ -214,21 +200,23 @@ export default function MediaEdit() {
   };
 
   // Stable, token-free URL for embedding a public file on an external site.
-  // Only meaningful once the record is saved and marked public.
+  // Only meaningful once the record is saved and marked public. Falls back to
+  // the browser origin when the frontend and PocketBase share an origin.
   const publicUrl = () => {
     if (!isEditing() || !params.id) return '';
-    const origin = getConfiguredPbUrl();
+    const configured = getConfiguredPbUrl();
+    const origin = configured || (typeof window !== 'undefined' ? window.location.origin : '');
     const path = `/api/stjorna/media/${params.id}/file`;
     return origin ? `${origin}${path}` : path;
   };
 
-  const copyUrl = async (kind: 'file' | 'thumb' | 'public') => {
-    const url = kind === 'file' ? fileUrl() : kind === 'thumb' ? thumbUrl() : publicUrl();
+  const copyPublicUrl = async () => {
+    const url = publicUrl();
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      setCopied(kind);
-      setTimeout(() => setCopied(c => (c === kind ? null : c)), 1500);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
     } catch {
       // best-effort: clipboard may be denied
     }
@@ -538,83 +526,43 @@ export default function MediaEdit() {
               </div>
             </div>
 
-            <Show when={fileUrl()}>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {i18nStore.t('media.fileUrl')}
+            <Show when={isEditing()}>
+              <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData().public}
+                    onChange={(e) => setFormData(d => ({ ...d, public: e.currentTarget.checked }))}
+                    class="mt-0.5"
+                  />
+                  <span>
+                    <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">{i18nStore.t('media.public')}</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">{i18nStore.t('media.publicHint')}</span>
+                  </span>
                 </label>
-                <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
-                  <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={fileUrl()}>{fileUrl()}</code>
-                  <button
-                    type="button"
-                    onClick={() => copyUrl('file')}
-                    class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
-                    title={i18nStore.t('media.copyUrl')}
-                  >
-                    <Show when={copied() === 'file'} fallback={<Copy size={14} />}>
-                      <Check size={14} class="text-green-600 dark:text-green-400" />
-                    </Show>
-                  </button>
-                </div>
               </div>
-            </Show>
 
-            <Show when={thumbUrl()}>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {i18nStore.t('media.thumbnailUrl')}
-                </label>
-                <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
-                  <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={thumbUrl()}>{thumbUrl()}</code>
-                  <button
-                    type="button"
-                    onClick={() => copyUrl('thumb')}
-                    class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
-                    title={i18nStore.t('media.copyUrl')}
-                  >
-                    <Show when={copied() === 'thumb'} fallback={<Copy size={14} />}>
-                      <Check size={14} class="text-green-600 dark:text-green-400" />
-                    </Show>
-                  </button>
+              <Show when={formData().public}>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {i18nStore.t('media.publicUrl')}
+                  </label>
+                  <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
+                    <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={publicUrl()}>{publicUrl()}</code>
+                    <button
+                      type="button"
+                      onClick={copyPublicUrl}
+                      class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
+                      title={i18nStore.t('media.copyUrl')}
+                    >
+                      <Show when={copied()} fallback={<Copy size={14} />}>
+                        <Check size={14} class="text-green-600 dark:text-green-400" />
+                      </Show>
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('media.publicUrlHint')}</p>
                 </div>
-              </div>
-            </Show>
-
-            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-2">
-              <label class="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData().public}
-                  onChange={(e) => setFormData(d => ({ ...d, public: e.currentTarget.checked }))}
-                  class="mt-0.5"
-                />
-                <span>
-                  <span class="block text-sm font-medium text-gray-700 dark:text-gray-300">{i18nStore.t('media.public')}</span>
-                  <span class="block text-xs text-gray-500 dark:text-gray-400">{i18nStore.t('media.publicHint')}</span>
-                </span>
-              </label>
-            </div>
-
-            <Show when={isEditing() && formData().public}>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {i18nStore.t('media.publicUrl')}
-                </label>
-                <div class="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2">
-                  <code class="flex-1 text-xs text-gray-700 dark:text-gray-300 truncate" title={publicUrl()}>{publicUrl()}</code>
-                  <button
-                    type="button"
-                    onClick={() => copyUrl('public')}
-                    class="shrink-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
-                    title={i18nStore.t('media.copyUrl')}
-                  >
-                    <Show when={copied() === 'public'} fallback={<Copy size={14} />}>
-                      <Check size={14} class="text-green-600 dark:text-green-400" />
-                    </Show>
-                  </button>
-                </div>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{i18nStore.t('media.publicUrlHint')}</p>
-              </div>
+              </Show>
             </Show>
           </div>
 
