@@ -4,7 +4,7 @@ Tiny SolidJS app that consumes a remote STJÓRNA PocketBase instance. Shows all
 categories and, on click, the products inside each category with their media.
 
 > **Same stack as STJÓRNA frontend** — SolidJS 1.9, `@solidjs/router` 0.15, the
-> official `pocketbase` 0.21 SDK, Tailwind 3.
+> official `pocketbase` 0.28 SDK, Tailwind 3.
 
 ---
 
@@ -57,9 +57,9 @@ STJÓRNA frontend uses.
 | `Settings.tsx` health      | `pb.health.check()`                                                                            | `GET /api/health`                                                                                 | none     |
 | `Catalog.tsx` categories   | `pb.collection('categories').getList(1, 200, { sort: 'sort_order,name' })`                     | `GET /api/collections/categories/records?page=1&perPage=200&sort=sort_order%2Cname`               | none     |
 | `Catalog.tsx` products     | `pb.collection('products').getList(1, 200, { filter: 'category="<id>"', expand: 'media', sort })` | `GET /api/collections/products/records?filter=category%3D%22...%22&expand=media&sort=...`         | none¹    |
-| product image (`<img>`)    | `pb.files.getURL(record, file, { thumb: '300x300' })`                                          | `GET /api/files/media/<id>/<file>?thumb=300x300[&token=...]`                                      | none¹    |
+| product image (`<img>`)    | `pb.files.getToken()` + `pb.files.getURL(record, file, { thumb: '300x300', token })`           | `GET /api/files/media/<id>/<file>?thumb=300x300&token=<file-token>`                               | none¹    |
 
-¹ `expand=media` and file URLs return data only when the request carries a STJÓRNA auth token that is allowed to read the `media` collection. Without a token, products still list, but `expand.media` is empty and images don't load — placeholders are rendered instead.
+¹ `expand=media` and file URLs return data only when the request carries a STJÓRNA auth token that is allowed to read the `media` collection. Media files are `protected`, so images also need a short-lived *file token* (`pb.files.getToken()`, appended as `?token=`) — never the auth JWT. Without a token, products still list, but `expand.media` is empty and images don't load — placeholders are rendered instead.
 
 A live **API Log** panel at the bottom of every page shows each STJÓRNA
 request at runtime (method, path, status, duration, item count). It patches
