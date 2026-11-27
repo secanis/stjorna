@@ -312,6 +312,26 @@ var ROUTES = [
             },
         },
     },
+
+    // --- media_public.pb.js ----------------------------------------------
+    {
+        method: "GET",
+        path: "/api/stjorna/media/{id}/file",
+        tier: "Public",
+        auth: "none",
+        summary:
+            "Serve a media file marked public (media.public === true) without a token. ?thumb=WxH returns a thumbnail (images only; other files fall back to the original).",
+        doc: {
+            parameters: [
+                pathParam("id", "Media record id"),
+                { name: "thumb", in: "query", required: false, schema: str, description: "Thumbnail size, e.g. 300x300" },
+            ],
+            responses: {
+                "200": { description: "File bytes", content: { "application/octet-stream": { schema: { type: "string", format: "binary" } } } },
+                "404": ref("NotFound"),
+            },
+        },
+    },
 ];
 
 // "/api/stjorna/api-keys/{id...}" → "/stjorna/api-keys/{id}" (relative to
