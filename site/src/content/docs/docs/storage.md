@@ -52,3 +52,4 @@ migration script for moving existing local files to S3 is not yet provided.
 - Settings API: `PATCH /api/settings` with `{ "s3": { ... } }`
 - S3 settings fields: `enabled`, `bucket`, `region`, `endpoint`, `accessKey`, `secret`,
   `forcePathStyle`
+- [Embedding media & images](/docs/embedding-media) — how files are served to external sites

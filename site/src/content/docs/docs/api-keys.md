@@ -45,3 +45,6 @@ curl https://pb.example.com/api/collections/products/records \
 ```
 
 The `demo/` app in the repository shows the full flow.
+
+For the end-to-end storefront + media embedding flow, see
+[Embedding media & images](/docs/embedding-media).

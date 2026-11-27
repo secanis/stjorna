@@ -249,6 +249,13 @@ custom route must be added there — `npm run check:hooks` (in `pocketbase/`)
 fails otherwise. `info.version` is the image's `STJORNA_VERSION` build arg
 (`3.x` for dev builds).
 
+### Embedding media on a website
+
+For serving STJÓRNA images and media on an external site — a full storefront
+via API keys, or a single public file URL — see the
+[Embedding media & images](https://stjorna.secanis.ch/docs/embedding-media/)
+guide, or the `demo/` storefront app in this repo.
+
 ## Development
 
 ```bash
