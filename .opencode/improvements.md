@@ -368,3 +368,10 @@ see the follow-up table below; **open** = not started.
 | T-17.1 | 🔵 | frontend | Big components not split (Setup, MediaEdit, UserManagement, TenantSettings, OidcSettings, ProductEdit); no tenant-scoped `services/catalog.ts`; types still hand-written (no typegen). | Split per page section; generate types with `pocketbase-typegen` against the test container in CI with a diff check. |
 | T-17.3 | 🔵 | frontend | ESLint passes with ~280 warnings (217 `no-explicit-any`, 27 `solid/reactivity`); `vite.config.ts` uses `__dirname` (Vite 8 warns). | Tighten gradually and flip the rules to `error`; use `import.meta.dirname`. |
 | T-23.1 | 🔵 | docs | `ai-pedia.md` referenced at the top of this file is not in the repo (only untracked under `.claude/`); pointers in `.opencode/*` and `API_KEYS_REPORT.md` therefore go to README + hook headers. `.codacy.yml` still references `API_KEYS_REPORT.md`; unused `tsx` devDependency in `pocketbase/package.json`. | Commit `ai-pedia.md` (or drop the references) and clean the leftovers. |
+
+### Recorded decisions
+
+| Decision | Date | Resolution | Revisit trigger |
+|---|---|---|---|
+| JS/npm SDK for STJÓRNA | 2026-11-28 | **Deferred.** `demo/` stays the canonical, tested storefront reference and the "Embedding media" guide (`site/docs/embedding-media`, in-app `/developers`) makes the ~40-line integration copyable. A thin `@stjorna/sdk` (API-key exchange + file-token helper + typed collections) was considered but adds a maintenance surface with only one consumer today. | Revisit when a **second real storefront consumer** appears. |
+| Public embed mechanism | 2026-11-28 | **Opt-in `media.public` flag + `GET /api/stjorna/media/{id}/file`**, keeping `media.file protected: true` (T-08 intact). Shipped (`1780002000_add_media_public_flag.js`). | n/a — shipped. |
