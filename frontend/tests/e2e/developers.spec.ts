@@ -8,8 +8,8 @@ test.describe('Developers page', () => {
 
         await expect(page.locator('h1:has-text("Developers")')).toBeVisible({ timeout: 10000 });
 
-        // Both flows are present: the storefront exchange + the public embed URL.
-        await expect(page.getByText('Storefront', { exact: false })).toBeVisible();
+        // Both flows are present: the storefront heading + the public embed URL.
+        await expect(page.getByText('Storefront (full catalog)')).toBeVisible();
         await expect(page.getByText('/api/stjorna/media/', { exact: false })).toBeVisible();
     });
 
