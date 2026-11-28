@@ -14,6 +14,11 @@ const AUTH_ENDPOINT_RE = /\/(auth-with-[a-z0-9]+|request-otp|auth-methods)(\?|$)
 
 function configure(client: PocketBase): PocketBase {
   client.autoCancellation(false);
+  // SDK >=0.29 clears the auth store on ANY 401 response by default. Our
+  // afterSend handler below does the same but deliberately skips the auth
+  // endpoints (wrong password / wrong OTP answer 401 and must not drop a
+  // still-valid session). Keep that single source of truth.
+  client.autoClearAuthStore(false);
   client.afterSend = (response, data) => {
     if (response.status === 401 && client.authStore.token && !AUTH_ENDPOINT_RE.test(response.url)) {
       // Token expired or revoked server-side: drop it. authStore listens

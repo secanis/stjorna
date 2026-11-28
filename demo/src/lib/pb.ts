@@ -35,6 +35,19 @@ export let pb: PocketBase = initialUrl
   ? new PocketBase(initialUrl, new BaseAuthStore())
   : new PocketBase('/', new BaseAuthStore());
 pb.autoCancellation(false);
+attachAuthSync(pb);
+
+// SDK >=0.29 auto-clears the auth store on any 401 response (expired or
+// revoked token). The demo keeps its own in-memory copy of the token, so
+// mirror the clear into it — otherwise the UI would keep claiming a token
+// exists while requests silently go out unauthenticated. A saved API key is
+// intentionally kept: ensureFreshToken() re-exchanges it on the next request.
+function attachAuthSync(client: PocketBase) {
+  client.authStore.onChange((token) => {
+    if (token) return;
+    inMemoryToken = '';
+  });
+}
 
 // NOTE: the JWT lives only in memory (BaseAuthStore + inMemoryToken), so it
 // is never auto-loaded at module load. The token is applied only when the
@@ -50,6 +63,7 @@ export function recreatePb(url: string) {
   setPbUrl(clean);
   pb = new PocketBase(clean, new BaseAuthStore());
   pb.autoCancellation(false);
+  attachAuthSync(pb);
   // Re-apply the in-memory token — this is the one place where
   // we honor the saved token without going through the full
   // exchange/validation flow. The Settings page always overrides this
