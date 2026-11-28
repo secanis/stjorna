@@ -32,6 +32,7 @@ const TenantStats = lazy(() => import('~/pages/TenantStats'));
 const SuperuserManagement = lazy(() => import('~/pages/SuperuserManagement'));
 const SuperuserLogin = lazy(() => import('~/pages/SuperuserLogin'));
 const About = lazy(() => import('~/pages/About'));
+const Developers = lazy(() => import('~/pages/Developers'));
 
 // Everything inside the app shell requires a verified session.
 const ProtectedLayout = (props: ParentProps) => (
@@ -75,6 +76,7 @@ export default function App() {
                 <Route path="/profile" component={Profile} />
                 <Route path="/api-keys" component={ApiKeys} />
                 <Route path="/about" component={About} />
+                <Route path="/developers" component={Developers} />
             </Route>
             <Route
                 path="*"

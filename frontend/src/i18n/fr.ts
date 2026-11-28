@@ -101,6 +101,7 @@ export const dict: RawDictionary = {
     statistics: 'Statistiques',
     activities: 'Activités',
     apiDocs: 'Documentation API',
+    developers: 'Développeurs',
     users: 'Utilisateurs',
     tenants: 'Clients',
     apiKeys: 'Clés API',
@@ -112,6 +113,18 @@ export const dict: RawDictionary = {
     smtp: 'SMTP',
     security: 'Sécurité',
     about: 'À propos de STJÓRNA',
+  },
+
+  developers: {
+    title: 'Développeurs',
+    intro: 'Intégrez les médias et les données catalogue STJÓRNA dans un site externe.',
+    baseUrl: 'URL de base',
+    storefront: 'Storefront (catalogue complet)',
+    storefrontHint: 'Émettez une clé API, échangez-la contre un jeton de courte durée, puis lisez les produits avec leurs médias.',
+    publicEmbed: 'Intégration publique (fichier unique)',
+    publicEmbedHint: 'Marquez un média comme public et utilisez son URL stable sans jeton.',
+    docs: 'Guide complet',
+    demo: 'Storefront demo/',
   },
 
   header: {
@@ -418,6 +431,10 @@ export const dict: RawDictionary = {
     fileUrl: 'URL du fichier',
     thumbnailUrl: 'URL de la vignette',
     copyUrl: "Copier l'URL",
+    public: 'Public',
+    publicHint: 'Toute personne disposant du lien peut consulter ce fichier sans se connecter.',
+    publicUrl: 'URL publique',
+    publicUrlHint: 'Intégrez cette URL sur n’importe quel site — aucune connexion requise.',
     editMedia: 'Modifier le média',
     uploadMedia: 'Importer un média',
     saved: 'Média enregistré avec succès !',

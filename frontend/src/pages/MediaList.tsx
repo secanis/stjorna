@@ -1,6 +1,6 @@
 import { createSignal, createResource, createMemo, Show, onMount } from 'solid-js';
 import { A, useNavigate } from '@solidjs/router';
-import { FileText, Video } from 'lucide-solid';
+import { FileText, Video, Globe } from 'lucide-solid';
 import Table, { Column } from '~/components/ui/Table';
 import { i18nStore } from '~/i18n';
 import { pb, tenantFilter, toSortExpr } from '~/services/pocketbase';
@@ -88,7 +88,10 @@ export default function MediaList() {
         const m = row as unknown as Media;
         const file = v as string;
         return (
-          <div class="w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-gray-900 dark:bg-black">
+          <div class="relative w-12 h-12 bg-gray-50 dark:bg-gray-700 rounded flex items-center justify-center overflow-hidden bg-gray-900 dark:bg-black">
+            <Show when={m.public}>
+              <Globe size={12} class="absolute bottom-0 right-0 text-green-600 dark:text-green-400" />
+            </Show>
             <Show when={m.mime_type?.startsWith('image/') && file}>
               <img
                 src={getMediaFileUrl(m.id, file, { thumb: '100x100' })}

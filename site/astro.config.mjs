@@ -49,6 +49,7 @@ export default defineConfig({
             { slug: 'docs/configuration', label: 'Configuration' },
             { slug: 'docs/auth-roles', label: 'Authentication & roles' },
             { slug: 'docs/api-keys', label: 'API keys' },
+            { slug: 'docs/embedding-media', label: 'Embedding media' },
             { slug: 'docs/oidc', label: 'OIDC / SSO' },
             { slug: 'docs/storage', label: 'Storage' },
           ],

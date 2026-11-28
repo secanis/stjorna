@@ -60,6 +60,7 @@ export function recreatePb(url: string) {
       pb.authStore.save(t, null);
     } catch {}
   }
+  resetFileToken();
   return pb;
 }
 
@@ -130,6 +131,7 @@ export async function ensureFreshToken(): Promise<void> {
   const jwt = await upgradeApiKeyToJwt(apiKey);
   inMemoryToken = jwt;
   pb.authStore.save(jwt, null);
+  resetFileToken();
 }
 
 // Update the on-screen status banner. The demo's App.tsx subscribes to
@@ -142,6 +144,7 @@ export async function saveToken(raw: string): Promise<void> {
     clearToken();
     return;
   }
+  resetFileToken();
 
   if (isApiKey(t)) {
     setAuthStatus('Exchanging API key for STJÓRN A user JWT…');
@@ -182,6 +185,7 @@ export function clearToken() {
   inMemoryToken = '';
   inMemoryApiKey = '';
   pb.authStore.clear();
+  resetFileToken();
 }
 
 export function getTokenRaw(): string {
@@ -210,11 +214,48 @@ export function toggleTheme() {
 // Apply theme on module load.
 setTheme(getTheme());
 
-// File URL — uses the SDK so the token is appended automatically when present.
+// --- File token for protected media (T-08) ---
+// Media files are protected on the schema: serving one needs a SHORT-LIVED
+// file token (pb.files.getToken()), appended as ?token= — never the auth JWT.
+// The SDK's pb.files.getUrl() does NOT append a token, so we cache one here
+// (module-scoped) and refresh ~5 min before PB's ~1 h expiry.
+let fileToken = '';
+let fileTokenExpiresAt = 0;
+let fileTokenInFlight: Promise<void> | null = null;
+
+function resetFileToken(): void {
+  fileToken = '';
+  fileTokenExpiresAt = 0;
+}
+
+// Fetch (or reuse) the file token. No-op when not authenticated. Await it
+// before rendering media so the URL builder has a token ready.
+export async function ensureFileToken(): Promise<void> {
+  if (!pb.authStore.token) return;
+  if (fileToken && Date.now() < fileTokenExpiresAt) return;
+  if (fileTokenInFlight) return fileTokenInFlight;
+  fileTokenInFlight = (async () => {
+    try {
+      const t = await pb.files.getToken();
+      fileToken = t || '';
+      fileTokenExpiresAt = Date.now() + 55 * 60 * 1000;
+    } catch {
+      resetFileToken();
+    } finally {
+      fileTokenInFlight = null;
+    }
+  })();
+  return fileTokenInFlight;
+}
+
+// File URL — appends ?thumb= and the cached file ?token= when present.
 export function fileUrl(record: { id: string }, filename: string, opts?: { thumb?: string }): string {
   if (!record?.id || !filename) return '';
   try {
-    return pb.files.getUrl(record as any, filename, opts as any);
+    const query: Record<string, string> = {};
+    if (opts?.thumb) query.thumb = opts.thumb;
+    if (fileToken) query.token = fileToken;
+    return pb.files.getURL(record as any, filename, query as any);
   } catch {
     return '';
   }

@@ -1,6 +1,6 @@
 import { createSignal, Show, For, createEffect, on } from 'solid-js';
 import { A, useLocation } from '@solidjs/router';
-import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info, Shield, ChevronRight, ChevronDown, type LucideIcon } from 'lucide-solid';
+import { LayoutDashboard, Settings, Users, Building2, Folder, Image, Package, BookOpen, History, KeyRound, BarChart3, Info, Shield, ChevronRight, ChevronDown, Code, type LucideIcon } from 'lucide-solid';
 import { authStore } from '~/stores/auth';
 import { sidebarStore } from '~/stores/sidebar';
 import { tenantStore } from '~/stores/tenant';
@@ -25,6 +25,7 @@ const baseNavItems: NavItem[] = [
     { path: '/stats', label: 'nav.statistics', icon: BarChart3, roles: ['editor', 'admin'] as const },
     { path: '/activities', label: 'nav.activities', icon: History, roles: ['editor', 'admin', 'pb_admin'] as const },
     { path: '/api-docs', label: 'nav.apiDocs', icon: BookOpen, roles: ['editor', 'admin', 'pb_admin'] as const },
+    { path: '/developers', label: 'nav.developers', icon: Code, roles: ['editor', 'admin', 'pb_admin'] as const },
     { path: '/users', label: 'nav.users', icon: Users, roles: ['admin', 'pb_admin'] as const, showCount: true },
     { path: '/tenants', label: 'nav.tenants', icon: Building2, roles: ['pb_admin'] as const, showCount: true },
     { path: '/api-keys', label: 'nav.apiKeys', icon: KeyRound, roles: ['pb_admin'] as const, showCount: true },

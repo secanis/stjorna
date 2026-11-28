@@ -1,6 +1,6 @@
 import { createSignal, createResource, For, Show } from 'solid-js';
 import { useNavigate } from '@solidjs/router';
-import { pb, fileUrl, toggleTheme, getTheme, getTokenRaw, ensureFreshToken } from '~/lib/pb';
+import { pb, fileUrl, toggleTheme, getTheme, getTokenRaw, ensureFreshToken, ensureFileToken } from '~/lib/pb';
 
 // Catalog page: lists all categories, then loads products for the selected one.
 // STJÓRNA APIs touched:
@@ -17,6 +17,7 @@ async function fetchCategories() {
 
 async function fetchProducts(categoryId: string) {
   await ensureFreshToken();
+  await ensureFileToken();
   const r = await pb.collection('products').getList(1, 200, {
     filter: `category="${categoryId}"`,
     expand: 'media',

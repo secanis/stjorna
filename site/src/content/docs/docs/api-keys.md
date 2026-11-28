@@ -33,7 +33,7 @@ exactly what a tenant viewer sees, and nothing else.
 curl -X POST https://pb.example.com/api/stjorna/api-keys \
   -H "Authorization: <superuser-token>" \
   -H "Content-Type: application/json" \
-  -d '{"tenantId": "..."}'
+  -d '{"tenant": "..."}'
 
 # 2. Exchange the key for a short-lived token
 curl -X POST https://pb.example.com/api/stjorna/api-keys/exchange \
@@ -45,3 +45,6 @@ curl https://pb.example.com/api/collections/products/records \
 ```
 
 The `demo/` app in the repository shows the full flow.
+
+For the end-to-end storefront + media embedding flow, see
+[Embedding media & images](/docs/embedding-media).
